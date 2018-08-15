@@ -78,4 +78,6 @@ theme: lite
 # Deployment
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:
-  type:
+  type: git
+  repo: https://github.com/stevenchendan/stevenchendan.github.io.git
+  branch: master

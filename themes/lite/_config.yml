@@ -4,7 +4,7 @@
 
 avatar:
   enable: true
-  url: /static/images/kamuyi.jpg
+  url: /static/images/my.jpg
 
 background:
   background_color: '#ffffff'
@@ -47,6 +47,7 @@ menu_icons:
   # icon name docs: http://fontawesome.io/icons/
   Home: fa-home
   Archives: fa-archive
+  Book: fa-book
   Categories: fa-bookmark
   Tags: fa-hashtag
   About: fa-smile-o
@@ -83,11 +84,11 @@ theme_layout:
 # -------------------------------------------------------
 
 social:
-  github: https://github.com/heskeybaozi
-  weibo: http://weibo.com/52hezhiyu
+  github: https://github.com/stevenchendan
+  linkedin: https://www.linkedin.com/in/stevenlchen/
 
   # Email link, reference to https://developer.mozilla.org/en-US/docs/Learn/HTML/Introduction_to_HTML/Creating_hyperlinks#E-mail_links
-  email: mailto:hezhiyu233@foxmail.com
+  email: mailto:liangchendan@icloud.com
 
 
 social_icons:
@@ -97,6 +98,7 @@ social_icons:
   weibo: fa-weibo
   email: fa-envelope
   wechat: fa-weixin
+  linkedin: fa-linkedin
   qq: fa-qq
 
 # -------------------------------------------------------
