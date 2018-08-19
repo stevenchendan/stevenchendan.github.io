@@ -6,11 +6,11 @@ import { TimeLine } from 'src/store/modules/archives.module';
 import Component from 'vue-class-component';
 
 @Component({
-  name: 'archives-page'
+  name: 'book-page'
 })
-export default class ArchivesPage extends Vue {
+export default class BookPage extends Vue {
   get timeLines(): TimeLine {
-    return this.$store.getters[`archives/${Time_Line_List}`];
+    return this.$store.getters[`book/${Time_Line_List}`];
   }
 
   get pagination() {
@@ -34,13 +34,13 @@ export default class ArchivesPage extends Vue {
     const prePage: number = (store.state as RootState).archives.page;
     // avoid double fetch initial data
     if (prePage !== 1) {
-      await store.dispatch(`archives/${Fetch_Archives_Posts_List}`, { page: 1 });
+      await store.dispatch(`book/${Fetch_Archives_Posts_List}`, { page: 1 });
     }
   }
 
   async onPage(page: number) {
     this.$nprogress.start();
-    await this.$store.dispatch(`archives/${Fetch_Archives_Posts_List}`, { page });
+    await this.$store.dispatch(`book/${Fetch_Archives_Posts_List}`, { page });
     if (window) {
       window.scrollTo(0, 0);
     }

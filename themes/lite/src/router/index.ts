@@ -20,7 +20,7 @@ export const router = new Router({
     {
       path: '/book',
       name: 'book-page',
-      component: () => import('@/views/pages/book/HomePage.vue')
+      component: () => import('@/views/pages/book/Book.vue')
     },
     {
       path: '/categories',
