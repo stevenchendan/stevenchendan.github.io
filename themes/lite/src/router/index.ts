@@ -18,6 +18,11 @@ export const router = new Router({
       component: () => import('@/views/pages/archives/ArchivesPage.vue')
     },
     {
+      path: '/book',
+      name: 'book-page',
+      component: () => import('@/views/pages/book/HomePage.vue')
+    },
+    {
       path: '/categories',
       name: 'categories-page',
       component: () => import('@/views/pages/categories/CategoriesPage.vue')
