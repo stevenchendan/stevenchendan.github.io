@@ -174,6 +174,7 @@ There is important thing to do is the security I will talk about it in the near 
 Finally we need to deploy our program. first build your project in visual studio. Then open your **CMD** as Admin(right click - run as administrator )
 
 **Installation:**
+
 ```
 "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\InstallUtil.exe" "C:\Users\Gatehouse\source\repos\WindowsServiceTest\WindowsServiceTest\bin\Debug\WindowsServiceTest.exe"
 ```
@@ -182,5 +183,15 @@ Finally we need to deploy our program. first build your project in visual studio
 ```
 "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\InstallUtil.exe" -u  "C:\Users\Gatehouse\source\repos\WindowsServiceTest\WindowsServiceTest\bin\Debug\WindowsServiceTest.exe"
 ```
+
+
+
+**Step 5 Run This Service**
+
+After deployment you should see your service in the service list(cmd -> enter service).
+
+If there is no problem after you right click on service and select run. Your service should be ready. You can check your log folder.
+
+
 
 I will update once I find better practice.
