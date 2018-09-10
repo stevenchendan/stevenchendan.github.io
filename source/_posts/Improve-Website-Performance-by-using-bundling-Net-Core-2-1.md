@@ -134,7 +134,7 @@ you can update all files right now or you can set the build time of each file.
 
 #### Conclusion
 
-Please do not remember include your bundle files in your layout file
+Please do remember include your bundle files(e.g. site.min.css or site.min.js ....) in your layout file
 Now you can check from browser if your bundle file works or not.
 
 
