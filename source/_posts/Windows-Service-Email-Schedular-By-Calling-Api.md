@@ -9,6 +9,10 @@ date: 2018-08-26 16:29:24
 
 Background: This week I set up a windows service to call my website API so that I can send unread notification weekly to our customers. I would like to share the process I have done so that you can save some time if you would like to do the same thing.
 
+Before read this blog I recommend you to have a look at Hangfire and quartz.net. If you find they are more suitable for you just jump to it. As windows service is not a suitable way to do scheduling in many cases.
+
+---
+
 #### Why Windows Service?
 
 I know there are some more continent ways to do the same thing especially on some cloud platform e.g. AWS, Azure... Because when I develop this feature I do not have the permission to access our AWS server and I am not familiar with AWS scheduler so that I choose windows service which is a bit of  legacy. I am pretty sure this is not the best option to do this Email Scheduler. I will keep updating this once I find a better solution.
