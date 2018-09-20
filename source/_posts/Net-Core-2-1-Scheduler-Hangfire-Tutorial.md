@@ -1,18 +1,18 @@
 ---
-title: Scheduler in .Net Core 2.1 -- Hangfire Setup
-date: 2018-09-14 08:43:58
-tags:[".Net Core", "Hangfire", "Scheduler"]
+title: .Net Core 2.1 Scheduler Hangfire Tutorial
+date: 2018-09-19 08:37:21
+tags:
 ---
 
-### Scheduler in .Net Core 2.1 -- Hangfire tutorial
+### Scheduler in .Net Core 2.1 - Hangfire tutorial
 
----
+------
 
 #### Background: 
 
 I used to setup my project scheduler by using windows service, mostly sending emails, then I find a better library to do this task -- Hangfire. There are multiple reasons, the first is Hangfire is free!!! and then it provide dashboard to monitor and control your scheduled tasks, the last point is it is easy to setup.
 
----
+------
 
 #### Options:
 
@@ -32,7 +32,7 @@ Before we get into this Hangfire tutorial make sure you compare all the librarie
 
 This list comes from [awesome-dotnet-core](https://github.com/thangchung/awesome-dotnet-core)
 
----
+------
 
 Step 1: Installation
 
@@ -43,6 +43,7 @@ I use NUGET package to install this library. I install these three library.
 <PackageReference Include="Hangfire.Dashboard.Authorization" Version="2.1.0" />
 <PackageReference Include="Hangfire.SqlServer" Version="1.6.20" />
 ```
+
 You can search them in NuGet Package Manager. The version number does not matter.
 
 Because I use .Net Core 2.1 so that I install Hangfire.AspNetCore rather than Hangfire please make sure you select the right one for your project. The Hangfire.Dashboard.Authorization is to implement the security feature which means it is optional and the SqlServer is a must-have.
@@ -81,13 +82,9 @@ app.UseHangfireServer();
 
 After you run your application you should be able to see your hangfire dashboard now.
 
-https://{{yourBaseUrl}/hangfire
-
-
+by adding hangfire after your root url.
 
 {% asset_img "hangFire.PNG" "Dashboard" %}
-
-
 
 Step 3: Security Setup
 
