@@ -1,1 +1,708 @@
-<!doctype html><html lang=en><head><meta charset=UTF-8><meta name=viewport content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1"><meta http-equiv=X-UA-Compatible content="ie=edge"><link rel="shortcut icon" href=/static/favicon.ico><title>Steven Notes</title><link href=/static/css/app.c64eadfc8d3abfc9d85514dba4054813.css rel=stylesheet></head><body><div id=app></div><script type=text/javascript src=/static/js/manifest.992b63bf2abbf3194771.js></script><script type=text/javascript src=/static/js/vendor.e12dc8c9af1f7aa12436.js></script><script type=text/javascript src=/static/js/app.bc036f9167871d39aecf.js></script></body></html>
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="Chinese(Native), English(Fluent)">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content=".Net Core,Web Performance," />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="How to do bundling in .Net Core Project Background: These days I would like to improve our website performance I have learned that there are some ways like code splitting, bundling and so on. I will s">
+<meta name="keywords" content=".Net Core,Web Performance">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Improve Website Performance by using bundling(.Net Core 2.1)">
+<meta property="og:url" content="http://yoursite.com/2018/08/30/Improve-Website-Performance-by-using-bundling-Net-Core-2-1/index.html">
+<meta property="og:site_name" content="Steven&#39;s blog">
+<meta property="og:description" content="How to do bundling in .Net Core Project Background: These days I would like to improve our website performance I have learned that there are some ways like code splitting, bundling and so on. I will s">
+<meta property="og:locale" content="Chinese(Native), English(Fluent)">
+<meta property="og:image" content="http://yoursite.com/2018/08/30/Improve-Website-Performance-by-using-bundling-Net-Core-2-1/bundleFile.PNG">
+<meta property="og:image" content="http://yoursite.com/2018/08/30/Improve-Website-Performance-by-using-bundling-Net-Core-2-1/bundleRightClick.png">
+<meta property="og:image" content="http://yoursite.com/2018/08/30/Improve-Website-Performance-by-using-bundling-Net-Core-2-1/bundleRightClick.png">
+<meta property="og:image" content="http://yoursite.com/2018/08/30/Improve-Website-Performance-by-using-bundling-Net-Core-2-1/taskRunnerExplorer.png">
+<meta property="og:updated_time" content="2018-09-25T11:27:20.392Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Improve Website Performance by using bundling(.Net Core 2.1)">
+<meta name="twitter:description" content="How to do bundling in .Net Core Project Background: These days I would like to improve our website performance I have learned that there are some ways like code splitting, bundling and so on. I will s">
+<meta name="twitter:image" content="http://yoursite.com/2018/08/30/Improve-Website-Performance-by-using-bundling-Net-Core-2-1/bundleFile.PNG">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: 'Author'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2018/08/30/Improve-Website-Performance-by-using-bundling-Net-Core-2-1/"/>
+
+
+
+
+
+  <title>Improve Website Performance by using bundling(.Net Core 2.1) | Steven's blog</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="Chinese(Native), English(Fluent)">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Steven's blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            Home
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            Archives
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/08/30/Improve-Website-Performance-by-using-bundling-Net-Core-2-1/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Steven(Liang) Chen">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Steven's blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Improve Website Performance by using bundling(.Net Core 2.1)</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2018-08-30T20:19:41+10:00">
+                2018-08-30
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h3 id="How-to-do-bundling-in-Net-Core-Project"><a href="#How-to-do-bundling-in-Net-Core-Project" class="headerlink" title="How to do bundling in .Net Core Project"></a>How to do bundling in .Net Core Project</h3><hr>
+<p>Background: These days I would like to improve our website performance I have learned that there are some ways like code splitting, bundling and so on. I will start with bundling. So that I would like to share the process about how I did it. I do not promise this is the best practice but I hope this post can save you sometime once you would like to do the same thing.</p>
+<h4 id="Step-1"><a href="#Step-1" class="headerlink" title="Step 1:"></a>Step 1:</h4><p>My project is a .Net Core project. Before you read my post I hope your can read the office document about how to do the bundling. Here is the official website: </p>
+<p>If you find this official document is not helpful let’s continue.</p>
+<h4 id="Step-2"><a href="#Step-2" class="headerlink" title="Step 2 :"></a>Step 2 :</h4><p>Let’s go to the file called <strong>bundleconfig.json</strong> which is the file we can bundle our files together.</p>
+<img src="/2018/08/30/Improve-Website-Performance-by-using-bundling-Net-Core-2-1/bundleFile.PNG" title="File Location">
+<p>In this file you can see the existing code </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">[</span><br><span class="line">  &#123;</span><br><span class="line">    &quot;outputFileName&quot;: &quot;wwwroot/js/site.min.js&quot;,</span><br><span class="line">    &quot;inputFiles&quot;: [</span><br><span class="line">      &quot;wwwroot/js/site.js&quot;</span><br><span class="line">    ],</span><br><span class="line">    &quot;minify&quot;: &#123;</span><br><span class="line">      &quot;enabled&quot;: true,</span><br><span class="line">      &quot;renameLocals&quot;: false</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  &#123;</span><br><span class="line">    &quot;outputFileName&quot;: &quot;wwwroot/css/site.min.css&quot;,</span><br><span class="line">    &quot;inputFiles&quot;: [</span><br><span class="line">      &quot;wwwroot/css/site.css&quot;</span><br><span class="line">    ],</span><br><span class="line">    &quot;minify&quot;: &#123;</span><br><span class="line">      &quot;enabled&quot;: true,</span><br><span class="line">      &quot;renameLocals&quot;: false</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">]</span><br></pre></td></tr></table></figure>
+<p>This code is pretty much straightforward I think I do not need to explain anything. </p>
+<h4 id="Step-3-Download-Extension"><a href="#Step-3-Download-Extension" class="headerlink" title="Step 3: Download Extension"></a>Step 3: Download Extension</h4><p>I recommend you to use this extension called <strong>Bundler &amp; Minifier</strong> this is recommended by the official document. Here is the link of this extension: [Bundle &amp; Minifier]: <a href="https://marketplace.visualstudio.com/items?itemName=MadsKristensen.BundlerMinifier" target="_blank" rel="noopener">https://marketplace.visualstudio.com/items?itemName=MadsKristensen.BundlerMinifier</a> you can also use nuget package to install it.</p>
+<p>Once you download this extension successfully we can select multiple .js or .css to bundle them together. After select them right click then you will find the option called: Bundle &amp; Minifier this is the one will help you bundle your files.</p>
+<img src="/2018/08/30/Improve-Website-Performance-by-using-bundling-Net-Core-2-1/bundleRightClick.png" title="Bundle Option">
+<p>Remeber that please do not change the order of the .js or .css becaue the loading sequence matters in our project. Before you do this bundle I think spilit your code is a good choice otherwise the landing page will be slow.</p>
+<h4 id="Step-4-Bundle-amp-Minifer-Setting"><a href="#Step-4-Bundle-amp-Minifer-Setting" class="headerlink" title="Step 4: Bundle &amp; Minifer Setting"></a>Step 4: Bundle &amp; Minifer Setting</h4><p>After we do the bundling  we can double check it in the <strong>bundleconfig.json</strong><br>Here is a example of mine bundleconfig file:<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line">[</span><br><span class="line">  &#123;</span><br><span class="line">    &quot;outputFileName&quot;: &quot;wwwroot/js/site.min.js&quot;,</span><br><span class="line">    &quot;inputFiles&quot;: [</span><br><span class="line">      &quot;wwwroot/js/main.js&quot;,</span><br><span class="line">      &quot;wwwroot/js/lodash.min.js&quot;,</span><br><span class="line">      &quot;wwwroot/js/jodit.min.js&quot;,</span><br><span class="line">      &quot;wwwroot/js/bootstrap-datepicker.js&quot;,</span><br><span class="line">      &quot;wwwroot/js/axios.min.js&quot;,</span><br><span class="line">      &quot;wwwroot/js/toastr.min.js&quot;,</span><br><span class="line">      &quot;wwwroot/js/moment.min.js&quot;,</span><br><span class="line">      &quot;wwwroot/js/daterangepicker.js&quot;,</span><br><span class="line">      &quot;wwwroot/Scripts/SidebarScripts.js&quot;,</span><br><span class="line">      &quot;wwwroot/js/manifest.js&quot;,</span><br><span class="line">      &quot;wwwroot/js/slick.min.js&quot;,</span><br><span class="line">      &quot;wwwroot/js/site.min.js&quot;</span><br><span class="line">    ],</span><br><span class="line">    &quot;minify&quot;: &#123;</span><br><span class="line">      &quot;enabled&quot;: true,</span><br><span class="line">      &quot;renameLocals&quot;: false</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;,</span><br><span class="line">  &#123;</span><br><span class="line">    &quot;outputFileName&quot;: &quot;wwwroot/css/site.min.css&quot;,</span><br><span class="line">    &quot;inputFiles&quot;: [</span><br><span class="line">      &quot;wwwroot/css/font-awesome.min.css&quot;,</span><br><span class="line">      &quot;wwwroot/lib/bootstrap/dist/css/bootstrap.css&quot;,</span><br><span class="line">      &quot;wwwroot/css/angular-material.css&quot;,</span><br><span class="line">      &quot;wwwroot/css/styles.css&quot;,</span><br><span class="line">      &quot;wwwroot/css/emoticons.css&quot;,</span><br><span class="line">      &quot;wwwroot/css/vue-multiselect.min.css&quot;,</span><br><span class="line">      &quot;wwwroot/lib/Croppie/croppie.css&quot;,</span><br><span class="line">      &quot;wwwroot/css/jodit.min.css&quot;,</span><br><span class="line">      &quot;wwwroot/css/datepicker3.css&quot;,</span><br><span class="line">      &quot;wwwroot/css/toastr.min.css&quot;,</span><br><span class="line">      &quot;wwwroot/css/site.css&quot;</span><br><span class="line">    ],</span><br><span class="line">    &quot;minify&quot;: &#123;</span><br><span class="line">      &quot;enabled&quot;: true,</span><br><span class="line">      &quot;renameLocals&quot;: false</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">]</span><br></pre></td></tr></table></figure></p>
+<h4 id="Step-5-Build-Bundle-File"><a href="#Step-5-Build-Bundle-File" class="headerlink" title="Step 5: Build Bundle File"></a>Step 5: Build Bundle File</h4><p>After you finish do the setting we can build the bundle files.</p>
+<img src="/2018/08/30/Improve-Website-Performance-by-using-bundling-Net-Core-2-1/bundleRightClick.png" title="Bundle Option">
+<p>Click on the <strong>Task Runner Explorer</strong> options you can set the build time of the bundle files </p>
+<img src="/2018/08/30/Improve-Website-Performance-by-using-bundling-Net-Core-2-1/taskRunnerExplorer.png" title="Task Runnder">
+<p>you can update all files right now or you can set the build time of each file.</p>
+<h4 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h4><p>Please do remember include your bundle files(e.g. site.min.css or site.min.js ….) in your layout file<br>Now you can check from browser if your bundle file works or not.</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Net-Core/" rel="tag"># .Net Core</a>
+          
+            <a href="/tags/Web-Performance/" rel="tag"># Web Performance</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2018/08/28/hello-world/" rel="next" title="Test">
+                <i class="fa fa-chevron-left"></i> Test
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2018/09/19/Net-Core-2-1-Scheduler-Hangfire-Tutorial/" rel="prev" title=".Net Core 2.1 Scheduler Hangfire Tutorial">
+                .Net Core 2.1 Scheduler Hangfire Tutorial <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">Steven(Liang) Chen</p>
+              <p class="site-description motion-element" itemprop="description">Full Stack Developer</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">4</span>
+                  <span class="site-state-item-name">posts</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                
+                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-name">tags</span>
+                
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#How-to-do-bundling-in-Net-Core-Project"><span class="nav-number">1.</span> <span class="nav-text">How to do bundling in .Net Core Project</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Step-1"><span class="nav-number">1.1.</span> <span class="nav-text">Step 1:</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Step-2"><span class="nav-number">1.2.</span> <span class="nav-text">Step 2 :</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Step-3-Download-Extension"><span class="nav-number">1.3.</span> <span class="nav-text">Step 3: Download Extension</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Step-4-Bundle-amp-Minifer-Setting"><span class="nav-number">1.4.</span> <span class="nav-text">Step 4: Bundle &amp; Minifer Setting</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Step-5-Build-Bundle-File"><span class="nav-number">1.5.</span> <span class="nav-text">Step 5: Build Bundle File</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Conclusion"><span class="nav-number">1.6.</span> <span class="nav-text">Conclusion</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2018</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Steven(Liang) Chen</span>
+
+  
+</div>
+
+
+  <div class="powered-by">Powered by <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a></div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">Theme &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Pisces</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
