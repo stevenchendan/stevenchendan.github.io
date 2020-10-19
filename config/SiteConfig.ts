@@ -3,7 +3,7 @@ export default {
 
   siteTitle: 'Steven Chen Blog', // Navigation and Site Title
   siteTitleAlt: 'Steven Chen Blog - Fun Place', // Alternative Site title for SEO
-  siteUrl: 'https://typescript-power-blog.github.com', // Domain of your site. No trailing slash!
+  siteUrl: 'https://stevenchendan.github.io', // Domain of your site. No trailing slash!
   siteLanguage: 'en', // Language Tag on <html> element
   siteBanner: '/assets/banner.jpg', // Your image for og:image tag. You can find it in the /static folder
   defaultBg: '/assets/bg.png', // default post background header
@@ -14,7 +14,7 @@ export default {
 
   // siteFBAppID: '123456789', // Facebook App ID - Optional
   userTwitter: '@liangchend', // Twitter Username - Optional
-  ogSiteName: 'mhadaily', // Facebook Site Name - Optional
+  ogSiteName: 'liangchend', // Facebook Site Name - Optional
   ogLanguage: 'en_US', // Facebook Language
 
   // Manifest and Progress color
