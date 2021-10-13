@@ -13,7 +13,6 @@ const IndexPage: React.FC = () => {
       <HeroBanner />
       <Services />
       <hr />
-      <Testimonials />
     </Layout>
   );
 };
