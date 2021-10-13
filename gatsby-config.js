@@ -1,99 +1,64 @@
-require('source-map-support').install();
-require('ts-node').register({
-  compilerOptions: {
-    module: 'commonjs',
-    target: 'es2017',
-  },
-});
-
-const config = require('./config/SiteConfig').default;
-const pathPrefix = config.pathPrefix === '/' ? '' : config.pathPrefix;
-
 module.exports = {
-  pathPrefix: config.pathPrefix,
   siteMetadata: {
-    siteUrl: config.siteUrl + pathPrefix,
+    title: `Gatsby.JS`,
+    description: `Gatsby Markdown Personal Website Starter, using Typescript, Styled Components, Tailwindcss and Framer Motion.`,
+    author: `Saimir Kapaj`
   },
   plugins: [
-    'gatsby-plugin-react-helmet',
-    'gatsby-plugin-styled-components',
-    'gatsby-plugin-offline',
-    'gatsby-plugin-typescript',
-    'gatsby-plugin-sass',
-    'gatsby-plugin-manifest',
-    'gatsby-plugin-catch-links',
-    'gatsby-plugin-sitemap',
-    'gatsby-plugin-lodash',
+    `gatsby-plugin-typescript`,
+    `gatsby-plugin-react-helmet`,
     {
-      resolve: 'gatsby-source-filesystem',
+      resolve: `gatsby-source-filesystem`,
       options: {
-        name: 'post',
-        path: `${__dirname}/blog`,
-      },
+        name: `images`,
+        path: `${__dirname}/src/assets/images`
+      }
     },
     {
-      resolve: `gatsby-plugin-google-tagmanager`,
+      resolve: `gatsby-source-filesystem`,
       options: {
-        id: config.Google_Tag_Manager_ID,
-        // Include GTM in development.
-        // Defaults to false meaning GTM will only be loaded in production.
-        includeInDevelopment: false,
-      },
+        name: `content`,
+        path: `${__dirname}/src/data`
+      }
     },
     {
       resolve: 'gatsby-transformer-remark',
       options: {
         plugins: [
           {
-            resolve: 'gatsby-remark-external-links',
+            resolve: 'gatsby-remark-images',
             options: {
-              target: '_blank',
-              rel: 'nofollow noopener noreferrer',
-            },
-          },
-          'gatsby-remark-prismjs',
-          'gatsby-remark-autolink-headers',
-        ],
-      },
+              maxWidth: 768,
+              linkImagesToOriginal: false
+            }
+          }
+        ]
+      }
     },
+    `gatsby-transformer-sharp`,
+    `gatsby-plugin-sharp`,
     {
-      resolve: 'gatsby-plugin-typography',
+      resolve: `gatsby-plugin-manifest`,
       options: {
-        pathToConfigModule: 'src/utils/typography.ts',
-      },
+        name: `gatsby-personal-website-starter`,
+        short_name: `starter`,
+        start_url: `/`,
+        background_color: `#81e6d9`,
+        theme_color: `#81e6d9`,
+        display: `minimal-ui`,
+        icon: `src/assets/images/gatsby-icon.png`
+      }
     },
+    `gatsby-plugin-offline`,
+    `gatsby-plugin-styled-components`,
+    `gatsby-plugin-postcss`,
+    `gatsby-plugin-tailwindcss`,
     {
-      resolve: 'gatsby-plugin-manifest',
+      resolve: `gatsby-plugin-purgecss`,
       options: {
-        name: config.siteTitle,
-        short_name: config.siteTitleAlt,
-        description: config.siteDescription,
-        start_url: config.pathPrefix,
-        background_color: config.backgroundColor,
-        theme_color: config.themeColor,
-        display: 'standalone',
-        icon: config.favicon,
-      },
-    },
-    {
-      resolve: `gatsby-source-filesystem`,
-      options: {
-        name: `images`,
-        path: `${__dirname}/static/assets`,
-      },
-    },
-    'gatsby-plugin-sharp',
-    'gatsby-transformer-sharp',
-    {
-      // Removes unused css rules
-      resolve: 'gatsby-plugin-purgecss',
-      options: {
-        // Activates purging in gatsby develop
-        develop: true,
-        // Purge only the main css file
-        purgeOnly: ['all.scss'],
-      },
-    },
-    `gatsby-plugin-netlify`,
-  ],
+        tailwind: true,
+        purgeOnly: [`src/assets/styles/global.css`]
+      }
+    }
+  ]
 };

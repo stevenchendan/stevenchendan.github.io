@@ -1,22 +1,18 @@
 import React from 'react';
-import { Content, Header, Layout, Wrapper } from '../components';
-import { Helmet } from 'react-helmet';
-import config from '../../config/SiteConfig';
-import { Link } from 'gatsby';
 
-export default () => {
-  return (
-    <Layout>
-      <Wrapper>
-        <Helmet title={`404 not found | ${config.siteTitle}`} />
-        <Header>
-          <Link to="/">{config.siteTitle}</Link>
-        </Header>
-        <Content>
-          <h1>NOT FOUND</h1>
-          <p>You just hit a route that doesn&#39;t exist... the sadness.</p>
-        </Content>
-      </Wrapper>
-    </Layout>
-  );
-};
+import Layout from 'components/Layout';
+import SEO from 'components/SEO';
+import Container from 'components/ui/Container';
+import TitleSection from 'components/ui/TitleSection';
+
+const NotFoundPage: React.FC = () => (
+  <Layout>
+    <SEO title="404: Not found" />
+    <Container section>
+      <TitleSection title="404" subtitle="Page not found" center />
+      <p className="mt-4 text-center w-full">You just hit a route that doesn&#39;t exist... the sadness.</p>
+    </Container>
+  </Layout>
+);
+
+export default NotFoundPage;
