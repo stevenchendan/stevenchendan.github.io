@@ -3,7 +3,7 @@
   "private": true,
   "description": "Gatsby Markdown Personal Website Starter, using Typescript, Styled Components, Tailwindcss and Framer Motion.",
   "version": "0.1.0",
-  "author": "Saimir Kapaj",
+  "author": "Steven Chen",
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.28",
     "@fortawesome/free-brands-svg-icons": "^5.13.0",
