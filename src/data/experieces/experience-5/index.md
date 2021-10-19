@@ -1,9 +1,9 @@
 ---
 category: 'experiences'
-company: 'The Great Gasby Inc'
-position: 'CEO & Founder'
-startDate: 'Jan 2018'
+company: 'Origin Energy'
+position: 'Senior Application Developer'
+startDate: 'Apr 2021'
 endDate: 'Present'
 ---
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+As a senior developer at Origin Energy, I develop resource admin applications, GIS applications(site safety), and custom components by using React, ArcGIS API, Azure

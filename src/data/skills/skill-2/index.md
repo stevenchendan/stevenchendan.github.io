@@ -1,5 +1,5 @@
 ---
 category: 'skills'
-title: 'CSS'
-percentage: 73
+title: 'Vue'
+percentage: 75
 ---

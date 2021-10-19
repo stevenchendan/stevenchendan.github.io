@@ -1,11 +1,9 @@
 ---
 category: 'experiences'
-company: 'Aizoon Reply'
-position: 'UI/UX Designer'
-startDate: 'Jan 2011'
-endDate: 'May 2013'
+company: 'Alifery'
+position: 'Full Stack Developer'
+startDate: 'Mar 2018'
+endDate: 'Apr 2019'
 ---
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-
-Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+Using cutting edge technologies(Vue, .Net Core, Entity Framework Core, AWS...) to develop websites.

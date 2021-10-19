@@ -1,5 +1,5 @@
 ---
 category: 'skills'
-title: 'Gatsby'
-percentage: 68
+title: '.Net Core'
+percentage: 65
 ---

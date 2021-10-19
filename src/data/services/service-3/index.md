@@ -2,5 +2,5 @@
 category: 'services'
 title: 'Machine Learning'
 icon: 'edit'
-description: 'Mauris neque libero, aliquet vel mollis nec, euismod sed tellus. Mauris convallis dictum elit id volutpat.'
+description: 'Hands on experience with Predicting Agricultural Harvest(prize winning solution), Predict the location and mine deposite(prize winning solution)'
 ---

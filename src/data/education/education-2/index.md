@@ -1,9 +1,9 @@
 ---
 category: 'education'
-university: 'Stanford University'
-degree: 'Master of Science'
+university: 'University of Wollongong'
+degree: 'Master of Computer Science Advanced'
 startDate: 'Oct 2008'
 endDate: 'Jul 2010'
 ---
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laborist.
+Double major with Software Engineer and Security.

@@ -1,9 +1,9 @@
 ---
 category: 'education'
-university: 'Columbia University'
-degree: 'Bachelor'
-startDate: 'Oct 2005'
-endDate: 'Jul 2008'
+university: 'University of Wollongong'
+degree: 'Master of Computer Science Advanced'
+startDate: 'Feb 2014'
+endDate: 'Dec 2015'
 ---
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+Double major with Software Engineer and Security.

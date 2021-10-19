@@ -1,5 +1,5 @@
 ---
 category: 'skills'
-title: 'Photoshop'
-percentage: 58
+title: 'Machine Learning'
+percentage: 65
 ---

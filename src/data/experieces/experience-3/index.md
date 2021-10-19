@@ -1,9 +1,12 @@
 ---
 category: 'experiences'
-company: 'Facebook'
-position: 'Frontend Developer'
-startDate: 'May 2013'
-endDate: 'Jun 2015'
+company: 'ERM Power'
+position: 'Software Engineer'
+startDate: 'Apr 2019'
+endDate: 'Sep 2019'
 ---
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+As a full-stack developer, keep developing new features to bring business value to the company.
+Set up CI/CD pipeline for projects.
+Deploy features to AWS by using Serverless framework.
+

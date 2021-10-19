@@ -1,9 +1,9 @@
 ---
 category: 'experiences'
-company: 'Netlify'
-position: 'Senior Frontend Developer'
-startDate: 'Jun 2015'
-endDate: 'Jan 2018'
+company: 'AAM'
+position: 'Software Engineer'
+startDate: 'Jan 2020'
+endDate: 'Apr 2021'
 ---
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+Develop Geospatial Applications by using(React, Javascript, .Net, Python, AWS, Geocortex...)

@@ -1,9 +1,9 @@
 ---
 category: 'experiences'
-company: 'Forge Inc'
-position: 'UI/UX Designer'
-startDate: 'Mar 2010'
-endDate: 'Dec 2010'
+company: 'PicNet Pty Ltd'
+position: 'Front End Developer'
+startDate: 'Aug 2016'
+endDate: 'Mar 2018'
 ---
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+.Net Developer and Angular Developer. Develop website and mobile application

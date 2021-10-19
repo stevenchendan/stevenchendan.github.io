@@ -1,5 +1,5 @@
 ---
 category: 'skills'
-title: 'JavaScript'
-percentage: 77
+title: 'Angular'
+percentage: 70
 ---
