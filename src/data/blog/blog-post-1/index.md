@@ -1,27 +1,90 @@
 ---
 category: 'blog'
 cover: './cover.jpg'
-title: 'Blog Post 1'
-description: 'Mauris neque libero, aliquet vel mollis nec, euismod sed tellus. Mauris convallis dictum elit id volutpat.'
-date: '2019-11-13'
-tags: ['Photography']
+title: 'Impress Front-End Interviewer — Closure'
+description: 'Understand Closure Within 5 minutes'
+date: '2021-11-24'
+tags: ['Closure', 'JavaScript']
 published: true
 ---
 
-_Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat._.
+# Impress Front-End Interviewer — Closure
 
-**Sed ut perspiciatis unde omnis**
+Why do we need Closure and how to use Closure Properly. More importantly, how to impress your interviewer.
 
-![Aliquet vel mollis nec](./cover.jpg)
+![](https://cdn-images-1.medium.com/max/4480/1*cqrnVqjPn_T3u31LOpzRvQ.png)
 
-"Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.
+Let’s spend several minutes together to understand why closure is a popular interview question and why it is important for Front-end Developers.
 
-Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?"
+## 1 What is Closure:
 
-**Sconsectetur, adipisci velits**
+### 1.1 Closure Definition:
 
-"Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.
+Let’s look at the two official definitions first:
 
-Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur? Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur?"
+From MDN:
 
-"Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.
+**closure** is a combination of a function bundled together (enclosed) with references to its surrounding state (the **lexical environment**). In other words, a closure gives you access to an outer function’s scope from an inner function. In JavaScript, closures are created every time a function is created, at function creation time.\_
+
+From Wikipedia:
+
+In [programming languages](https://en.wikipedia.org/wiki/Programming_language), a **closure**, also **lexical closure** or **function closure**, is a technique for implementing [lexically scoped](https://en.wikipedia.org/wiki/Lexically_scoped) [name binding](https://en.wikipedia.org/wiki/Name_binding) in a language with [first-class functions](https://en.wikipedia.org/wiki/First-class_function)
+
+From Professional JavaScript:
+
+**Closures** are functions that have access to variables from another function’s scope
+
+I believe you can have at least a basic understanding now. let us look at the following code to make sure we are on the same page.
+
+![](https://cdn-images-1.medium.com/max/2320/1*mtyGDCQCswhyc6LlHIoNtg.png)
+
+As we can see here we have access to the outside variable. This is a typical closure. Easy to understand right? let’s move on.
+
+### 1.2 Where does Closure Comes From
+
+Please remember the goal of this article is to impress your interviewer so that we not only need to understand what is Closure also we need to understand where it comes from:
+
+Here are the milestones of Closure.
+
+![a brief history of closure](https://cdn-images-1.medium.com/max/5760/1*OEZJDAilhZknbZPS7jAU2A.png)_a brief history of closure_
+
+We can clearly see that the history of Closure is longer than JavaScript it is not only important for front-end developers but also for all software engineers. To understand what closure is created for we need to go back to 1960.
+
+![Closure mostly used in Functional Programming](https://cdn-images-1.medium.com/max/2000/1*ecZ1OHsakZbcL3eVVhoOxA.png)_Closure mostly used in Functional Programming_
+
+For a software engineer, closure is an important concept, especially in functional programming. If we take look at the trend in react community we can find functional programming is becoming more and more popular these days.
+
+Actually, even if you are using Java or C++, which does not support closure you can achieve the same purpose but not that straightforward.
+
+## 2. When to use Closure:
+
+### **2.1 Nested Function**
+
+The most common scenario for closure is the **nested function** in JavaScript.
+
+![nested function](https://cdn-images-1.medium.com/max/2828/1*eGRraXU3OqQiz7iNMnbS5Q.png)_nested function_
+
+As you can see in this example the inner function has access to the **outVariable**.
+
+### 2.2 Object-Oriented Programming in JavaScript
+
+TBC
+
+### 2.3 IIFE
+
+TBC
+
+## 3. Closure Interview Questions
+
+TBC
+
+## 4. Conclusion:
+
+Congratulation your understanding about the closure is better than 80% of Front-end developers. Hope you like this article. Don’t forget to practice if you want to fully understand closure.
+
+## 5. Reference:
+
+[**Closure (computer programming) - Wikipedia**
+*In programming languages, a closure, also lexical closure or function closure, is a technique for implementing…*en.wikipedia.org](<https://en.wikipedia.org/wiki/Closure_(computer_programming)>)
+[**Closures - JavaScript | MDN**
+*A closure is the combination of a function bundled together (enclosed) with references to its surrounding state (the…*developer.mozilla.org](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Closures)
