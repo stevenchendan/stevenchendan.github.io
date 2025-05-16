@@ -2,5 +2,7 @@
 category: 'services'
 title: 'Web Developement'
 icon: 'laptop-code'
-description: 'Frontend + Backend. Front End: I have hands on experience with Angular, Vue and React. Backend: .Net Core, .Net 5'
+description: 'I have hands-on experience building modern web applications across different tech-stack.
+Frontend: Angular, Vue, and React.
+Backend: Experienced with .NET Core, .NET, and NestJS.'
 ---
