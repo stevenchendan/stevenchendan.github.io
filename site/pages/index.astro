@@ -1,0 +1,43 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { capabilities, demos, experience, profile, work } from '../data/portfolio';
+---
+<BaseLayout>
+  <section class="hero wrap">
+    <p class="eyebrow"><span class="pulse"></span> Available for ambitious builds</p>
+    <h1>Engineering ideas<br />into <em>useful systems.</em></h1>
+    <div class="hero-bottom">
+      <p>{profile.intro}</p>
+      <div class="hero-actions"><a class="button primary" href="#work">Explore selected work ↓</a><a class="button text" href={`mailto:${profile.email}`}>Start a conversation ↗</a></div>
+    </div>
+  </section>
+
+  <section class="marquee" aria-label="Areas of expertise"><div>PRODUCT ENGINEERING <span>✦</span> CLOUD ARCHITECTURE <span>✦</span> GEOSPATIAL <span>✦</span> APPLIED AI <span>✦</span></div></section>
+
+  <section id="work" class="wrap section">
+    <div class="section-heading"><p class="kicker">01 / Selected work</p><h2>Systems with<br /><em>real-world weight.</em></h2></div>
+    <div class="work-grid">
+      {work.map((item, i) => <article class="work-card">
+        <div class={`work-visual visual-${i + 1}`}><span>{String(i + 1).padStart(2, '0')}</span><div class="orb"></div></div>
+        <div class="work-copy"><p class="meta">{item.type}</p><h3>{item.title}</h3><p>{item.description}</p><ul>{item.tags.map(tag => <li>{tag}</li>)}</ul></div>
+      </article>)}
+    </div>
+  </section>
+
+  <section id="about" class="section contrast"><div class="wrap split">
+    <div><p class="kicker">02 / How I work</p><h2>Broad context.<br /><em>Hands-on delivery.</em></h2><p class="lead">I bridge product thinking, architecture and implementation. The result is less translation overhead—and software that stays connected to why it exists.</p></div>
+    <ol class="capabilities">{capabilities.map(item => <li><span>{item.index}</span><div><h3>{item.title}</h3><p>{item.detail}</p></div></li>)}</ol>
+  </div></section>
+
+  <section class="wrap section timeline-section">
+    <div class="section-heading"><p class="kicker">03 / Experience</p><h2>A decade of<br /><em>building forward.</em></h2></div>
+    <div class="timeline">{experience.map(item => <article><time>{item.years}</time><h3>{item.company}</h3><p>{item.role}</p></article>)}</div>
+  </section>
+
+  <section class="wrap section demo-section">
+    <div class="section-heading"><p class="kicker">04 / Lab</p><h2>Small bets,<br /><em>shared early.</em></h2></div>
+    {demos.map(demo => <a class="demo-card" href={demo.href}><div><span>{demo.status}</span><h3>{demo.title}</h3><p>{demo.description}</p></div><b aria-hidden="true">↗</b></a>)}
+  </section>
+
+  <section class="contact"><div class="wrap"><p class="kicker">Have a hard problem?</p><h2>Let’s make it<br /><em>work beautifully.</em></h2><a href={`mailto:${profile.email}`}>{profile.email} ↗</a></div></section>
+</BaseLayout>
