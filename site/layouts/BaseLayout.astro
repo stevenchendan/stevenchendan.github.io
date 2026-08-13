@@ -1,0 +1,56 @@
+---
+import '../styles/global.css';
+import { profile } from '../data/portfolio';
+
+interface Props { title?: string; description?: string; }
+const { title = `${profile.name} — ${profile.role}`, description = profile.intro } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const schema = {
+  '@context': 'https://schema.org', '@type': 'Person', name: profile.name,
+  jobTitle: 'Software Engineer and Solution Architect', url: Astro.site,
+  sameAs: [profile.github], address: { '@type': 'PostalAddress', addressLocality: 'Melbourne', addressCountry: 'AU' }
+};
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary" />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(schema)} />
+    <title>{title}</title>
+    <script is:inline>
+      const theme = localStorage.getItem('theme');
+      if (theme === 'dark' || (!theme && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.dataset.theme = 'dark';
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+    <header class="site-header wrap">
+      <a class="wordmark" href="/" aria-label="Steven Chen, home"><span>SC</span> Steven Chen</a>
+      <nav aria-label="Main navigation">
+        <a href="/#work">Work</a><a href="/#about">About</a><a href="/demos/">Demos</a>
+        <button class="theme-toggle" type="button" aria-label="Toggle colour theme"><span aria-hidden="true">◐</span></button>
+      </nav>
+    </header>
+    <main id="content"><slot /></main>
+    <footer class="wrap footer">
+      <p>Built deliberately with Astro.</p><p>Melbourne · <span id="year"></span></p>
+    </footer>
+    <script is:inline>
+      document.querySelector('#year').textContent = new Date().getFullYear();
+      document.querySelector('.theme-toggle').addEventListener('click', () => {
+        const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+        document.documentElement.dataset.theme = next; localStorage.setItem('theme', next);
+      });
+    </script>
+  </body>
+</html>

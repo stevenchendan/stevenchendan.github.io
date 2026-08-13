@@ -1,51 +1,22 @@
-# Gatsby Markdown Typescript Personal Website
+# stevenchendan.github.io
 
-This is a personal website / blog using [Gatsby](https://www.gatsbyjs.org/), [Markdown](https://www.markdownguide.org/), [Typescript](https://www.typescriptlang.org/), [Styled Components](https://styled-components.com/), [Talwind CSS](https://tailwindcss.com/), [Framer Motion](https://www.framer.com/motion/) & [React Font Awesome](https://github.com/FortAwesome/react-fontawesome/).
+Steven Chen's portfolio, built as a static Astro site and deployed to GitHub Pages.
 
-## Demo
+## Develop
 
-[Gatsby Markdown Typescript Personal Website](https://gatsby-markdown-typescript-personal-website.netlify.app/)
+```sh
+npm install
+npm run dev
+```
 
-## Quick start
+Run `npm run build` before opening a pull request. The command includes Astro's strict type and content check.
 
-1.  **Create a Gatsby site.**
+## Publish a quick demo
 
-    Use the Gatsby CLI to create a new site, using the Gatsby Markdown Typescript Personal Website Starter.
+Copy a static production build to `public/demos/<slug>/`. Make sure the demo's asset base is `/demos/<slug>/`, then add it to `site/data/portfolio.ts`. It will be published with the next portfolio deployment.
 
-    ```shell
-    gatsby new my-site-name https://github.com/SaimirKapaj/gatsby-markdown-typescript-personal-website
-    ```
+For independent deployments and true subdomains such as `experiment.yourdomain.com`, keep each demo in its own repository, host it on a static provider, and connect the subdomain with DNS. This keeps prototype dependencies and deployment lifecycles isolated from the portfolio.
 
-2.  **Develop**
+## Deployment
 
-    Navigate into your new site’s directory and start the development environment.
-
-    ```shell
-    gatsby develop
-    ```
-
-    Your site is now running at `http://localhost:8000`
-
-3.  **Build**
-
-    Get an optimized production build for your site generating static HTML and JavaScript, CSS bundles.
-
-    ```shell
-    gatsby build
-    ```
-
-4.  **Serve**
-
-    Starts a local server for testing your production site.
-
-    ```shell
-    gatsby serve
-    ```
-
-    Your production site is now running at `http://localhost:9000`
-
-## Deploy
-
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/SaimirKapaj/gatsby-markdown-typescript-personal-website)
-
-[![Deploy with ZEIT Now](https://zeit.co/button)](https://zeit.co/import/project?template=https://github.com/SaimirKapaj/gatsby-markdown-typescript-personal-website)
+The workflow in `.github/workflows/deploy.yml` checks pull requests and publishes `dist` from `master` through GitHub's official Pages artifact deployment.
