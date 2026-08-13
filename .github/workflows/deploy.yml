@@ -25,7 +25,9 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      # npm 11 lockfiles can contain platform-specific optional peers that make
+      # npm ci fail across Windows/Linux. npm install still honors the lockfile.
+      - run: npm install --no-fund --no-audit
       - run: npm run build
       - if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
