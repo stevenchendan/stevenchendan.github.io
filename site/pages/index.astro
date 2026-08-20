@@ -4,14 +4,14 @@ import { capabilities, experience, profile, work } from '../data/portfolio';
 ---
 <BaseLayout>
   <section class="hero wrap">
-    <p class="overline">Software engineer in Melbourne</p>
-    <h1>I build clear, dependable digital products.</h1>
+    <div class="hero-status"><span aria-hidden="true"></span> Software engineer at {profile.currentCompany}</div>
+    <h1>Building dependable products for complex systems.</h1>
     <p class="hero-copy">{profile.intro}</p>
     <div class="actions">
       <a class="button primary" href="#work">View selected work</a>
       <a class="button secondary" href={profile.linkedin} target="_blank" rel="noreferrer">LinkedIn <span aria-hidden="true">↗</span></a>
     </div>
-    <dl class="quick-facts">
+    <dl class="quick-facts" aria-label="Professional summary">
       <div><dt>Currently</dt><dd>{profile.currentCompany}</dd></div>
       <div><dt>Focus</dt><dd>Full-stack · Cloud · GenAI & ML</dd></div>
       <div><dt>Based in</dt><dd>{profile.location}</dd></div>
@@ -27,7 +27,7 @@ import { capabilities, experience, profile, work } from '../data/portfolio';
     <div class="project-list">
       {work.map((item, index) => <article class="project">
         <div class="project-number" aria-hidden="true">0{index + 1}</div>
-        <div class="project-main"><p class="project-context">{item.context}</p><h3>{item.title}</h3><p>{item.description}</p></div>
+        <div class="project-main"><p class="project-context">{item.context}</p><h3>{item.title}</h3><p><strong>Contribution</strong>{item.description}</p></div>
         <div class="project-detail"><p><strong>Outcome</strong>{item.outcome}</p><ul aria-label="Technologies">{item.tags.map(tag => <li>{tag}</li>)}</ul></div>
       </article>)}
     </div>
