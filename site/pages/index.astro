@@ -18,6 +18,11 @@ import { capabilities, experience, profile, work } from '../data/portfolio';
     </dl>
   </section>
 
+  <section id="experience" class="wrap section">
+    <header class="section-header"><p class="overline">Experience</p><h2>Progressive responsibility across product and platform engineering.</h2></header>
+    <div class="experience-list">{experience.map(item => <article><time>{item.years}</time><div><h3>{item.company}</h3><p class="role">{item.role}</p><p>{item.note}</p></div></article>)}</div>
+  </section>
+
   <section id="work" class="wrap section">
     <header class="section-header">
       <p class="overline">Selected work</p>
@@ -37,11 +42,6 @@ import { capabilities, experience, profile, work } from '../data/portfolio';
     <header class="section-header compact"><p class="overline">What I bring</p><h2>Technical breadth without losing sight of the user.</h2><p>I am most useful where product, engineering and architecture overlap: turning an ambiguous problem into a system people can understand and trust.</p></header>
     <div class="capability-list">{capabilities.map(item => <article><h3>{item.title}</h3><p>{item.detail}</p></article>)}</div>
   </div></section>
-
-  <section id="experience" class="wrap section">
-    <header class="section-header"><p class="overline">Experience</p><h2>Progressive responsibility across product and platform engineering.</h2></header>
-    <div class="experience-list">{experience.map(item => <article><time>{item.years}</time><div><h3>{item.company}</h3><p class="role">{item.role}</p><p>{item.note}</p></div></article>)}</div>
-  </section>
 
   <section class="wrap lab-callout">
     <div><p class="overline">Experiments</p><h2>Small demos, shared while they are useful.</h2><p>I use this site to publish focused prototypes without mixing their deployment lifecycle into the portfolio.</p></div>
