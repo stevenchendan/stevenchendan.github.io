@@ -1,54 +1,51 @@
 export const profile = {
   name: 'Steven Chen',
-  role: 'Software engineer · Solution architect',
+  role: 'Software Engineer · Full-stack Developer · GenAI & ML',
+  currentCompany: 'nbn Australia',
   location: 'Melbourne, Australia',
   email: 'stevenchenau@gmail.com',
   github: 'https://github.com/stevenchendan',
-  intro: 'I design and ship cloud-native products where maps, data and automation meet. From a useful first prototype to resilient multi-cloud systems, I stay close to both the problem and the code.'
+  linkedin: 'https://www.linkedin.com/in/stevenlchen/',
+  intro: 'I build dependable digital products across web, cloud, geospatial systems and applied AI. I work from architecture through implementation, with a focus on clear user experiences and software that holds up in production.'
 };
 
 export const capabilities = [
-  { index: '01', title: 'Product engineering', detail: 'Thoughtful interfaces and dependable APIs with React, Angular, TypeScript, .NET and NestJS.' },
-  { index: '02', title: 'Cloud architecture', detail: 'Practical distributed systems across GCP, Azure and AWS—designed to be operated, not just diagrammed.' },
-  { index: '03', title: 'Geospatial systems', detail: 'Location intelligence, Earth observation and spatial workflows built for real-world decisions.' },
-  { index: '04', title: 'Applied AI', detail: 'Rapid experiments and focused automation that turn a promising model into a useful product.' }
+  { title: 'Full-stack product engineering', detail: 'Accessible interfaces, maintainable APIs and pragmatic delivery with TypeScript, React, Angular, .NET and NestJS.' },
+  { title: 'Cloud & solution architecture', detail: 'Production systems across Azure, GCP and AWS, with attention to security, operability and cost.' },
+  { title: 'Geospatial engineering', detail: 'Location intelligence, Earth observation and GIS workflows that help people make better operational decisions.' },
+  { title: 'GenAI & machine learning', detail: 'Focused prototypes and automation that connect model capability to a measurable user need.' }
 ];
 
 export const work = [
   {
     title: 'TraceMark',
-    type: 'Deforestation intelligence',
-    description: 'Delivered core parts of a Google-backed monitoring platform using GCP, Google Earth Engine, Angular and NestJS.',
-    tags: ['Earth observation', 'GCP', 'Angular']
+    context: 'Deforestation monitoring · NGIS',
+    description: 'Delivered critical components for a Google-backed deforestation monitoring product using GCP, Google Earth Engine, Angular and NestJS.',
+    outcome: 'Turned large-scale Earth observation data into an operational monitoring experience.',
+    tags: ['GCP', 'Google Earth Engine', 'Angular', 'NestJS']
   },
   {
     title: 'Cloud geospatial platforms',
-    type: 'Architecture & delivery',
-    description: 'Led scalable, cloud-native geospatial solutions spanning Azure, GCP and AWS while modernising legacy systems.',
+    context: 'Architecture & modernisation',
+    description: 'Led the design and delivery of cloud-native geospatial systems across Azure, GCP and AWS, including modernisation of legacy applications.',
+    outcome: 'Created reusable foundations for distributed, multi-region products.',
     tags: ['Solution architecture', 'Multi-cloud', 'GIS']
   },
   {
     title: 'Field safety & resource tools',
-    type: 'Enterprise product engineering',
-    description: 'Built GIS-led safety and resource administration products for teams working with complex operational data.',
+    context: 'Enterprise product engineering · Origin Energy',
+    description: 'Built GIS-led site safety and resource administration applications for teams working with complex operational data.',
+    outcome: 'Made spatial and operational information easier to access and act on.',
     tags: ['React', 'ArcGIS', 'Azure']
   }
 ];
 
 export const experience = [
-  { years: '2023—Now', company: 'NGIS', role: 'Software Engineer' },
-  { years: '2021—2023', company: 'Origin Energy', role: 'Senior Application Developer' },
-  { years: '2020—2021', company: 'AAM', role: 'Software Engineer' },
-  { years: '2019', company: 'ERM Power', role: 'Software Engineer' },
-  { years: '2018—2019', company: 'Alifery', role: 'Full-stack Developer' },
-  { years: '2016—2018', company: 'PicNet', role: 'Front-end Developer' }
-];
-
-export const demos = [
-  {
-    title: 'The next experiment',
-    status: 'Open slot',
-    description: 'Small products and prototypes will live here long enough to learn from and share.',
-    href: '/demos/'
-  }
+  { years: 'Current', company: 'nbn Australia', role: 'Software engineering', note: 'Building digital products in a large-scale Australian technology environment.' },
+  { years: '2023–2026', company: 'NGIS', role: 'Software Engineer', note: 'Cloud-native geospatial platforms, Earth observation and multi-cloud solution delivery.' },
+  { years: '2021–2023', company: 'Origin Energy', role: 'Senior Application Developer', note: 'Resource administration, GIS and site safety products using React, ArcGIS and Azure.' },
+  { years: '2020–2021', company: 'AAM', role: 'Software Engineer', note: 'Geospatial applications with React, .NET, Python, AWS and enterprise GIS tooling.' },
+  { years: '2019', company: 'ERM Power', role: 'Software Engineer', note: 'Full-stack product features, CI/CD and serverless AWS delivery.' },
+  { years: '2018–2019', company: 'Alifery', role: 'Full-stack Developer', note: 'Web products using Vue, .NET Core, Entity Framework Core and AWS.' },
+  { years: '2016–2018', company: 'PicNet', role: 'Front-end Developer', note: 'Web and mobile application development across Angular and .NET.' }
 ];

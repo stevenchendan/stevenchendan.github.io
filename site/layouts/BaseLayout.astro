@@ -7,8 +7,10 @@ const { title = `${profile.name} — ${profile.role}`, description = profile.int
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const schema = {
   '@context': 'https://schema.org', '@type': 'Person', name: profile.name,
-  jobTitle: 'Software Engineer and Solution Architect', url: Astro.site,
-  sameAs: [profile.github], address: { '@type': 'PostalAddress', addressLocality: 'Melbourne', addressCountry: 'AU' }
+  jobTitle: 'Software Engineer', url: Astro.site,
+  worksFor: { '@type': 'Organization', name: profile.currentCompany },
+  sameAs: [profile.github, profile.linkedin],
+  address: { '@type': 'PostalAddress', addressLocality: 'Melbourne', addressCountry: 'AU' }
 };
 ---
 <!doctype html>
@@ -37,19 +39,20 @@ const schema = {
     <header class="site-header wrap">
       <a class="wordmark" href="/" aria-label="Steven Chen, home"><span>SC</span> Steven Chen</a>
       <nav aria-label="Main navigation">
-        <a href="/#work">Work</a><a href="/#about">About</a><a href="/demos/">Demos</a>
+        <a href="/#work">Work</a><a href="/#experience">Experience</a><a href="/demos/">Demos</a>
         <button class="theme-toggle" type="button" aria-label="Toggle colour theme"><span aria-hidden="true">◐</span></button>
       </nav>
     </header>
     <main id="content"><slot /></main>
     <footer class="wrap footer">
-      <p>Built deliberately with Astro.</p><p>Melbourne · <span id="year"></span></p>
+      <p>Built with Astro.</p><p>Melbourne · <span id="year"></span></p>
     </footer>
     <script is:inline>
       document.querySelector('#year').textContent = new Date().getFullYear();
       document.querySelector('.theme-toggle').addEventListener('click', () => {
         const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-        document.documentElement.dataset.theme = next; localStorage.setItem('theme', next);
+        document.documentElement.dataset.theme = next;
+        localStorage.setItem('theme', next);
       });
     </script>
   </body>
