@@ -43,11 +43,6 @@ import { capabilities, experience, profile, work } from '../data/portfolio';
     <div class="capability-list">{capabilities.map(item => <article><h3>{item.title}</h3><p>{item.detail}</p></article>)}</div>
   </div></section>
 
-  <section class="wrap lab-callout">
-    <div><p class="overline">Experiments</p><h2>Small demos, shared while they are useful.</h2><p>I use this site to publish focused prototypes without mixing their deployment lifecycle into the portfolio.</p></div>
-    <a class="button secondary" href="/demos/">Browse demos</a>
-  </section>
-
   <section class="contact"><div class="wrap contact-inner">
     <div><p class="overline">Contact</p><h2>Let’s talk about a useful problem.</h2></div>
     <div><p>The simplest way to reach me is by email or LinkedIn.</p><a class="email" href={`mailto:${profile.email}`}>{profile.email}</a><a href={profile.linkedin} target="_blank" rel="noreferrer">LinkedIn profile ↗</a></div>
