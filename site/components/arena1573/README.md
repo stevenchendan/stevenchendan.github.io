@@ -13,6 +13,17 @@ and editable Blender sources remain in Tennis-Agent.
 
 ## Upstream notes
 
+Portfolio event-ground update: `eventLayout.ts` places original food, coffee,
+shaded viewing and lawn pockets in clear concourse space. Layout checks reserve
+clearance around mapped buildings, playing enclosures, pedestrian routes and
+the existing oval facilities. `EventFacilities.ts` adds counters, queue rails,
+pergolas, tables, low planting, signs and markings at existing road/footpath
+intersections. These are illustrative facilities inspired by the 2026 view in
+https://www.lensaloft.com.au/Interactive_tour/AustralianOpen/AO, not a surveyed
+reproduction or a current vendor directory. No reference imagery is used as
+textures; the ground remains tree-free. All dressing follows Surroundings.
+Validate with `node scripts/check-event-layout.mjs`.
+
 Portfolio crowd update: `Visitors.tsx` adds 180 instanced walking visitors using
 the local pedestrian network, with building/court exclusions and an illustrative
 1573 entrance vestibule. Arrivals and departures turn around out of sight inside

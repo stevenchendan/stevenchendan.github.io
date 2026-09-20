@@ -8,6 +8,7 @@ import { facade, roofTruss, supportBuilding } from './architecture';
 import { precinctMaterial } from './materials';
 import { courtElevation } from './courtPlacements';
 import { buildingVenue, courtVenue } from './venueVisibility';
+import { eventFacilities } from './EventFacilities';
 import { EVENT_CONCOURSE, GROUND, GroundSurfaces } from './ground';
 
 export interface ContextData {
@@ -534,6 +535,7 @@ export function buildContext(data: ContextData) {
     b.box(x,1.8,z,.35,3.6,.45,palette.dark);
     const sign=label('1573  →',2.8,.65,'#e5f0c9');sign.position.set(x,3.35,z+.26);b.group.add(sign);
   }
+  eventFacilities(environment,ground,data);
   ground.finish(environment.group);
   for(const builder of venues.values())environment.group.add(builder.finish());
   return b.finish();

@@ -1,14 +1,11 @@
 import * as T from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { pavingMaterial } from './materials';
+import { PLAZA_OUTLINE } from './eventLayout';
 
 // A continuous interpretive concourse, following the existing venue clusters.
 // Heights stay below court runoffs (0.095 m) and arena interiors (0.06 m).
-export const EVENT_CONCOURSE = [
-  [-93,-240],[120,-240],[120,-70],[245,-70],[245,-42],[475,-42],
-  [475,140],[590,140],[590,151],[900,151],[900,273],[570,273],
-  [490,256],[210,256],[175,147],[-46,147],[-93,80],
-];
+export const EVENT_CONCOURSE = PLAZA_OUTLINE;
 export const GROUND = {concourse:-.075, lawn:-.105, apron:-.04, road:-.025, markings:-.013, path:.015};
 
 /** Ground is a top surface, never a thin shadow-casting solid. */
