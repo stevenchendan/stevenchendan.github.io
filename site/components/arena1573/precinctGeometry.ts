@@ -66,3 +66,21 @@ export function pointInRing(point:Point2,ring:Point2[]) {
   }
   return inside;
 }
+
+/** Portions of a segment outside a polygon, including concave shorelines. */
+export function outsideRingIntervals(a:Point2,b:Point2,ring:Point2[]):[number,number][] {
+  const dx=b[0]-a[0],dz=b[1]-a[1],cuts=[0,1];
+  for(let i=0;i<ring.length;i++){
+    const p=ring[i],q=ring[(i+1)%ring.length],ex=q[0]-p[0],ez=q[1]-p[1];
+    const cross=dx*ez-dz*ex;
+    if(Math.abs(cross)<1e-9)continue;
+    const px=p[0]-a[0],pz=p[1]-a[1];
+    const t=(px*ez-pz*ex)/cross,u=(px*dz-pz*dx)/cross;
+    if(t>0&&t<1&&u>=0&&u<=1)cuts.push(t);
+  }
+  cuts.sort((x,y)=>x-y);
+  return cuts.slice(1).flatMap((hi,i)=>{
+    const lo=cuts[i],t=(lo+hi)/2;
+    return hi-lo>1e-8&&!pointInRing([a[0]+dx*t,a[1]+dz*t],ring)?[[lo,hi] as [number,number]]:[];
+  });
+}

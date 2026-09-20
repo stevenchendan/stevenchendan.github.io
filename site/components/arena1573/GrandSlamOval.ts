@@ -1,16 +1,18 @@
 import * as T from 'three';
 import type { Batch } from './architecture';
+import { pavingMaterial } from './materials';
 
 /** AO26 map-inspired temporary event layout; dimensions are interpretive metres. */
 export function grandSlamOval(b:Batch){
   const cx=300,cz=188,y=.24;
   const ellipse=(rx:number,rz:number)=>new T.Shape().absellipse(cx,cz,rx,rz,0,Math.PI*2,false,0);
   // Disjoint surface regions, not stacked decals. Source paths lie below this plaza.
-  for(const [rx,rz,ix,iz,color] of [[92,55,86,49,'#c8b69a'],[86,49,81,44,'#e2dacb'],[81,44,0,0,'#cfb28a']] as const){
+  for(const [rx,rz,ix,iz,color] of [[92,55,86,49,'#b6b4a8'],[86,49,81,44,'#d1cfc1'],[81,44,0,0,'#c2bcac']] as const){
     const shape=ellipse(rx,rz);if(ix)shape.holes.push(new T.Path(ellipse(ix,iz).getPoints(128).reverse()));
     const g=new T.ShapeGeometry(shape,128);g.rotateX(Math.PI/2);g.translate(0,y,0);
     // Shape coordinates map to positive world z; reverse winding remains double-sided.
-    const mesh=new T.Mesh(g,new T.MeshStandardMaterial({color,roughness:1,side:T.DoubleSide}));mesh.receiveShadow=true;b.group.add(mesh);
+    const material=pavingMaterial(color,g);material.side=T.DoubleSide;
+    const mesh=new T.Mesh(g,material);mesh.receiveShadow=true;b.group.add(mesh);
   }
   const box=(x:number,h:number,z:number,w:number,d:number,color:string,base=y)=>b.box(cx+x,base+h/2,cz+z,w,h,d,color);
   const bench=(x:number,z:number,angle=0)=>{

@@ -2,11 +2,48 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 const root=new URL('../',import.meta.url);
+const groundModule={exports:{}};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync(new URL('site/components/arena1573/ground.ts',root),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{
+  module:groundModule,exports:groundModule.exports,
+  require:id=>{
+    if(id==='three')return THREE;
+    if(id==='./materials')return {pavingMaterial:()=>new THREE.MeshStandardMaterial()};
+    return {mergeGeometries};
+  },
+});
+const {GroundSurfaces,GROUND}=groundModule.exports;
+const joined=new GroundSurfaces(),groundGroup=new THREE.Group();
+joined.strip([-10,0],[0,0],2,GROUND.path,'#bebfb5',true,true);
+joined.strip([0,0],[0,10],2,GROUND.path,'#bebfb5',true,true);
+joined.finish(groundGroup);groundGroup.updateMatrixWorld(true);
+const jointRay=new THREE.Raycaster(new THREE.Vector3(.7,10,-.7),new THREE.Vector3(0,-1,0));
+assert.ok(jointRay.intersectObjects(groundGroup.children).length,'Outside corners have continuous paving');
+assert.ok(groundGroup.children.every(mesh=>!mesh.castShadow&&mesh.receiveShadow),'Floor surfaces receive shadows without self-shadow seams');
+assert.ok(GROUND.concourse<GROUND.apron&&GROUND.apron<GROUND.road&&GROUND.road<GROUND.markings&&GROUND.markings<GROUND.path&&GROUND.path<.06,'Ground layers stay ordered below arena floors');
 const data=JSON.parse(fs.readFileSync(new URL('public/data/1573-context.json',root)));
 const spatial={exports:{}};
 vm.runInNewContext(ts.transpileModule(fs.readFileSync(new URL('site/components/arena1573/precinctGeometry.ts',root),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{module:spatial,exports:spatial.exports});
-const {courtFrame,pathIntervals,pavingCells}=spatial.exports;
+const {courtFrame,pathIntervals,pavingCells,outsideRingIntervals,pointInRing}=spatial.exports;
+// Paths must not continue across the approximate river or leave floating lane marks.
+const water=[[0,-10],[10,-10],[10,10],[0,10]];
+assert.equal(JSON.stringify(outsideRingIntervals([-5,0],[15,0],water)),JSON.stringify([[0,.25],[.75,1]]));
+assert.equal(outsideRingIntervals([2,0],[8,0],water).length,0,'Submerged paths are removed');
+assert.equal(JSON.stringify(outsideRingIntervals([-5,20],[15,20],water)),JSON.stringify([[0,1]]));
+const riverBank=[[-210,-260],[-175,-170],[-151,-82],...(data.features.find(f=>f.id==='way/991624386')?.points??[])];
+const riverRing=[...riverBank.map(([x,z])=>[x-16,z]),[-325,260],[-325,-265]];
+for(const path of data.features.filter(f=>f.kind==='path'&&f.name!=='Tanderrum Bridge')){
+  for(let i=1;i<path.points.length;i++){
+    const a=path.points[i-1],b=path.points[i];
+    for(const [lo,hi] of outsideRingIntervals(a,b,riverRing)){
+      for(const t of [lo+(hi-lo)*.01,(lo+hi)/2,hi-(hi-lo)*.01]){
+        assert.ok(!pointInRing([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t],riverRing),'Retained paths stay on land');
+      }
+    }
+  }
+}
 const slabs=[[15,-142,210,195,'west'],[110,-12,245,105,'east']];
 const cells=pavingCells(slabs);
 assert.equal(cells.reduce((area,[,,w,d])=>area+w*d,0),210*195+245*105-132.5*20,'Preserve paved union area');

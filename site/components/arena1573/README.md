@@ -13,6 +13,14 @@ and editable Blender sources remain in Tennis-Agent.
 
 ## Upstream notes
 
+Portfolio crowd update: `Visitors.tsx` adds 180 instanced walking visitors using
+the local pedestrian network, with building/court exclusions and an illustrative
+1573 entrance vestibule. Arrivals and departures turn around out of sight inside
+the vestibule; this is ambient animation, not a simulation of connected interior
+routes or live attendance. Event crowd starts enabled and controls both walkers
+and seated spectators. Reduced-motion preferences freeze walking and limb motion.
+Validate routing and animation continuity with `node scripts/check-visitors.mjs`.
+
 Independent route: `/1573-arena`. No changes to the existing Melbourne Park page.
 
 The header offers Classic and Ink wash themes with a saved local preference. Ink wash uses a Three.js postprocessing pass for warm paper fibres, muted mineral-colour washes, fine hatching and crisp broken pen contours inspired by the supplied landscape painting; imaginary mountain silhouettes are an artistic backdrop. Fog is reserved for the distant landscape, while local lighting values and cast shadows remain distinct. It also applies to saved PNGs. Switching themes preserves the model, camera, lighting and interaction state. Both themes use compact navigation and support English/Chinese.

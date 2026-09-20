@@ -13,6 +13,7 @@ import TennisRally from './TennisRally';
 import PrecinctRallies from './PrecinctRallies';
 import PrecinctAssets from './PrecinctAssets';
 import Rain from './Rain';
+import Visitors from './Visitors';
 import { SEATING_LIFT } from './dimensions';
 import { summerSun, type ShadeResult, type SolarDate, type Stand, standSamples, STANDS } from './solar';
 
@@ -80,8 +81,8 @@ function World({data,light,context,crowd,onReady,sun,onShade}:{data:ContextData;
   },[light,context,crowd,data,sun]);
   useEffect(()=>{
     if(!sun||!sun.aboveHorizon||!models.current){onShade(null);return;}
-    // Structural geometry only. Tiny seat/crowd details and decorative tree
-    // crowns are excluded from the coarse head-height shade comparison.
+    // Structural geometry only. Tiny seat/crowd
+    // details are excluded from the coarse head-height shade comparison.
     const current=models.current;
     const frame=requestAnimationFrame(()=>{
       const blockers:T.Object3D[]=[];
@@ -148,6 +149,7 @@ function Scene({data,shot,light,rotate,context,crowd,markers,rally,onSelect,onRe
     <World data={data} light={light} context={context} crowd={crowd} onReady={onReady} sun={sun} onShade={onShade}/>
     <primitive object={lightTarget}/>
     <PrecinctAssets visible={context}/>
+    <Visitors data={data} visible={context&&crowd}/>
     {rain&&<Rain ink={ink}/>}
     {context&&markers&&shot.view==='ao'&&destinations.map(d=><Html key={d.id} position={[d.target[0],38,d.target[2]]} center zIndexRange={[10,0]}><button className={styles.venuePin} title={tr(d.name)} aria-label={tr(d.name)} onClick={()=>onSelect(d.id)}>{d.id==='mca'?'MCA':d.id==='rla'?'RLA':d.id==='1573'?'1573':tr(d.name)}</button></Html>)}
     <Suspense fallback={null}><TennisRally active={rally}/></Suspense>
@@ -196,7 +198,7 @@ export default function ArenaExperience(){
       void audio.play().catch(error=>{if(error.name!=='AbortError')setToast('影院音乐暂时无法播放，请退出后重试。');});
     }
   }
-  const [rotate,setRotate]=useState(false),[context,setContext]=useState(true),[crowd,setCrowd]=useState(false),[markers,setMarkers]=useState(false),[rally,setRally]=useState(true);
+  const [rotate,setRotate]=useState(false),[context,setContext]=useState(true),[crowd,setCrowd]=useState(true),[markers,setMarkers]=useState(false),[rally,setRally]=useState(true);
   useEffect(()=>{if(rotate)setRally(true);},[rotate]);
   const [selected,setSelected]=useState<string|null>(null),[info,setInfo]=useState(false),[panel,setPanel]=useState(false),[toast,setToast]=useState('');
   const container=useRef<HTMLElement>(null),canvas=useRef<HTMLCanvasElement|null>(null);
@@ -260,7 +262,7 @@ export default function ArenaExperience(){
       <button className={styles.solarMode} aria-pressed={light==='solar'} aria-expanded={light==='solar'} onClick={()=>{if(light==='solar')setLight('day');else{setContext(true);setLight('solar');}}}><span>◷</span>{tr('夏日日照')}<span>{light==='solar'?'−':'+'}</span></button>
       {light==='solar'&&<SunControls date={solarDate} onChange={changeSolarDate} language={language} shade={shade} onStand={viewStand}/>}
       <div className={styles.divider}/>
-      {[{label:tr("周边建筑"),sub:tr("Precinct context"),value:context,set:setContext},{label:tr("显示标签"),sub:tr("球场与看台标签 · H"),value:markers,set:setMarkers},{label:tr("看台观众"),sub:tr("A little match-day life"),value:crowd,set:setCrowd}].map(c=><label key={c.label} className={styles.toggleRow}><span>{c.label}<small>{c.sub}</small></span><input type="checkbox" checked={c.value} disabled={light==='solar'&&c.set===setContext} onChange={e=>c.set(e.target.checked)}/><i/></label>)}
+      {[{label:tr("周边建筑"),sub:tr("Precinct context"),value:context,set:setContext},{label:tr("显示标签"),sub:tr("球场与看台标签 · H"),value:markers,set:setMarkers},{label:tr("活动人群"),sub:tr("园区行人 · 看台观众"),value:crowd,set:setCrowd}].map(c=><label key={c.label} className={styles.toggleRow}><span>{c.label}<small>{c.sub}</small></span><input type="checkbox" checked={c.value} disabled={light==='solar'&&c.set===setContext} onChange={e=>c.set(e.target.checked)}/><i/></label>)}
       <div className={styles.divider}/>
       <button className={`${styles.orbitButton} ${rotate?styles.engaged:''}`} aria-pressed={rotate} onClick={()=>setRotate(v=>!v)}><span>{rotate?'Ⅱ':'▷'}</span>{rotate?tr("暂停环绕"):tr("自动环绕")}<small>{tr("SPACE")}</small></button>
       <button className={styles.rallyButton} aria-pressed={rally} onClick={()=>setRally(v=>!v)}>{rally?'●':'○'} {rally?tr("暂停球员回合"):tr("播放球员回合")} <span>↗</span></button>
@@ -273,7 +275,7 @@ export default function ArenaExperience(){
     {!ready&&!loadError&&<div className={styles.loading} role="status"><span className={styles.spinner}/><strong>{tr("正在构建你的场边视角")}</strong><small>{tr("球场 · 看台 · 墨尔本公园")}</small></div>}
     {loadError&&<div className={styles.error} role="alert"><h2>{tr("场景数据加载失败")}</h2><p>{tr("请检查连接后重试。")}</p><button onClick={()=>window.location.reload()}>{tr("重新加载")}</button></div>}
     {detail&&<section className={styles.detail} aria-live="polite"><button className={styles.close} onClick={()=>setSelected(null)} aria-label={tr("关闭热点详情")}>×</button><p className={styles.eyebrow}>{tr(detail.en)}</p><h2>{tr(detail.title)}</h2><p>{tr(detail.description)}</p><button className={styles.detailBack} onClick={()=>{setSelected(null);setMarkers(true);choose('hero');}}>{tr("返回场馆全景 ↗")}</button></section>}
-    {info&&<section className={styles.about} aria-label={tr("关于模型")}><button className={styles.close} onClick={()=>setInfo(false)} aria-label={tr("关闭模型说明")}>×</button><p className={styles.eyebrow}>{tr("THE MAKING OF THIS PLACE")}</p><h2>{tr("真实位置，手工重建。")}</h2><p>{tr("1573 Arena 的标准球场与周边地理位置采用米制建模；圆角看台、座椅、遮阳棚、灯架和屋顶细节依据卫星图与公开场馆资料做视觉近似。不是测绘模型，也不代表最新的现场设施。")}</p><p>{tr("日落与夜场为艺术灯光预设，网球轨迹为演示动画。树木、观众和街道家具是示意布置。")}</p><div className={styles.sourceLinks}><a href="https://www.google.com/maps/place/1573+Arena/@-37.8208432,144.9768967,113m/data=!3m1!1e3" target="_blank" rel="noreferrer">{tr("卫星图参考 · Google Maps ↗")}</a><a href="https://officiating.tennis.com.au/pdf/ImportantlocationsAO21.pdf" target="_blank" rel="noreferrer">{tr("场馆位置参考 · Tennis Australia ↗")}</a><a href="https://data.melbourne.vic.gov.au/explore/dataset/2020-building-footprints/information/" target="_blank" rel="noreferrer">{tr("建筑轮廓 · City of Melbourne · CC BY 4.0 ↗")}</a><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">{tr("球场与道路 · © OpenStreetMap contributors · ODbL ↗")}</a><a href="/data/1573-context.json" download>{tr("下载衍生地理数据 · ODbL / CC BY 4.0 ↓")}</a></div><small>{tr("快捷键：1–6 切换视角 · R 重置 · H 热点 · 空格环绕")}</small></section>}
+    {info&&<section className={styles.about} aria-label={tr("关于模型")}><button className={styles.close} onClick={()=>setInfo(false)} aria-label={tr("关闭模型说明")}>×</button><p className={styles.eyebrow}>{tr("THE MAKING OF THIS PLACE")}</p><h2>{tr("真实位置，手工重建。")}</h2><p>{tr("1573 Arena 的标准球场与周边地理位置采用米制建模；圆角看台、座椅、遮阳棚、灯架和屋顶细节依据卫星图与公开场馆资料做视觉近似。不是测绘模型，也不代表最新的现场设施。")}</p><p>{tr("日落与夜场为艺术灯光预设，网球轨迹为演示动画。观众和街道家具是示意布置。")}</p><div className={styles.sourceLinks}><a href="https://www.google.com/maps/place/1573+Arena/@-37.8208432,144.9768967,113m/data=!3m1!1e3" target="_blank" rel="noreferrer">{tr("卫星图参考 · Google Maps ↗")}</a><a href="https://officiating.tennis.com.au/pdf/ImportantlocationsAO21.pdf" target="_blank" rel="noreferrer">{tr("场馆位置参考 · Tennis Australia ↗")}</a><a href="https://data.melbourne.vic.gov.au/explore/dataset/2020-building-footprints/information/" target="_blank" rel="noreferrer">{tr("建筑轮廓 · City of Melbourne · CC BY 4.0 ↗")}</a><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">{tr("球场与道路 · © OpenStreetMap contributors · ODbL ↗")}</a><a href="/data/1573-context.json" download>{tr("下载衍生地理数据 · ODbL / CC BY 4.0 ↓")}</a></div><small>{tr("快捷键：1–6 切换视角 · R 重置 · H 热点 · 空格环绕")}</small></section>}
     {theme==='ink'&&<p className={styles.inkNote}>{tr('远山为艺术化背景，并非当地地貌。')}</p>}
     {toast&&<div className={styles.toast} role="status">{tr(toast)}</div>}
   </main>;

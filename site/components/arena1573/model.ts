@@ -3,10 +3,11 @@ import { outerCourtStands } from './OuterCourtStands';
 import { SEATING_LIFT } from './dimensions';
 import * as T from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { courtFrame, pathIntervals, pointInRing, pavingCells } from './precinctGeometry';
+import { courtFrame, pathIntervals, pointInRing, outsideRingIntervals } from './precinctGeometry';
 import { facade, roofTruss, supportBuilding } from './architecture';
 import { precinctMaterial } from './materials';
 import { courtElevation } from './courtPlacements';
+import { EVENT_CONCOURSE, GROUND, GroundSurfaces } from './ground';
 
 export interface ContextData {
   buildings: { id: string; name?: string; ring: number[][]; height: number; base: number; roof: string; structureType?:string }[];
@@ -241,26 +242,22 @@ export function buildContext(data: ContextData) {
   const mappedCourts=data.features.filter(f=>f.kind==='court').map(f=>({feature:f,frame:courtFrame(f.points)}));
   const courtExclusions=mappedCourts.map(c=>c.frame);
   b.box(300,-1.65,0,1300,3,820,'#758268');
-  // Neutral paving and planted ground replace the former event-zone colour washes.
-  for(const [x,z,w,d,color] of pavingCells([[15,-142,210,195,'#979d9b'],[665,212,465,105,'#838e80'],[110,-12,245,105,'#a3aaa8'],[335,63,280,205,'#9da5a4']])) {
-    b.box(x,-.09,z,w,.025,d,color);
-  }
+  const ground=new GroundSurfaces();
+  ground.polygon(EVENT_CONCOURSE,GROUND.concourse,'#b5b6ad');
   grandSlamOval(b);
   // Five hard courts are on the Eastern Plaza deck; clay courts remain at grade.
   b.box(653,2.85,219,111,5.7,46,'#9babae');
   for(let x=600;x<708;x+=6)b.box(x,2.4,242,.35,4.5,.3,'#c1c8c7');
   // Riverbank follows the existing Yarra Trail, offset toward the water.
   const bank=[[-210,-260],[-175,-170],[-151,-82],...(data.features.find(f=>f.id==='way/991624386')?.points??[])];
-  const riverShape=new T.Shape([...bank.map(p=>new T.Vector2(p[0]-16,-p[1])),new T.Vector2(-325,-260),new T.Vector2(-325,265)]);
+  const riverRing=[...bank.map(([x,z])=>[x-16,z]),[-325,260],[-325,-265]];
+  const riverShape=new T.Shape(riverRing.map(([x,z])=>new T.Vector2(x,-z)));
   const riverGeometry=new T.ShapeGeometry(riverShape);riverGeometry.rotateX(-Math.PI/2);riverGeometry.translate(0,-.06,0);
   const river=new T.Mesh(riverGeometry,new T.MeshStandardMaterial({color:'#547d80',roughness:.48,metalness:.12}));river.receiveShadow=true;b.group.add(river);
-  b.box(2,-.11,1,62,.1,83,'#c7c5b6');
-  // Paving joints around the arena make the pedestrian scale legible.
-  for(let x=-30;x<=30;x+=3) b.box(x,-.045,0,.018,.02,80,'#a8ab9d');
-  for(let z=-39;z<=39;z+=3)b.box(0,-.045,z,60,.02,.018,'#a8ab9d');
+  ground.polygon([[-31,-40],[33,-40],[33,42],[-31,42]],GROUND.apron,'#c4c3b7');
   for(const f of data.features){
     if(f.kind==='green'&&f.points.length>3){
-      const g=new T.ShapeGeometry(new T.Shape(f.points.map(p=>new T.Vector2(p[0],-p[1]))));g.rotateX(-Math.PI/2);g.translate(0,-.04,0);b.add(g,'#6f855e');
+      ground.polygon(f.points,GROUND.lawn,'#829078');
     }
     if(f.kind==='rail')for(let i=1;i<f.points.length;i++){
       const a=f.points[i-1],c=f.points[i],dx=c[0]-a[0],dz=c[1]-a[1],len=Math.hypot(dx,dz),angle=Math.atan2(dx,dz);
@@ -275,10 +272,13 @@ export function buildContext(data: ContextData) {
         const bridge=f.name==='Tanderrum Bridge',road=f.name==='Batman Avenue'||/^(primary|secondary|tertiary|service|residential|trunk|motorway)/.test(f.highway??'');
         // Paths cross the road network. Keep their top surfaces above both
         // asphalt and lane markings to avoid coplanar depth-buffer flicker.
-        const y=bridge?6.6:road?-.018:.02,width=bridge?6:road?8:Math.max(2,f.width);
-        for(const [lo,hi] of bridge?[[0,1]]:pathIntervals(a,c,courtExclusions,width/2+.15)){
+        const y=bridge?6.6:road?GROUND.road:GROUND.path,width=bridge?6:road?8:Math.max(2,f.width);
+        const dry=outsideRingIntervals(a,c,riverRing);
+        const clipped=pathIntervals(a,c,courtExclusions,width/2+.15).flatMap(([lo,hi])=>dry.map(([u,v])=>[Math.max(lo,u),Math.min(hi,v)]).filter(([u,v])=>v-u>1e-5));
+        for(const [lo,hi] of bridge?[[0,1]]:clipped){
           const middle=(lo+hi)/2;
-          b.box(a[0]+dx*middle,y,a[1]+dz*middle,width,bridge?.5:.035,Math.hypot(dx,dz)*(hi-lo),road?'#687070':'#d7d4c5',Math.atan2(dx,dz));
+          if(bridge)b.box(a[0]+dx*middle,y,a[1]+dz*middle,width,.5,Math.hypot(dx,dz)*(hi-lo),'#d7d4c5',Math.atan2(dx,dz));
+          else ground.strip([a[0]+dx*lo,a[1]+dz*lo],[a[0]+dx*hi,a[1]+dz*hi],width,y,road?'#626b6c':'#bebfb5',lo<1e-8,hi>1-1e-8);
         }
         if(bridge){
           const len=Math.hypot(dx,dz),nx=dz/len*2.9,nz=-dx/len*2.9;
@@ -288,7 +288,7 @@ export function buildContext(data: ContextData) {
           }
           for(let d=8;d<len;d+=24){const t=d/len;b.box(a[0]+dx*t,3.15,a[1]+dz*t,1.1,6.3,1.1,'#aeb2a9');}
         }
-        if(road){const len=Math.hypot(dx,dz);for(let d=2;d<len-2;d+=8)b.box(a[0]+dx*d/len,.015,a[1]+dz*d/len,.12,.015,3,'#dedbc6',Math.atan2(dx,dz));}
+        if(road){const len=Math.hypot(dx,dz);for(let d=2;d<len-2;d+=8){const lo=(d-1.5)/len,hi=(d+1.5)/len;if(clipped.some(([u,v])=>lo>=u&&hi<=v))ground.strip([a[0]+dx*lo,a[1]+dz*lo],[a[0]+dx*hi,a[1]+dz*hi],.12,GROUND.markings,'#c8c9bc');}}
       }
     }
     if(f.kind==='court'&&f.id!=='way/126844352'){
@@ -493,35 +493,28 @@ export function buildContext(data: ContextData) {
     const sign=label('MARGARET COURT ARENA',15,.8,'#d5dcda','#263c43');sign.rotation.y=-Math.PI/2;sign.position.set(25.1,3.6,-4);b.group.add(sign);
   }
 
-  // Service pavilions, entry furniture and planting are interpretive details.
+  // Service pavilions and entry furniture are interpretive details.
   for(let z=-18;z<=18;z+=12){
     b.box(-28,1.7,z,4,3.4,7,'#66756f');b.box(-28,3.5,z,4.5,.18,7.5,'#dedacb');
     b.box(-25.95,1.65,z,.04,1.4,4,'#324a4d');
   }
   for(let x=-16;x<19;x+=5){
+    if(x===-1||x===4)continue; // Keep the entrance approach clear.
     b.box(x,.42,37,2.8,.14,.65,'#807c63');b.box(x-1,.2,37,.14,.5,.55,palette.steel);b.box(x+1,.2,37,.14,.5,.55,palette.steel);
   }
+  // Illustrative entrance vestibule: visitors turn around behind its dark screen.
+  // This avoids exposing a teleport or walking people through the seating bowl.
+  b.box(1.5,.035,35,4.8,.07,8,'#a4aaa4');
+  for(const x of [-.9,3.9])b.box(x,1.5,34.5,.22,3,7,'#536770');
+  b.box(1.5,3.08,34.5,5.2,.25,7.5,'#d4d8d1');
+  b.box(1.5,1.5,33.7,4.8,3,.15,'#18313a');
+  const entrance=label('1573  /  WELCOME',4.3,.48,'#ecf3e0','#245567');
+  entrance.position.set(1.5,2.74,38.28);b.group.add(entrance);
   for(const x of [-23,23])for(const z of [-34,34]){
     b.box(x,1.8,z,.35,3.6,.45,palette.dark);
     const sign=label('1573  →',2.8,.65,'#e5f0c9');sign.position.set(x,3.35,z+.26);b.group.add(sign);
   }
-  const trees: number[][]=[];
-  for(let i=0;i<18;i++){const a=i*Math.PI/9;trees.push([344+45*Math.cos(a),79+53*Math.sin(a)]);}
-  for(let i=0;i<12;i++){const a=i*Math.PI/6;trees.push([300+94*Math.cos(a),188+59*Math.sin(a)]);}
-  for(let i=0;i<27;i++)trees.push([-48-Math.sin(i*.75)*5, -145+i*11]);
-  bank.forEach(([x,z],i)=>{trees.push([x+3,z]);if(i%2===0)trees.push([x+10,z+5]);});
-  for(let i=0;i<16;i++)trees.push([-81+i*13,-146+Math.sin(i)*4]);
-  for(let i=0;i<14;i++)trees.push([-65+i*15,135+Math.sin(i)*6]);
-  const plantedTrees=trees.filter(([x,z])=>!data.features.some(f=>f.kind==='court'&&x>Math.min(...f.points.map(p=>p[0]))-4&&x<Math.max(...f.points.map(p=>p[0]))+4&&z>Math.min(...f.points.map(p=>p[1]))-4&&z<Math.max(...f.points.map(p=>p[1]))+4));
-  const leaves=new T.InstancedMesh(new T.IcosahedronGeometry(1,1),new T.MeshStandardMaterial({color:'#687b4d',roughness:1,flatShading:true}),plantedTrees.length*4);
-  const o=new T.Object3D();
-  plantedTrees.forEach(([x,z],i)=>{
-    const height=5+(Math.sin(i*7)+1)*1.6;b.rod([x,0,z],[x,height,z],.28,'#83745b');
-    b.box(x,.15,z,4,.3,4,'#999f7f');
-    for(let j=0;j<4;j++){
-      o.position.set(x+Math.sin(j*2.1)*1.7,height+j*.64,z+Math.cos(j*2.1)*1.5);o.scale.set(2.8,2.7,2.6);o.rotation.set(i,j,i*.3);o.updateMatrix();leaves.setMatrixAt(i*4+j,o.matrix);leaves.setColorAt(i*4+j,new T.Color(['#728455','#849365','#586e48','#9caa79'][i%4]));
-    }
-  });leaves.castShadow=true;leaves.receiveShadow=true;b.group.add(leaves);
+  ground.finish(b.group);
   return b.finish();
 }
 
