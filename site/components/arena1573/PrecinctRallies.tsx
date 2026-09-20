@@ -6,10 +6,11 @@ import * as T from 'three';
 import type { ContextData } from './model';
 import { rallyCourts } from './courtPlacements';
 import { rallyFrame } from './rallyMotion';
+import { courtVenue, venueVisible } from './venueVisibility';
 
 /** Shared low-detail articulated players: six draw calls for the whole precinct. */
-export default function PrecinctRallies({data,active,visible}:{data:ContextData;active:boolean;visible:boolean}){
-  const courts=useMemo(()=>rallyCourts(data),[data]);
+export default function PrecinctRallies({data,active,visible,surroundings,selectedVenue}:{data:ContextData;active:boolean;visible:boolean;surroundings:boolean;selectedVenue:string}){
+  const courts=useMemo(()=>rallyCourts(data).filter(court=>venueVisible(courtVenue(court.id,court.x),selectedVenue,surroundings)),[data,selectedVenue,surroundings]);
   const torso=useRef<T.InstancedMesh>(null),heads=useRef<T.InstancedMesh>(null),limbs=useRef<T.InstancedMesh>(null),rackets=useRef<T.InstancedMesh>(null),grips=useRef<T.InstancedMesh>(null),balls=useRef<T.InstancedMesh>(null);
   const time=useRef(0);
   const scratch=useMemo(()=>({object:new T.Object3D(),a:new T.Vector3(),b:new T.Vector3(),up:new T.Vector3(0,1,0),color:new T.Color()}),[]);

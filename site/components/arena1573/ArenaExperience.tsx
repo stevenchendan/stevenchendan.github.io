@@ -14,6 +14,7 @@ import PrecinctRallies from './PrecinctRallies';
 import PrecinctAssets from './PrecinctAssets';
 import Rain from './Rain';
 import Visitors from './Visitors';
+import { venueVisible } from './venueVisibility';
 import { SEATING_LIFT } from './dimensions';
 import { summerSun, type ShadeResult, type SolarDate, type Stand, standSamples, STANDS } from './solar';
 
@@ -63,7 +64,7 @@ class SceneBoundary extends Component<{children:ReactNode;language:Language},{fa
   render(){const tr=getTranslator(this.props.language);return this.state.failed?<div className={styles.error}><h2>{tr('3D 场景暂时无法启动')}</h2><p>{tr('请开启浏览器硬件加速，或使用支持 WebGL 2 的浏览器。')}</p><button onClick={()=>window.location.reload()}>{tr('重新加载')}</button></div>:this.props.children;}
 }
 
-function World({data,light,context,crowd,onReady,sun,onShade}:{data:ContextData;light:Light;context:boolean;crowd:boolean;onReady:(seats:number)=>void;sun:Sun;onShade:(result:ShadeResult|null)=>void}) {
+function World({data,light,context,crowd,onReady,sun,onShade,selectedVenue}:{selectedVenue:string;data:ContextData;light:Light;context:boolean;crowd:boolean;onReady:(seats:number)=>void;sun:Sun;onShade:(result:ShadeResult|null)=>void}) {
   const root=useRef<T.Group>(null);
   const models=useRef<{arena:ReturnType<typeof buildArena>;context:T.Group}|null>(null);
   useEffect(()=>{
@@ -73,12 +74,12 @@ function World({data,light,context,crowd,onReady,sun,onShade}:{data:ContextData;
   },[data,onReady]);
   useEffect(()=>{
     if(!models.current)return;
-    models.current.context.visible=context;
+    models.current.context.children.forEach(child=>{child.visible=venueVisible(child.userData.venue,selectedVenue,context);});
+    models.current.arena.group.visible=venueVisible('1573',selectedVenue,context);
     models.current.arena.crowd.visible=crowd;
-    const precinctCrowd=models.current.context.getObjectByName('precinct-spectators');
-    if(precinctCrowd)precinctCrowd.visible=crowd;
+    models.current.context.traverse(child=>{if(child.name==='precinct-spectators')child.visible=crowd;});
     models.current.arena.lamps.traverse(o=>{if(o instanceof T.Mesh)(o.material as T.MeshStandardMaterial).emissiveIntensity=light==='night'||(sun&&!sun.aboveHorizon)?5:light==='golden'?1:.08;});
-  },[light,context,crowd,data,sun]);
+  },[light,context,crowd,data,sun,selectedVenue]);
   useEffect(()=>{
     if(!sun||!sun.aboveHorizon||!models.current){onShade(null);return;}
     // Structural geometry only. Tiny seat/crowd
@@ -132,6 +133,7 @@ function Rig({shot,rotate,onInteract,canvasRef}:{shot:Shot;rotate:boolean;onInte
 function Scene({data,shot,light,rotate,context,crowd,markers,rally,onSelect,onReady,onInteract,canvasRef,language,theme,sun,onShade}:{data:ContextData;shot:Shot;light:Light;rotate:boolean;context:boolean;crowd:boolean;markers:boolean;rally:boolean;onSelect:(id:string)=>void;onReady:(seats:number)=>void;onInteract:()=>void;canvasRef:React.RefObject<HTMLCanvasElement|null>;language:Language;theme:Theme;sun:Sun;onShade:(result:ShadeResult|null)=>void}){
   const tr=getTranslator(language);
   const night=light==='night'||!!sun&&!sun.aboveHorizon,golden=light==='golden'||!!sun&&sun.aboveHorizon&&sun.elevation<15;
+  const selectedVenue=shot.destination??(shot.view==='ao'?'all':shot.view==='precinct'?'mca':'1573');
   const focus=destinations.find(d=>d.id===shot.destination)?.target;
   const lightTarget=useMemo(()=>{
     const target=new T.Object3D();if(!sun&&focus)target.position.set(focus[0],0,focus[2]);return target;
@@ -146,15 +148,15 @@ function Scene({data,shot,light,rotate,context,crowd,markers,rally,onSelect,onRe
     <directionalLight target={lightTarget} key={sun?'solar':'mood'} position={sunPosition} color={rain?'#c5dcf2':golden?'#ffcb8d':'#f4f8ff'} intensity={rain?.4:sun?(sun.aboveHorizon?Math.max(.3,Math.sin(sun.elevation*Math.PI/180)*3.3):0):night?.1:golden?3.3:2.3} castShadow={!rain} shadow-mapSize={sun?[4096,4096]:[2048,2048]} shadow-camera-left={-105} shadow-camera-right={105} shadow-camera-top={105} shadow-camera-bottom={-105} shadow-camera-far={700} shadow-normalBias={.04} shadow-bias={-.00005}/>
     {night&&<><pointLight position={[lightTarget.position.x-18,18,lightTarget.position.z]} intensity={shot.destination&&shot.destination!=='1573'?560:1600} distance={85} decay={2} color="#e7f2ff"/><pointLight position={[lightTarget.position.x+18,18,lightTarget.position.z]} intensity={shot.destination&&shot.destination!=='1573'?560:1600} distance={85} decay={2} color="#fff0d6"/><pointLight position={[lightTarget.position.x,17,lightTarget.position.z-22]} intensity={shot.destination&&shot.destination!=='1573'?385:1100} distance={65} decay={2}/><pointLight position={[lightTarget.position.x,17,lightTarget.position.z+22]} intensity={shot.destination&&shot.destination!=='1573'?385:1100} distance={65} decay={2}/></>}
     <mesh rotation={[-Math.PI/2,0,0]} position={[0,-3.2,0]} receiveShadow><planeGeometry args={[3000,3000]}/><meshStandardMaterial color={bg} roughness={1}/></mesh>
-    <World data={data} light={light} context={context} crowd={crowd} onReady={onReady} sun={sun} onShade={onShade}/>
+    <World selectedVenue={selectedVenue} data={data} light={light} context={context} crowd={crowd} onReady={onReady} sun={sun} onShade={onShade}/>
     <primitive object={lightTarget}/>
-    <PrecinctAssets visible={context}/>
+    <PrecinctAssets visible={venueVisible('kia',selectedVenue,context)}/>
     <Visitors data={data} visible={context&&crowd}/>
     {rain&&<Rain ink={ink}/>}
-    {context&&markers&&shot.view==='ao'&&destinations.map(d=><Html key={d.id} position={[d.target[0],38,d.target[2]]} center zIndexRange={[10,0]}><button className={styles.venuePin} title={tr(d.name)} aria-label={tr(d.name)} onClick={()=>onSelect(d.id)}>{d.id==='mca'?'MCA':d.id==='rla'?'RLA':d.id==='1573'?'1573':tr(d.name)}</button></Html>)}
-    <Suspense fallback={null}><TennisRally active={rally}/></Suspense>
-    <PrecinctRallies data={data} active={rally} visible={context}/>
-    {markers&&points.filter(p=>context||p.id!=='precinct').map((p,i)=><Html key={p.id} position={p.position} center zIndexRange={[10,0]}><button className={styles.pin} title={tr(p.title)} aria-label={`${tr('探索')}${tr(p.title)}`} onClick={()=>onSelect(p.id)}><span>{String(i+1).padStart(2,'0')}</span><b>{tr(p.title)}</b></button></Html>)}
+    {markers&&shot.view==='ao'&&destinations.filter(d=>venueVisible(d.id,selectedVenue,context)).map(d=><Html key={d.id} position={[d.target[0],38,d.target[2]]} center zIndexRange={[10,0]}><button className={styles.venuePin} title={tr(d.name)} aria-label={tr(d.name)} onClick={()=>onSelect(d.id)}>{d.id==='mca'?'MCA':d.id==='rla'?'RLA':d.id==='1573'?'1573':tr(d.name)}</button></Html>)}
+    <group visible={venueVisible('1573',selectedVenue,context)}><Suspense fallback={null}><TennisRally active={rally}/></Suspense></group>
+    <PrecinctRallies data={data} active={rally} visible={true} surroundings={context} selectedVenue={selectedVenue}/>
+    {markers&&points.filter(p=>context||selectedVenue==='all'||(p.id==='precinct'?selectedVenue==='mca':selectedVenue==='1573')).map((p,i)=><Html key={p.id} position={p.position} center zIndexRange={[10,0]}><button className={styles.pin} title={tr(p.title)} aria-label={`${tr('探索')}${tr(p.title)}`} onClick={()=>onSelect(p.id)}><span>{String(i+1).padStart(2,'0')}</span><b>{tr(p.title)}</b></button></Html>)}
     <Rig shot={shot} rotate={rotate} onInteract={onInteract} canvasRef={canvasRef}/>
   </>;
 }
@@ -206,10 +208,10 @@ export default function ArenaExperience(){
     const abort=new AbortController();fetch('/data/1573-context.json',{signal:abort.signal}).then(r=>{if(!r.ok)throw Error('Context unavailable');return r.json();}).then(setData).catch(e=>{if(e.name!=='AbortError')setLoadError(true);});
     return()=>abort.abort();
   },[]);
-  const choose=useCallback((view:View)=>{setShot(s=>({view,serial:s.serial+1}));setRotate(false);if(view==='ao'||view==='precinct')setContext(true);},[]);
+  const choose=useCallback((view:View)=>{setShot(s=>({view,serial:s.serial+1}));setRotate(false);},[]);
   const onReady=useCallback((count:number)=>{setReady(true);setSeats(count);},[]);
   const onInteract=useCallback(()=>setRotate(false),[]);
-  const onSelect=useCallback((id:string)=>{const destination=destinations.find(d=>d.id===id);if(destination){setContext(true);setRotate(false);setSelected(null);setShot(s=>({view:'ao',serial:s.serial+1,destination:id}));return;}setSelected(id);setMarkers(false);const p=points.find(p=>p.id===id);if(p)choose(p.view);},[choose]);
+  const onSelect=useCallback((id:string)=>{const destination=destinations.find(d=>d.id===id);if(destination){setRotate(false);setSelected(null);setShot(s=>({view:'ao',serial:s.serial+1,destination:id}));return;}setSelected(id);setMarkers(false);const p=points.find(p=>p.id===id);if(p)choose(p.view);},[choose]);
   useEffect(()=>{
     const handler=(e:KeyboardEvent)=>{
       if(e.key==='Escape'){setCinema(false);setSelected(null);setInfo(false);setPanel(false);return;}

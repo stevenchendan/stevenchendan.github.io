@@ -7,6 +7,7 @@ import { courtFrame, pathIntervals, pointInRing, outsideRingIntervals } from './
 import { facade, roofTruss, supportBuilding } from './architecture';
 import { precinctMaterial } from './materials';
 import { courtElevation } from './courtPlacements';
+import { buildingVenue, courtVenue } from './venueVisibility';
 import { EVENT_CONCOURSE, GROUND, GroundSurfaces } from './ground';
 
 export interface ContextData {
@@ -237,17 +238,30 @@ export function buildArena() {
 }
 
 export function buildContext(data: ContextData) {
-  const b=new Builder();
-  const spectators=new T.Group();spectators.name='precinct-spectators';spectators.visible=false;b.group.add(spectators);
+  const environment=new Builder();
+  let b=environment;
+  const venues=new Map<string,Builder>();
+  const venue=(id:string)=>{
+    let builder=venues.get(id);
+    if(!builder){builder=new Builder();builder.group.name=`venue-${id}`;builder.group.userData.venue=id;venues.set(id,builder);}
+    return builder;
+  };
+  const crowds=new Map<Builder,T.Group>();
+  const spectatorsFor=(builder:Builder)=>{
+    let group=crowds.get(builder);
+    if(!group){group=new T.Group();group.name='precinct-spectators';group.visible=false;builder.group.add(group);crowds.set(builder,group);}
+    return group;
+  };
+
   const mappedCourts=data.features.filter(f=>f.kind==='court').map(f=>({feature:f,frame:courtFrame(f.points)}));
   const courtExclusions=mappedCourts.map(c=>c.frame);
   b.box(300,-1.65,0,1300,3,820,'#758268');
   const ground=new GroundSurfaces();
   ground.polygon(EVENT_CONCOURSE,GROUND.concourse,'#b5b6ad');
-  grandSlamOval(b);
+  grandSlamOval(venue('oval'));
   // Five hard courts are on the Eastern Plaza deck; clay courts remain at grade.
-  b.box(653,2.85,219,111,5.7,46,'#9babae');
-  for(let x=600;x<708;x+=6)b.box(x,2.4,242,.35,4.5,.3,'#c1c8c7');
+  venue('east').box(653,2.85,219,111,5.7,46,'#9babae');
+  for(let x=600;x<708;x+=6)venue('east').box(x,2.4,242,.35,4.5,.3,'#c1c8c7');
   // Riverbank follows the existing Yarra Trail, offset toward the water.
   const bank=[[-210,-260],[-175,-170],[-151,-82],...(data.features.find(f=>f.id==='way/991624386')?.points??[])];
   const riverRing=[...bank.map(([x,z])=>[x-16,z]),[-325,260],[-325,-265]];
@@ -256,6 +270,7 @@ export function buildContext(data: ContextData) {
   const river=new T.Mesh(riverGeometry,new T.MeshStandardMaterial({color:'#547d80',roughness:.48,metalness:.12}));river.receiveShadow=true;b.group.add(river);
   ground.polygon([[-31,-40],[33,-40],[33,42],[-31,42]],GROUND.apron,'#c4c3b7');
   for(const f of data.features){
+    b=environment;
     if(f.kind==='green'&&f.points.length>3){
       ground.polygon(f.points,GROUND.lawn,'#829078');
     }
@@ -294,6 +309,7 @@ export function buildContext(data: ContextData) {
     if(f.kind==='court'&&f.id!=='way/126844352'){
       const {x,z,rotation,width,depth}=courtFrame(f.points);
       if(x < -260 || x > 910 || z < -310 || z > 330)continue;
+      b=venue(courtVenue(f.id,x));
       // Landmark interiors are constructed once, with their own floor and bowl.
       if(data.buildings.some(building=>building.name&&pointInRing([x,z],building.ring)))continue;
       if(f.id==='way/126844350'){
@@ -305,7 +321,7 @@ export function buildContext(data: ContextData) {
       }
       const elevation=courtElevation(x,f.layer);
       court(b,x,z,rotation,false,f.points,f.surface==='clay',elevation);
-      outerCourtStands(b,{x,z,rotation,width,depth},f.name,spectators);
+      outerCourtStands(b,{x,z,rotation,width,depth},f.name,spectatorsFor(b));
       if(f.id==='way/1239949236'){
         const floor=new T.ShapeGeometry(roundedPath(12.4,22.1,3));floor.rotateX(-Math.PI/2);floor.translate(x,.075,z);b.add(floor,'#397fac');
         continue;
@@ -329,8 +345,10 @@ export function buildContext(data: ContextData) {
       for(const side of [-1,1]){const p=transform(side*(width/2+.7),0,0);b.rod(p,[p[0],p[1]+12,p[2]],.08,'#829198');b.box(p[0],p[1]+12,p[2],1.6,.3,.6,'#dae0dc');}
     }
   }
+  b=venue('kia');
   arenaBowl(b,344.8375,78.58,30,40,true);
   data.buildings.forEach(building=>{
+    const id=buildingVenue(building);b=id?venue(id):environment;
     if(building.id==='805343-2-0')return; // Duplicate Olympic Boulevard bridge tier.
     if(building.id.startsWith('806665-')){
       if(building.id!=='806665-1-0')return;
@@ -413,7 +431,7 @@ export function buildContext(data: ContextData) {
         b.rod([103,24,72+z],[128,24,72+z],.10,'#bfc5c3');
         b.rod([180,24,72+z],[205,24,72+z],.10,'#bfc5c3');
       }
-      arenaBowl(b,154,72,46,55,false,22,true,spectators);
+      arenaBowl(b,154,72,46,55,false,22,true,spectatorsFor(b));
       const perimeter=roundedPath(55.15,64.15,30).getPoints(48).map(p=>[p.x+154,72-p.y]);
       facade(b,perimeter,2.2,9);
       for(const z of [-48,-38,38,48])roofTruss(b,154,72+z,76,28,3);
@@ -435,8 +453,9 @@ export function buildContext(data: ContextData) {
   // silhouette follows the irregular building without floating geometry.
   const mca=data.buildings.find(building=>building.name==='Margaret Court Arena');
   if(mca){
+    b=venue('mca');
     const pitch=data.features.find(f=>f.id==='way/1239949234');
-    if(pitch){const frame=courtFrame(pitch.points);arenaBowl(b,frame.x,frame.z,32,36,false,22,false,spectators);court(b,frame.x,frame.z,frame.rotation,false,pitch.points);}
+    if(pitch){const frame=courtFrame(pitch.points);arenaBowl(b,frame.x,frame.z,32,36,false,22,false,spectatorsFor(b));court(b,frame.x,frame.z,frame.rotation,false,pitch.points);}
     const clip=(polygon:number[][],boundary:number,keepAbove:boolean)=>{
       const result:number[][]=[];
       for(let i=0;i<polygon.length;i++){
@@ -493,6 +512,7 @@ export function buildContext(data: ContextData) {
     const sign=label('MARGARET COURT ARENA',15,.8,'#d5dcda','#263c43');sign.rotation.y=-Math.PI/2;sign.position.set(25.1,3.6,-4);b.group.add(sign);
   }
 
+  b=environment;
   // Service pavilions and entry furniture are interpretive details.
   for(let z=-18;z<=18;z+=12){
     b.box(-28,1.7,z,4,3.4,7,'#66756f');b.box(-28,3.5,z,4.5,.18,7.5,'#dedacb');
@@ -514,7 +534,8 @@ export function buildContext(data: ContextData) {
     b.box(x,1.8,z,.35,3.6,.45,palette.dark);
     const sign=label('1573  →',2.8,.65,'#e5f0c9');sign.position.set(x,3.35,z+.26);b.group.add(sign);
   }
-  ground.finish(b.group);
+  ground.finish(environment.group);
+  for(const builder of venues.values())environment.group.add(builder.finish());
   return b.finish();
 }
 
