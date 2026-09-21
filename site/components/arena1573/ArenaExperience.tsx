@@ -180,7 +180,7 @@ export default function ArenaExperience(){
     try {localStorage.setItem('1573-arena-language',next);} catch {/* Keep the preference in memory when storage is unavailable. */}
   }
   const [data,setData]=useState<ContextData|null>(null),[loadError,setLoadError]=useState(false),[ready,setReady]=useState(false),[seats,setSeats]=useState(0);
-  const [shot,setShot]=useState<Shot>({view:'hero',serial:0}),[light,setLight]=useState<Light>('day');
+  const [shot,setShot]=useState<Shot>({view:'hero',serial:0}),[light,setLight]=useState<Light>('golden');
   const [solarDate,setSolarDate]=useState<SolarDate>({year:2027,month:1,day:15,minutes:14*60});
   const [shade,setShade]=useState<ShadeResult|null>(null);
   const sun=useMemo(()=>light==='solar'?summerSun(solarDate):null,[light,solarDate]);
