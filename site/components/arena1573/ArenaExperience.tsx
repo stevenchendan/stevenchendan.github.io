@@ -165,7 +165,7 @@ export default function ArenaExperience(){
   const [theme,setTheme]=useState<Theme>('classic');
   useEffect(()=>{try{const saved=localStorage.getItem('1573-arena-theme');if(saved==='classic'||saved==='ink')setTheme(saved);}catch{/* Optional persistence. */}},[]);
   function changeTheme(next:Theme){setTheme(next);try{localStorage.setItem('1573-arena-theme',next);}catch{/* The switch still works without storage. */}}
-  const [language,setLanguage]=useState<Language>('zh');
+  const [language,setLanguage]=useState<Language>('en');
   const tr=getTranslator(language);
   useEffect(()=>{
     try {const saved=localStorage.getItem('1573-arena-language');if(saved==='en'||saved==='zh')setLanguage(saved);} catch {/* Storage may be disabled; switching still works. */}
