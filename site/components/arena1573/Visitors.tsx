@@ -24,10 +24,10 @@ export default function Visitors({data,visible}:{data:ContextData;visible:boolea
     routes.forEach((route,r)=>{
       for(let j=0;j<4;j++){
         const index=r*4+j,f=visitorFrame(route,time.current,index);
-        const c=Math.cos(f.heading),s=Math.sin(f.heading),scale=f.visible?1:0;
+        const c=Math.cos(f.heading),s=Math.sin(f.heading);
         const put=(mesh:T.InstancedMesh,slot:number,x:number,y:number,z:number,w:number,h:number,d:number,swing=0)=>{
           o.position.set(f.x+x*c+z*s,y+.04,f.z-x*s+z*c);o.rotation.set(0,f.heading,0);
-          o.rotateX(swing);o.scale.set(w*scale,h*scale,d*scale);o.updateMatrix();mesh.setMatrixAt(slot,o.matrix);
+          o.rotateX(swing);o.scale.set(w,h,d);o.updateMatrix();mesh.setMatrixAt(slot,o.matrix);
         };
         const stride=reduced?0:f.stride,bob=Math.abs(stride)*.06;
         put(bodies.current!,index,0,1.14+bob,0,.48,.66,.28);

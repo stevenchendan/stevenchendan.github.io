@@ -520,17 +520,8 @@ export function buildContext(data: ContextData) {
     b.box(-25.95,1.65,z,.04,1.4,4,'#324a4d');
   }
   for(let x=-16;x<19;x+=5){
-    if(x===-1||x===4)continue; // Keep the entrance approach clear.
     b.box(x,.42,37,2.8,.14,.65,'#807c63');b.box(x-1,.2,37,.14,.5,.55,palette.steel);b.box(x+1,.2,37,.14,.5,.55,palette.steel);
   }
-  // Illustrative entrance vestibule: visitors turn around behind its dark screen.
-  // This avoids exposing a teleport or walking people through the seating bowl.
-  b.box(1.5,.035,35,4.8,.07,8,'#a4aaa4');
-  for(const x of [-.9,3.9])b.box(x,1.5,34.5,.22,3,7,'#536770');
-  b.box(1.5,3.08,34.5,5.2,.25,7.5,'#d4d8d1');
-  b.box(1.5,1.5,33.7,4.8,3,.15,'#18313a');
-  const entrance=label('1573  /  WELCOME',4.3,.48,'#ecf3e0','#245567');
-  entrance.position.set(1.5,2.74,38.28);b.group.add(entrance);
   for(const x of [-23,23])for(const z of [-34,34]){
     b.box(x,1.8,z,.35,3.6,.45,palette.dark);
     const sign=label('1573  →',2.8,.65,'#e5f0c9');sign.position.set(x,3.35,z+.26);b.group.add(sign);

@@ -24,11 +24,10 @@ reproduction or a current vendor directory. No reference imagery is used as
 textures; the ground remains tree-free. All dressing follows Surroundings.
 Validate with `node scripts/check-event-layout.mjs`.
 
-Portfolio crowd update: `Visitors.tsx` adds 180 instanced walking visitors using
-the local pedestrian network, with building/court exclusions and an illustrative
-1573 entrance vestibule. Arrivals and departures turn around out of sight inside
-the vestibule; this is ambient animation, not a simulation of connected interior
-routes or live attendance. Event crowd starts enabled and controls both walkers
+Portfolio crowd update: `Visitors.tsx` adds instanced walking visitors using
+the local pedestrian network, with building/court exclusions. Visitors turn
+around on these outdoor paths; this is ambient animation, not a simulation of
+connected interior routes or live attendance. Event crowd starts enabled and controls both walkers
 and seated spectators. Reduced-motion preferences freeze walking and limb motion.
 Validate routing and animation continuity with `node scripts/check-visitors.mjs`.
 

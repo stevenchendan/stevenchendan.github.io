@@ -1,7 +1,7 @@
 import type { ContextData } from './model';
 import { courtFrame, outsideRingIntervals, pathIntervals } from './precinctGeometry';
 
-export type VisitorRoute={a:number[];b:number[];length:number;entrance?:boolean};
+export type VisitorRoute={a:number[];b:number[];length:number};
 
 export function visitorRoutes(data:ContextData):VisitorRoute[]{
   const obstacles=[
@@ -33,11 +33,10 @@ export function visitorRoutes(data:ContextData):VisitorRoute[]{
   }
   // Spread a bounded crowd across the site instead of filling only the first paths.
   const selected=routes.filter((_,i)=>i%Math.max(1,Math.ceil(routes.length/60))===0);
-  selected.unshift({a:[1.5,57],b:[1.5,32],length:25,entrance:true});
   return selected;
 }
 
-/** Out-and-back walks with a short pause. Entrance turnarounds are inside the vestibule. */
+/** Out-and-back walks along the pedestrian network with a short pause. */
 export function visitorFrame(route:VisitorRoute,time:number,index:number){
   const speed=.85+(index%5)*.09,duration=route.length/speed,pause=3,cycle=2*(duration+pause);
   const phase=((time+index*7.37)%cycle+cycle)%cycle,returning=phase>=duration+pause;
@@ -48,5 +47,5 @@ export function visitorFrame(route:VisitorRoute,time:number,index:number){
   const lane=.38*Math.cos(turn*Math.PI);
   const x=route.a[0]+dx*route.length*progress-dz*lane,z=route.a[1]+dz*route.length*progress+dx*lane;
   return {x,z,heading:Math.atan2(dx,dz)+turn*Math.PI,walking,
-    visible:!route.entrance||z>33.5,stride:walking?Math.sin((time+index)*speed*8)*.32:0};
+    stride:walking?Math.sin((time+index)*speed*8)*.32:0};
 }
