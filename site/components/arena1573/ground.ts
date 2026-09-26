@@ -31,8 +31,9 @@ export class GroundSurfaces {
   finish(group:T.Group){
     for(const [color,parts] of this.batches){
       const geometry=mergeGeometries(parts)!;
-      const material=pavingMaterial(color,geometry,color==='#829078'?'lawn':color==='#626b6c'?'asphalt':'paving');
+      const material=pavingMaterial(color,geometry,color==='#829078'||color==='#758268'?'lawn':color==='#626b6c'?'asphalt':'paving');
       const mesh=new T.Mesh(geometry,material);mesh.name=`ground-${color}`;
+      if(color==='#758268')mesh.userData.alwaysVisible=true;
       mesh.receiveShadow=true;mesh.castShadow=false;group.add(mesh);
       parts.forEach(part=>part.dispose());
     }

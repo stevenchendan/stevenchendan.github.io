@@ -256,9 +256,10 @@ export function buildContext(data: ContextData) {
 
   const mappedCourts=data.features.filter(f=>f.kind==='court').map(f=>({feature:f,frame:courtFrame(f.points)}));
   const courtExclusions=mappedCourts.map(c=>c.frame);
-  b.box(300,-1.65,0,1300,3,820,'#758268');
   const ground=new GroundSurfaces();
-  ground.polygon(EVENT_CONCOURSE,GROUND.concourse,'#b5b6ad');
+  // Continuous terrain replaces the exposed sides of the old thick base slab.
+  ground.polygon([[-1500,-1500],[1500,-1500],[1500,1500],[-1500,1500]],-.15,'#758268');
+  ground.polygon(EVENT_CONCOURSE,GROUND.concourse,'#a7aaa0');
   grandSlamOval(venue('oval'));
   // Five hard courts are on the Eastern Plaza deck; clay courts remain at grade.
   venue('east').box(653,2.85,219,111,5.7,46,'#9babae');
@@ -269,7 +270,7 @@ export function buildContext(data: ContextData) {
   const riverShape=new T.Shape(riverRing.map(([x,z])=>new T.Vector2(x,-z)));
   const riverGeometry=new T.ShapeGeometry(riverShape);riverGeometry.rotateX(-Math.PI/2);riverGeometry.translate(0,-.06,0);
   const river=new T.Mesh(riverGeometry,new T.MeshStandardMaterial({color:'#547d80',roughness:.48,metalness:.12}));river.receiveShadow=true;b.group.add(river);
-  ground.polygon([[-31,-40],[33,-40],[33,42],[-31,42]],GROUND.apron,'#c4c3b7');
+  ground.polygon([[-31,-40],[33,-40],[33,42],[-31,42]],GROUND.apron,'#b2b4aa');
   for(const f of data.features){
     b=environment;
     if(f.kind==='green'&&f.points.length>3){

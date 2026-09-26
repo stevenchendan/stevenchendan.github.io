@@ -47,22 +47,70 @@ const washShader = {
     }`,
 };
 
-export function InkWash(){
+// A narrow, sharp strip with progressively softer foreground and background
+// gives the aerial views the shallow-focus look of a miniature photograph.
+const tiltShiftShader = {
+  uniforms: {
+    tDiffuse: { value: null },
+    resolution: { value: new T.Vector2(1, 1) },
+    direction: { value: new T.Vector2(1, 0) },
+    strength: { value: 1 },
+    grade: { value: 0 },
+  },
+  vertexShader: `varying vec2 vUv;
+    void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform vec2 resolution, direction;
+    uniform float strength, grade;
+    varying vec2 vUv;
+    void main(){
+      // The focus strip follows the middle of the view, where OrbitControls
+      // keeps its target. Smooth falloff avoids a visible blur boundary.
+      float distanceFromFocus=abs(vUv.y-.5);
+      float blur=smoothstep(.105,.38,distanceFromFocus)*strength;
+      vec2 stepSize=direction/resolution*blur*5.5;
+      vec4 color=texture2D(tDiffuse,vUv)*.227027;
+      color+=(texture2D(tDiffuse,vUv+stepSize*1.384615)+texture2D(tDiffuse,vUv-stepSize*1.384615))*.316216;
+      color+=(texture2D(tDiffuse,vUv+stepSize*3.230769)+texture2D(tDiffuse,vUv-stepSize*3.230769))*.070270;
+      if(grade>0.0){
+        float luma=dot(color.rgb,vec3(.2126,.7152,.0722));
+        color.rgb=mix(vec3(luma),color.rgb,1.0+.12*grade);
+        color.rgb=clamp((color.rgb-.5)*(1.0+.045*grade)+.5,0.0,1.0);
+      }
+      gl_FragColor=color;
+    }`,
+};
+
+export function SceneEffects({ink,view}:{ink:boolean;view:string}){
   const {gl,scene,camera,size}=useThree();
   const pipeline=useMemo(()=>{
     const composer=new EffectComposer(gl);
     const render=new RenderPass(scene,camera),output=new OutputPass(),wash=new ShaderPass(washShader);
+    const horizontal=new ShaderPass(tiltShiftShader),vertical=new ShaderPass(tiltShiftShader);
+    horizontal.uniforms.direction.value.set(1,0);
+    vertical.uniforms.direction.value.set(0,1);
     composer.addPass(render);composer.addPass(output);composer.addPass(wash);
-    return {composer,render,output,wash};
+    composer.addPass(horizontal);composer.addPass(vertical);
+    return {composer,render,output,wash,horizontal,vertical};
   },[gl,scene,camera]);
   useEffect(()=>{
     pipeline.composer.setPixelRatio(gl.getPixelRatio());pipeline.composer.setSize(size.width,size.height);
-    pipeline.wash.uniforms.resolution.value.set(size.width*gl.getPixelRatio(),size.height*gl.getPixelRatio());
+    for(const pass of [pipeline.wash,pipeline.horizontal,pipeline.vertical])
+      pass.uniforms.resolution.value.set(size.width*gl.getPixelRatio(),size.height*gl.getPixelRatio());
   },[pipeline,gl,size]);
-  useEffect(()=>()=>{pipeline.composer.dispose();pipeline.render.dispose();pipeline.output.dispose();pipeline.wash.dispose();},[pipeline]);
+  useEffect(()=>{
+    pipeline.wash.enabled=ink;
+    const strength=(view==='court'||view==='seat') ? 0.38 : view==='plan' ? 0.78 : 1;
+    for(const pass of [pipeline.horizontal,pipeline.vertical]){
+      pass.uniforms.strength.value=strength;
+    }
+    pipeline.vertical.uniforms.grade.value=ink?0:1;
+  },[pipeline,ink,view]);
+  useEffect(()=>()=>{pipeline.composer.dispose();pipeline.render.dispose();pipeline.output.dispose();pipeline.wash.dispose();pipeline.horizontal.dispose();pipeline.vertical.dispose();},[pipeline]);
   useFrame((_,delta)=>{
     // Reserve atmospheric perspective for the distant landscape, not the arena.
-    if(scene.fog instanceof T.Fog){scene.fog.near=camera.position.length()+150;scene.fog.far=scene.fog.near+400;}
+    if(ink&&scene.fog instanceof T.Fog){scene.fog.near=camera.position.length()+150;scene.fog.far=scene.fog.near+400;}
     pipeline.composer.render(delta);
   },1);
   return null;

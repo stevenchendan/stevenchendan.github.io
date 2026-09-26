@@ -7,7 +7,7 @@ import { Component, type ComponentRef, type ReactNode, Suspense, useCallback, us
 import { buildArena, buildContext, type ContextData, disposeModel } from './model';
 import styles from './arena.module.css';
 import { getTranslator, type Language } from './i18n';
-import { InkLandscape, InkWash } from './InkWash';
+import { InkLandscape, SceneEffects } from './InkWash';
 import SunControls from './SunControls';
 import TennisRally from './TennisRally';
 import PrecinctRallies from './PrecinctRallies';
@@ -74,7 +74,7 @@ function World({data,light,context,crowd,onReady,sun,onShade,selectedVenue}:{sel
   },[data,onReady]);
   useEffect(()=>{
     if(!models.current)return;
-    models.current.context.children.forEach(child=>{child.visible=venueVisible(child.userData.venue,selectedVenue,context);});
+    models.current.context.children.forEach(child=>{child.visible=child.userData.alwaysVisible||venueVisible(child.userData.venue,selectedVenue,context);});
     models.current.arena.group.visible=venueVisible('1573',selectedVenue,context);
     models.current.arena.crowd.visible=crowd;
     models.current.context.traverse(child=>{if(child.name==='precinct-spectators')child.visible=crowd;});
@@ -143,11 +143,11 @@ function Scene({data,shot,light,rotate,context,crowd,markers,rally,onSelect,onRe
   const bg=rain?(ink?'#dde3df':'#aebcc3'):ink?'#f3f0e6':night?'#172b38':golden?'#d6c5ab':'#cbdde9';
   return <>
     <color attach="background" args={[bg]}/><fog attach="fog" args={[bg,shot.view==='ao'?(rain?1000:1400):rain?180:ink?250:320,shot.view==='ao'?(rain?2600:3200):rain?680:ink?650:750]}/>
-    {ink&&<><InkLandscape/><InkWash/></>}
+    {ink&&<InkLandscape/>}
+    <SceneEffects ink={ink} view={shot.view}/>
     <hemisphereLight args={[night?'#8299c3':'#e4eff8',night?'#26362e':rain?'#81959b':'#b1a788',night?.65:rain?1.35:sun?1.0:golden?.85:1.05]}/>
     <directionalLight target={lightTarget} key={sun?'solar':'mood'} position={sunPosition} color={rain?'#c5dcf2':golden?'#ffcb8d':'#f4f8ff'} intensity={rain?.4:sun?(sun.aboveHorizon?Math.max(.3,Math.sin(sun.elevation*Math.PI/180)*3.3):0):night?.1:golden?3.3:2.3} castShadow={!rain} shadow-mapSize={sun?[4096,4096]:[2048,2048]} shadow-camera-left={-105} shadow-camera-right={105} shadow-camera-top={105} shadow-camera-bottom={-105} shadow-camera-far={700} shadow-normalBias={.04} shadow-bias={-.00005}/>
     {night&&<><pointLight position={[lightTarget.position.x-18,18,lightTarget.position.z]} intensity={shot.destination&&shot.destination!=='1573'?560:1600} distance={85} decay={2} color="#e7f2ff"/><pointLight position={[lightTarget.position.x+18,18,lightTarget.position.z]} intensity={shot.destination&&shot.destination!=='1573'?560:1600} distance={85} decay={2} color="#fff0d6"/><pointLight position={[lightTarget.position.x,17,lightTarget.position.z-22]} intensity={shot.destination&&shot.destination!=='1573'?385:1100} distance={65} decay={2}/><pointLight position={[lightTarget.position.x,17,lightTarget.position.z+22]} intensity={shot.destination&&shot.destination!=='1573'?385:1100} distance={65} decay={2}/></>}
-    <mesh rotation={[-Math.PI/2,0,0]} position={[0,-3.2,0]} receiveShadow><planeGeometry args={[3000,3000]}/><meshStandardMaterial color={bg} roughness={1}/></mesh>
     <World selectedVenue={selectedVenue} data={data} light={light} context={context} crowd={crowd} onReady={onReady} sun={sun} onShade={onShade}/>
     <primitive object={lightTarget}/>
     <PrecinctAssets visible={venueVisible('kia',selectedVenue,context)}/>
