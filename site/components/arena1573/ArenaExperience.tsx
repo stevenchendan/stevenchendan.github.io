@@ -202,7 +202,7 @@ export default function ArenaExperience(){
   }
   const [rotate,setRotate]=useState(false),[context,setContext]=useState(true),[crowd,setCrowd]=useState(true),[markers,setMarkers]=useState(false),[rally,setRally]=useState(true);
   useEffect(()=>{if(rotate)setRally(true);},[rotate]);
-  const [selected,setSelected]=useState<string|null>(null),[info,setInfo]=useState(false),[panel,setPanel]=useState(false),[toast,setToast]=useState('');
+  const [selected,setSelected]=useState<string|null>(null),[info,setInfo]=useState(false),[panel,setPanel]=useState(false),[venuePanel,setVenuePanel]=useState(false),[viewPanel,setViewPanel]=useState(false),[toast,setToast]=useState('');
   const container=useRef<HTMLElement>(null),canvas=useRef<HTMLCanvasElement|null>(null);
   useEffect(()=>{
     const abort=new AbortController();fetch('/data/1573-context.json',{signal:abort.signal}).then(r=>{if(!r.ok)throw Error('Context unavailable');return r.json();}).then(setData).catch(e=>{if(e.name!=='AbortError')setLoadError(true);});
@@ -214,7 +214,7 @@ export default function ArenaExperience(){
   const onSelect=useCallback((id:string)=>{const destination=destinations.find(d=>d.id===id);if(destination){setRotate(false);setSelected(null);setShot(s=>({view:'ao',serial:s.serial+1,destination:id}));return;}setSelected(id);setMarkers(false);const p=points.find(p=>p.id===id);if(p)choose(p.view);},[choose]);
   useEffect(()=>{
     const handler=(e:KeyboardEvent)=>{
-      if(e.key==='Escape'){setCinema(false);setSelected(null);setInfo(false);setPanel(false);return;}
+      if(e.key==='Escape'){setCinema(false);setSelected(null);setInfo(false);setPanel(false);setVenuePanel(false);setViewPanel(false);return;}
       if(e.target instanceof HTMLElement&&['INPUT','BUTTON','SELECT','TEXTAREA','A'].includes(e.target.tagName))return;
       const index=Number(e.key)-1;if(index>=0&&index<views.length){choose(views[index].id);}
       if(e.key.toLowerCase()==='r')choose('hero');
@@ -227,7 +227,9 @@ export default function ArenaExperience(){
   function capture(){if(!canvas.current||!ready)return;try{const a=document.createElement('a');a.download=`1573-arena-${light}.png`;a.href=canvas.current.toDataURL('image/png');a.click();setToast('已保存当前 3D 画面');}catch{setToast('画面暂时无法保存，请重试。');}}
   const detail=points.find(p=>p.id===selected);
   const activeVenue=destinations.find(d=>d.id===shot.destination);
-  return <main lang={language==='zh'?'zh-CN':'en'} ref={container} className={`${styles.experience} ${cinema?styles.cinemaMode:''} ${theme==='ink'?styles.ink:light==='night'||(sun&&!sun.aboveHorizon)?styles.night:''}`}>
+  const venueLabel=activeVenue?.name??(shot.view==='ao'?'澳网全景':'1573 Arena');
+  const activeView=views.find(view=>view.id===shot.view)??views[0];
+  return <main lang={language==='zh'?'zh-CN':'en'} ref={container} className={`${styles.experience} ${cinema?styles.cinemaMode:''} ${viewPanel?styles.viewPanelOpen:''} ${theme==='ink'?styles.ink:light==='night'||(sun&&!sun.aboveHorizon)?styles.night:''}`}>
     <div className={styles.viewport} aria-label={tr("1573 Arena 可交互三维场景")}>
       {data&&<SceneBoundary language={language}><Suspense fallback={null}><Canvas shadows camera={{position:cameras.hero.position,fov:43,near:.1,far:4000}} dpr={[1,1.6]} gl={{antialias:true,preserveDrawingBuffer:true,powerPreference:'high-performance'}} fallback={<div className={styles.error}>{tr("当前浏览器不支持 WebGL 2。请开启硬件加速后重试。")}</div>} onCreated={({gl})=>{gl.toneMapping=T.ACESFilmicToneMapping;gl.toneMappingExposure=1;}}><Scene {...{data,shot,light,rotate,context,crowd,markers,rally,onSelect,onReady,onInteract,language,theme,sun}} markers={markers&&!cinema} onShade={setShade} canvasRef={canvas}/></Canvas></Suspense></SceneBoundary>}
     </div>
@@ -244,17 +246,20 @@ export default function ArenaExperience(){
       {theme==='ink'&&<div className={styles.inkSeal} aria-label={tr('水墨')}>山<br/>水</div>}
       <div className={styles.coordinates}>{activeVenue&&activeVenue.id!=='1573'?'MELBOURNE PARK · AO26':'37°49′14.7″ S · 144°58′37.1″ E'}</div>
     </section>
-    <section className={styles.precinctExplorer} aria-label={tr('探索澳网园区')}>
-      <label htmlFor="ao-destination">{tr('探索澳网园区')}</label>
-      <select id="ao-destination" value={shot.destination??(shot.view==='ao'?'all':'')} onChange={e=>e.target.value==='all'?choose('ao'):onSelect(e.target.value)}>
-        <option value="" disabled>{tr('选择场馆')}</option>
-        <option value="all">{tr('澳网全景')}</option>
-        {destinations.map(d=><option key={d.id} value={d.id}>{tr(d.name)}</option>)}
-      </select>
-      <small>{tr('建筑为参考重建，非实测模型。')}</small>
-      <a href="https://ausopen.com/digitalmap" target="_blank" rel="noreferrer">{tr('官方 AO26 地图 ↗')}</a>
+    <section className={`${styles.precinctExplorer} ${venuePanel?styles.precinctExplorerOpen:''}`} aria-label={tr('探索澳网园区')}>
+      <button className={styles.venueToggle} aria-expanded={venuePanel} aria-controls="ao-venue-panel" onClick={()=>setVenuePanel(open=>{if(!open){setPanel(false);setViewPanel(false);}return !open;})}><span>{tr('探索 AO')}</span><b>{tr(venueLabel)}</b><i aria-hidden="true">{venuePanel?'−':'+'}</i></button>
+      <div id="ao-venue-panel" className={styles.venuePanelBody}>
+        <label htmlFor="ao-destination">{tr('探索澳网园区')}</label>
+        <select id="ao-destination" value={shot.destination??(shot.view==='ao'?'all':'')} onChange={e=>{setVenuePanel(false);if(e.target.value==='all')choose('ao');else onSelect(e.target.value);}}>
+          <option value="" disabled>{tr('选择场馆')}</option>
+          <option value="all">{tr('澳网全景')}</option>
+          {destinations.map(d=><option key={d.id} value={d.id}>{tr(d.name)}</option>)}
+        </select>
+        <small>{tr('建筑为参考重建，非实测模型。')}</small>
+        <a href="https://ausopen.com/digitalmap" target="_blank" rel="noreferrer">{tr('官方 AO26 地图 ↗')}</a>
+      </div>
     </section>
-    <button className={styles.mobileSettings} aria-expanded={panel} onClick={()=>setPanel(v=>!v)}>{tr("场景设置")} {panel?'−':'+'}</button>
+    <button className={styles.mobileSettings} aria-expanded={panel} onClick={()=>setPanel(open=>{if(!open){setVenuePanel(false);setViewPanel(false);}return !open;})}>{tr("场景设置")} {panel?'−':'+'}</button>
     <aside className={`${styles.settings} ${panel?styles.settingsOpen:''}`}>
       <div className={styles.panelHeading}><span>{tr("YOUR PERSPECTIVE")}</span><span>↗</span></div>
       <h2>{tr("此刻的球场")}</h2>
@@ -271,7 +276,10 @@ export default function ArenaExperience(){
     </aside>
     <div className={styles.north} title={tr("北向相对球场长轴约偏转 8°")}><span>N</span><svg width="34" height="42" viewBox="0 0 34 42" aria-hidden="true"><path d="M17 3 L29 34 L17 27 L5 34 Z" fill="none" stroke="currentColor" strokeWidth="1.2"/><path d="M17 3 L17 27 L5 34 Z" fill="currentColor"/></svg><small>{tr("地理北向参考 · 8°")}</small></div>
     {(shot.view!=='ao'||shot.destination==='1573')&&<section className={styles.caption}><div className={styles.captionNumber}>01<span> / {tr('FIELD NOTES')}</span></div><h2>{tr("一座开放的网球剧场。")}</h2><p>{tr("蓝色硬地、层叠看台与铜色屋顶，")}<br/>{tr("在墨尔本公园的一隅相遇。")}</p><div className={styles.metrics}><div><b>{seats?seats.toLocaleString():'—'}</b><span>{tr("模型座椅")}</span></div><div><b>23.77<span> m</span></b><span>{tr("标准场地长度")}</span></div></div></section>}
-    <nav className={styles.viewDock} aria-label={tr("相机视角")}><span className={styles.dockLabel}>{tr("EXPLORE")}</span><div>{views.map((v,i)=><button key={v.id} aria-pressed={shot.view===v.id} className={shot.view===v.id?styles.activeView:''} onClick={()=>{choose(v.id);setSelected(null);}} title={`${tr(v.label)} · ${tr('快捷键')} ${i+1}`}><span>{v.icon}</span><b>{tr(v.label)}</b><small>{v.en}</small></button>)}</div></nav>
+    <nav className={`${styles.viewDock} ${viewPanel?styles.viewDockOpen:''}`} aria-label={tr("相机视角")}>
+      <button className={styles.viewToggle} aria-expanded={viewPanel} aria-controls="camera-view-options" onClick={()=>setViewPanel(open=>{if(!open){setVenuePanel(false);setPanel(false);}return !open;})}><span>{tr("相机视角")}</span><b>{tr(activeView.label)}</b><i aria-hidden="true">{viewPanel?'−':'+'}</i></button>
+      <span className={styles.dockLabel}>{tr("EXPLORE")}</span><div id="camera-view-options">{views.map((v,i)=><button key={v.id} aria-pressed={shot.view===v.id} className={shot.view===v.id?styles.activeView:''} onClick={()=>{choose(v.id);setSelected(null);setViewPanel(false);}} title={`${tr(v.label)} · ${tr('快捷键')} ${i+1}`}><span>{v.icon}</span><b>{tr(v.label)}</b><small>{v.en}</small></button>)}</div>
+    </nav>
     <div className={styles.utilities}><button onClick={()=>choose('hero')} title={tr("重置视角 · R")} aria-label={tr("重置视角")}>↺</button><button onClick={capture} disabled={!ready} title={tr("保存画面")} aria-label={tr("保存画面")}>⌑</button></div>
     <footer className={styles.footer}><span><i/> {ready?tr("场景已就绪"):tr("正在构建场景")}</span><span>{tr("拖动旋转")} <b>·</b>  {tr("滚轮缩放")} <b>·</b>  {tr("右键平移")} <b>·</b>  {tr("双指操作")}</span><span>{tr("VISUAL STUDY")} <b> / </b> 01</span></footer>
     {!ready&&!loadError&&<div className={styles.loading} role="status"><span className={styles.spinner}/><strong>{tr("正在构建你的场边视角")}</strong><small>{tr("球场 · 看台 · 墨尔本公园")}</small></div>}

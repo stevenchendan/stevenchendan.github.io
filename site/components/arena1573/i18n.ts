@@ -6,7 +6,7 @@ const english: Record<string, string> = {
   '影院模式':'Cinema mode', '退出影院模式':'Exit cinema', '退出影院模式 · Esc':'Exit cinema · Esc',
   '建筑为参考重建，非实测模型。': 'Reference reconstruction, not a surveyed model.',
   '雨天': 'Rain', '示意天气 · 非实时预报': 'Illustrative weather · not a live forecast',
-  '澳网全景':'AO grounds', '探索澳网园区':'Explore the AO precinct',
+  '澳网全景':'AO grounds', '探索澳网园区':'Explore the AO precinct', '探索 AO':'Explore AO',
   '西侧球场':'Western courts', '东侧球场':'Eastern courts',
   '色块为示意区域，非官方活动边界。':'Indicative areas, not official event boundaries.',
   '官方 AO26 地图 ↗':'Official AO26 map ↗',
