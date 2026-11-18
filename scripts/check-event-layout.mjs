@@ -8,6 +8,13 @@ for(const name of ['precinctGeometry','eventLayout','visitorMotion']){
   vm.runInNewContext(ts.transpileModule(fs.readFileSync(`site/components/arena1573/${name}.ts`,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{module:m,exports:m.exports,require:id=>modules[id.replace('./','')]});
 }
 const data=JSON.parse(fs.readFileSync('public/data/1573-context.json','utf8'));
+const {routeFinish}=modules.eventLayout;
+const route=highway=>routeFinish(data.features.find(f=>f.highway===highway));
+assert.ok(route('service').width<route('secondary').width,'Service lanes are narrower than arterial streets');
+assert.equal(route('service').arterial,false,'Service lanes remain unmarked');
+assert.equal(route('secondary').arterial,true,'Through streets carry lane markings');
+assert.equal(route('footway').road,false);
+assert.equal(route('corridor'),null,'Indoor corridors do not paint through arena floors');
 const pockets=modules.eventLayout.eventLayout(data);
 const crossings=modules.eventLayout.eventCrossings(data);
 assert.ok(crossings.length>0&&crossings.length<=8,'Crossings are bounded and use mapped intersections');

@@ -1,14 +1,18 @@
 import { grandSlamOval } from './GrandSlamOval';
 import { outerCourtStands } from './OuterCourtStands';
 import { SEATING_LIFT } from './dimensions';
+import { seatedCrowd } from './seatedCrowd';
 import * as T from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { courtFrame, pathIntervals, pointInRing, outsideRingIntervals } from './precinctGeometry';
-import { facade, roofTruss, supportBuilding } from './architecture';
-import { precinctMaterial } from './materials';
+import { facade, supportBuilding } from './architecture';
+import { ArenaRoof, copperRoofHeight, rodLaverAnnexes } from './roofs';
+import { rodLaverBowl } from './RodLaverBowl';
+import { courtMaterial, precinctMaterial } from './materials';
 import { courtElevation } from './courtPlacements';
 import { buildingVenue, courtVenue } from './venueVisibility';
-import { eventFacilities } from './EventFacilities';
+import { arenaEntryFacilities, eventFacilities } from './EventFacilities';
+import { routeFinish } from './eventLayout';
 import { EVENT_CONCOURSE, GROUND, GroundSurfaces } from './ground';
 
 export interface ContextData {
@@ -18,7 +22,7 @@ export interface ContextData {
 
 // All dimensions are metres. Court geometry is regulation sized; architecture
 // is a visual reconstruction, not a surveyed or as-built model.
-const palette = { concrete: '#b4b4ac', edge: '#d4d1c5', steel: '#727d7b', dark: '#183b46', blue: '#147daa', outer: '#3593b5', seat: '#72b9e4', white: '#f2f0dc', copper: '#a87050' };
+const palette = { concrete: '#b3b8b9', edge: '#d8dcd5', steel: '#76838a', dark: '#183b46', blue: '#1665ae', outer: '#338cc1', white: '#fcfcf4' };
 class Builder {
   group = new T.Group();
   batches = new Map<string, T.BufferGeometry[]>();
@@ -41,7 +45,12 @@ class Builder {
   finish() {
     this.batches.forEach((geometries,color) => {
       const merged = mergeGeometries(geometries);
-      if (merged) { const mesh = new T.Mesh(merged,precinctMaterial(color,merged)); mesh.castShadow = true; mesh.receiveShadow = true; this.group.add(mesh); }
+      if (merged) {
+        const material = color === palette.blue || color === palette.outer ? courtMaterial(color,merged,color===palette.blue) : precinctMaterial(color,merged);
+        if (color === '#a86b49' || color === '#be8059') material.side = T.DoubleSide;
+        const mesh = new T.Mesh(merged,material);
+        mesh.castShadow = true; mesh.receiveShadow = true; this.group.add(mesh);
+      }
       geometries.forEach(g=>g.dispose());
     });
     this.batches.clear(); return this.group;
@@ -63,65 +72,161 @@ function ring(b: Builder, inner: number, outer: number, bottom: number, height: 
   const g = new T.ExtrudeGeometry(s,{depth:height,bevelEnabled:false,curveSegments:10});
   g.rotateX(-Math.PI/2); g.translate(0,bottom,0); b.add(g,color);
 }
-function label(text: string, w: number, h: number, color = '#eff5ed', background = '#163945') {
+function label(text: string, w: number, h: number, color = '#eff5ed', background: string | null = '#163945') {
   const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 128;
   const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = background; ctx.fillRect(0,0,1024,128);
+  if(background){ctx.fillStyle = background; ctx.fillRect(0,0,1024,128);}
   ctx.fillStyle=color;ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='600 65px Arial';ctx.fillText(text,512,69);
   const texture = new T.CanvasTexture(canvas);texture.colorSpace = T.SRGBColorSpace;texture.anisotropy=8;
-  return new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshStandardMaterial({map:texture,roughness:.8,side:T.DoubleSide}));
+  return new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshStandardMaterial({map:texture,roughness:.8,side:T.DoubleSide,transparent:!background,depthWrite:!!background}));
 }
-function court(b: Builder, x=0,z=0,rotation=0, detailed=true, footprint?:number[][], clay=false, elevation=0) {
+const netTop=(x:number)=>1.03+.156*(x/6.4)**2;
+/** Filter the net squares over each pixel, so the mesh stays transparent and
+ * flicker-free as the view moves from the seat to the entire precinct. */
+function distantNet(){
+  const pos:number[]=[],uv:number[]=[],indices:number[]=[];
+  for(let i=0;i<=24;i++){
+    const x=-6.4+12.8*i/24,high=netTop(x)-.048;
+    pos.push(x,.15,0,x,high,0);uv.push(x/.045,0,x/.045,(high-.15)/.045);
+    if(i<24){const n=i*2;indices.push(n,n+1,n+2,n+1,n+3,n+2);}
+  }
+  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));
+  g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setIndex(indices);
+  const material=new T.ShaderMaterial({
+    transparent:true,depthWrite:false,side:T.DoubleSide,
+    vertexShader:`varying vec2 cell;
+      void main(){cell=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+    fragmentShader:`varying vec2 cell;
+      vec2 threadIntegral(vec2 p){return floor(p)*.073+clamp(fract(p),0.0,.073);}
+      void main(){
+        vec2 pixel=max(fwidth(cell),vec2(.0001));
+        vec2 thread=clamp((threadIntegral(cell+pixel*.5)-threadIntegral(cell-pixel*.5))/pixel,0.0,1.0);
+        float coverage=1.0-(1.0-thread.x)*(1.0-thread.y);
+        gl_FragColor=vec4(.022,.032,.034,coverage*.94);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
+  });
+  const net=new T.Mesh(g,material);net.name='court-net-mesh';return net;
+}
+function court(b: Builder, x=0,z=0,rotation=0, detailed=true, footprint?:number[][], clay=false, elevation=0, rodLaver=false) {
   const cb = new Builder();
   const outer=clay?'#bb7250':'#397fac', blue=clay?'#bd6845':'#236598';
-  if(footprint){
+  if(rodLaver){
+    const runoff=new T.ShapeGeometry(roundedPath(13.15,21.55,6.8),18);
+    runoff.rotateX(-Math.PI/2);runoff.translate(0,.095,0);cb.add(runoff,palette.outer);
+  }else if(footprint){
     const c=Math.cos(rotation),s=Math.sin(rotation);
     const apron=new T.Shape(footprint.map(p=>{const dx=p[0]-x,dz=p[1]-z;return new T.Vector2(dx*c-dz*s,-(dx*s+dz*c));}));
     const surface=new T.ShapeGeometry(apron);surface.rotateX(-Math.PI/2);surface.translate(0,.095,0);cb.add(surface,outer);
   }else cb.box(0,.035,0,21.2,.12,38.3,palette.outer);
-  cb.box(0,.105,0,10.97,.02,23.77,blue);
+  cb.box(0,.105,0,10.97,.02,23.77,detailed ? palette.blue : blue);
   const line=(x:number,z:number,w:number,d:number)=>cb.box(x,.122,z,w,.015,d,palette.white);
-  [-5.485,-4.115,4.115,5.485].forEach(x=>line(x,0,.05,23.77));
-  [-11.885,11.885].forEach(z=>{line(0,z,10.97,.065);line(0,z-Math.sign(z)*.15,.05,.3);});
-  [-6.4,6.4].forEach(z=>line(0,z,8.23,.05)); line(0,0,.05,12.8);
+  if(!detailed){
+    [-5.485,-4.115,4.115,5.485].forEach(x=>line(x,0,.05,23.77));
+    [-11.885,11.885].forEach(z=>{line(0,z,10.97,.065);line(0,z-Math.sign(z)*.15,.05,.3);});
+    [-6.4,6.4].forEach(z=>line(0,z,8.23,.05)); line(0,0,.05,12.8);
+  }
   [-6.4,6.4].forEach(x=>cb.rod([x,.1,0],[x,1.22,0],.055,palette.dark));
   // Fine net lattice with a visibly lower centre strap.
   if(detailed){
-    for(let i=0;i<=80;i++) { const x=-6.4+i*.16; const y=.914+.156*Math.pow(Math.abs(x)/6.4,2); cb.rod([x,.18,0],[x,y,0],.009,'#293a3b'); }
-    for(let i=0;i<9;i++) cb.rod([-6.4,.2+i*.085,0],[6.4,.2+i*.085,0],.008,'#293a3b');
-  }else cb.box(0,.56,0,12.8,.82,.035,'#475e60');
-  for(let i=0;i<32;i++){ const x=-6.4+i*.4; const y=(n:number)=>.914+.156*Math.pow(Math.abs(n)/6.4,2);cb.rod([x,y(x),0],[x+.4,y(x+.4),0],.023,palette.white); }
-  cb.box(0,.55,.016,.045,.89,.025,palette.white);
+    for(let i=0;i<=160;i++) {
+      const x=-6.4+i*.08;
+      cb.rod([x,.17,0],[x,netTop(x),0],.006,'#293a3b');
+    }
+    for(let section=0;section<16;section++){
+      const a=-6.4+section*.8, c=a+.8;
+      for(let row=1;row<14;row++){
+        const y=(x:number)=>.17+(netTop(x)-.17)*row/14;
+        cb.rod([a,y(a),0],[c,y(c),0],.005,'#293a3b');
+      }
+    }
+  }
+  for(let i=0;i<16;i++){
+    const a=-6.4+i*.8,c=a+.8,tape=new T.BoxGeometry(.8,.052,.024);
+    tape.rotateZ(Math.atan2(netTop(c)-netTop(a),.8));tape.translate((a+c)/2,(netTop(a)+netTop(c))/2-.026,0);cb.add(tape,palette.white);
+  }
+  cb.box(0,.57,.016,.045,.91,.025,palette.white);
   const g=cb.finish();g.position.set(x,elevation,z);g.rotation.y=rotation;
-  if(detailed){
+  if(!detailed)g.add(distantNet());
+  if(detailed&&!rodLaver){
     [-1,1].forEach(s=>{
-      const text=label('M E L B O U R N E',6.7,.8,palette.white,palette.outer);text.rotation.x=-Math.PI/2;text.rotation.z=s<0?0:Math.PI;text.position.set(0,.105,s*16);g.add(text);
+      const text=label('M E L B O U R N E',6.7,.8,palette.white,null);text.rotation.x=-Math.PI/2;text.rotation.z=s<0?0:Math.PI;text.position.set(0,.105,s*16);g.add(text);
     });
   }
   b.group.add(g);
+}
+
+// A continuous pan and backrest. The outer edges curl forward and the profile
+// narrows toward the shoulder. Large bowls use a coarser version of the mould.
+function mouldedSeatGeometry(close:boolean) {
+  const profile = close
+    ? [[-.22,.035,.18],[-.19,.055,.213],[-.04,0,.215],[.13,.02,.21],[.185,.10,.21],[.20,.27,.21],[.235,.405,.19],[.24,.426,.165]]
+    : [[-.22,.036,.19],[-.035,0,.215],[.16,.04,.21],[.235,.405,.18]];
+  const cols=close?5:3,vertices:number[]=[],indices:number[]=[];
+  profile.forEach(([z,y,width],row)=>{
+    for(let col=0;col<cols;col++){
+      const u=2*col/(cols-1)-1,edge=u*u;
+      vertices.push(u*width,y+(y<.1?.025*edge:0),z-(y>=.1?.045*edge:0));
+      const n=row*cols+col;
+      if(row>0&&col>0)indices.push(n-cols-1,n-1,n-cols,n-cols,n-1,n);
+    }
+  });
+  const seat=new T.BufferGeometry();
+  seat.setAttribute('position',new T.Float32BufferAttribute(vertices,3));
+  seat.setIndex(indices);seat.computeVertexNormals();return seat;
 }
 
 // A real interior surface and stepped bowl beneath each open roof, so terrain
 // colours and pedestrian paths cannot read as the arena floor.
 function arenaBowl(b:Builder,x:number,z:number,w:number,d:number,onlySeats=false,rows=22,drawCourt=true,spectators?:T.Group){
   const seatPositions:{x:number;y:number;z:number;angle:number}[]=[];
+  const indoor=['john','mca','rla'].includes(b.group.userData.venue);
   if(!onlySeats){const floor=new T.ShapeGeometry(roundedPath(w,d,12));floor.rotateX(-Math.PI/2);floor.translate(x,.06,z);b.add(floor,'#394f5b');}
   for(let row=0;row<rows;row++){
     const t=row/rows,u=(row+1)/rows;
     const shape=roundedPath(13+(w-13)*u,22+(d-22)*u,3+8*u);
     shape.holes.push(new T.Path(roundedPath(13+(w-13)*t,22+(d-22)*t,3+8*t).getPoints(12).reverse()));
-    const tier=new T.ExtrudeGeometry(shape,{depth:.48,bevelEnabled:false,curveSegments:12});
-    if(!onlySeats){tier.rotateX(-Math.PI/2);tier.translate(x,.35+row*.57,z);b.add(tier,'#77888f');}else tier.dispose();
+    const tier=new T.ExtrudeGeometry(shape,{depth:.57,bevelEnabled:false,curveSegments:12});
+    if(!onlySeats){tier.rotateX(-Math.PI/2);tier.translate(x,.26+row*.57,z);b.add(tier,'#77888f');}else tier.dispose();
     const path=roundedPath(13+(w-13)*(t+u)/2,22+(d-22)*(t+u)/2,3+8*u),count=Math.floor(path.getLength()/.57);
+    if(indoor){
+      const width=Math.min(1.35,path.getLength()*.073/16);
+      for(let section=0;section<16;section++){
+        const f=(section+.04)/16,p=path.getPointAt(f),outer=shape.getPointAt(f),v=path.getTangentAt(f);
+        const angle=Math.atan2(v.y,v.x),depth=outer.distanceTo(p),top=.83+row*.57;
+        const px=x+p.x,pz=z-p.y;
+        // The aisle climbs two shallow treads for each seating tier.
+        b.box(px,top+.012,pz,width,.024,2*depth,'#b8bfbe',angle);
+        b.box(x+(p.x+outer.x)/2,top+.15,z-(p.y+outer.y)/2,width,.3,depth,'#cbd0cb',angle);
+        if(row%4===1&&section%2===0){
+          b.rod([px,top,pz],[px,top+.89,pz],.032,'#8f9ca0');
+          b.rod([px,top+.89,pz],[x+outer.x,top+1.16,z-outer.y],.038,'#b1bcbd');
+        }
+        if(row===rows-1&&section%2===1){
+          // The rear concourse doors sit behind each alternate aisle.
+          const ox=x+outer.x+v.y*.7,oz=z-outer.y+v.x*.7;
+          b.box(ox,top+1.38,oz,2.4,2.75,.22,'#30444e',angle);
+          b.box(ox,top+2.8,oz,2.8,.19,1.1,'#b7c2c0',angle);
+          for(const side of [-1,1])b.box(ox+v.x*side*1.25,top+1.38,oz-v.y*side*1.25,.14,2.76,.45,'#8d9da1',angle);
+        }
+      }
+    }
     for(let i=0;i<count;i++){
       const f=i/count;if((f*16)%1<.08)continue;
       const p=path.getPointAt(f),v=path.getTangentAt(f);
       seatPositions.push({x:x+p.x,y:(onlySeats?1.4:1)+row*(onlySeats?.48:.57),z:z-p.y,angle:Math.atan2(v.y,v.x)});
     }
   }
-  const seat=new T.BoxGeometry(.46,.38,.45),mesh=new T.InstancedMesh(seat,new T.MeshStandardMaterial({roughness:.7}),seatPositions.length),o=new T.Object3D();
-  seatPositions.forEach((p,i)=>{o.position.set(p.x,p.y,p.z);o.rotation.y=p.angle;o.updateMatrix();mesh.setMatrixAt(i,o.matrix);mesh.setColorAt(i,new T.Color(['#578ba8','#74a4bf','#a2bac6','#477592'][i%4]));});
+  const seat=mouldedSeatGeometry(false),mesh=new T.InstancedMesh(seat,new T.MeshStandardMaterial({roughness:.66,side:T.DoubleSide}),seatPositions.length),o=new T.Object3D();
+  const shades=(b.group.userData.venue==='john'?['#5e839d','#648aa2','#7194a7']:['#4286b0','#4e90b7','#609bbd']).map(color=>new T.Color(color));
+  seatPositions.forEach((p,i)=>{o.position.set(p.x,p.y,p.z);o.rotation.y=p.angle;o.updateMatrix();mesh.setMatrixAt(i,o.matrix);mesh.setColorAt(i,shades[i%17===0?2:i%5===0?1:0]);});
   mesh.castShadow=true;mesh.receiveShadow=true;b.group.add(mesh);
+  if(indoor){
+    const foot=new T.BoxGeometry(.16,.18,.15);foot.translate(0,-.08,.025);
+    const mounts=new T.InstancedMesh(foot,new T.MeshStandardMaterial({color:'#45565c',roughness:.84}),seatPositions.length);
+    mounts.instanceMatrix=mesh.instanceMatrix;mounts.receiveShadow=true;b.group.add(mounts);
+  }
   if(spectators){
     // Sample actual seats after aisle exclusions so nobody floats or blocks stairs.
     const occupied=seatPositions.filter((_,i)=>((i*17+Math.floor(i/11))%13)<5);
@@ -159,6 +264,21 @@ export function buildArena() {
   }
   ring(stand,9.48,10.9,.1,5.24,palette.concrete);
   ring(stand,10.7,10.94,5.34,.75,palette.edge);
+  // Cast-panel joints, recessed entrance faces and the upper fascia give the
+  // outside of the raised bowl a readable scale from the concourse.
+  const perimeter=roundedPath(21.75,30.45,13.75);
+  const bays=Math.round(perimeter.getLength()/2.65);
+  for(let i=0;i<bays;i++){
+    const p=perimeter.getPointAt(i/bays),v=perimeter.getTangentAt(i/bays);
+    const angle=Math.atan2(v.y,v.x);
+    b.box(p.x,3.5,-p.y,.055,6.7,.08,'#94a1a3',angle);
+    if(i%10!==4)continue;
+    const x=p.x+v.y*.12,z=-p.y+v.x*.12;
+    b.box(x,1.47,z,2.7,2.75,.14,'#354851',angle);
+    b.box(x+v.y*.15,2.95,z+v.x*.15,3.05,.14,.64,palette.edge,angle);
+    for(const offset of [-.83,0,.83])b.box(x+offset*v.x+v.y*.08,1.47,z-offset*v.y+v.x*.08,.06,2.7,.08,palette.steel,angle);
+  }
+  ring(b,10.9,11.02,6.78,.22,'#778b94');
   // Tall court-facing retaining wall visible in the supplied four photographs.
   // Continuous rounded corners replace the previous low, disconnected boards.
   ring(b,-.32,.02,.1,2.22,palette.edge);
@@ -188,7 +308,10 @@ export function buildArena() {
   // Lightweight shade hoods at the back of the stands.
   for(const s of [-1,1])for(const z of [-19,-9,3,15]){
     stand.box(s*20,6.8,z,3.3,.16,5.3,'#ece9dd');
-    for(const end of [-2.3,2.3]) stand.rod([s*21.15,5.35,z+end],[s*21.15,6.75,z+end],.065);
+    for(const end of [-2.3,2.3]) {
+      stand.rod([s*21.15,5.35,z+end],[s*21.15,6.75,z+end],.065);
+      stand.rod([s*21.15,5.85,z+end],[s*18.65,6.68,z+end],.045);
+    }
   }
   for(const s of [-1,1])for(const x of [-6,3])stand.box(x,6.8,s*29.4,6.5,.18,3,'#ece9dd');
   // Six floodlight masts with cross bracing and individually modelled luminaires.
@@ -220,20 +343,13 @@ export function buildArena() {
   stand.box(0,7.7,-29.86,10.8,1.65,.3,palette.dark);
   stand.rod([-4,5.3,-29.8],[-4,8.5,-29.8],.09);stand.rod([4,5.3,-29.8],[4,8.5,-29.8],.09);
 
-  // One shared geometry and one draw call for thousands of individual seats.
-  const base=new T.BoxGeometry(.43,.115,.43);base.translate(0,0,0);
-  const back=new T.BoxGeometry(.43,.43,.095);back.rotateX(-.12);back.translate(0,.22,.21);
-  const seatGeometry=mergeGeometries([base,back])!;base.dispose();back.dispose();
-  const seatMesh=new T.InstancedMesh(seatGeometry,new T.MeshStandardMaterial({color:palette.seat,roughness:.66}),seats.length);
+  const seatGeometry=mouldedSeatGeometry(true);
+  const seatMesh=new T.InstancedMesh(seatGeometry,new T.MeshStandardMaterial({roughness:.58,side:T.DoubleSide}),seats.length);
   const dummy=new T.Object3D();
-  seats.forEach((s,i)=>{dummy.position.set(s.x,s.y,s.z);dummy.rotation.set(0,s.angle,0);dummy.updateMatrix();seatMesh.setMatrixAt(i,dummy.matrix);seatMesh.setColorAt(i,new T.Color(i%17===0?'#c5c7b6':i%7===0?'#a8bfc0':palette.seat));});
+  seats.forEach((s,i)=>{dummy.position.set(s.x,s.y,s.z);dummy.rotation.set(0,s.angle,0);dummy.updateMatrix();seatMesh.setMatrixAt(i,dummy.matrix);seatMesh.setColorAt(i,new T.Color(i%13===0?'#86b3d3':i%5===0?'#649fc8':'#5895c4'));});
   seatMesh.castShadow=true;seatMesh.receiveShadow=true;stand.group.add(seatMesh);
-  const crowd=new T.Group();
-  const bodies=new T.InstancedMesh(new T.CapsuleGeometry(.15,.3,3,5),new T.MeshStandardMaterial({roughness:.9}),Math.floor(seats.length/7));
-  const heads=new T.InstancedMesh(new T.SphereGeometry(.125,6,5),new T.MeshStandardMaterial({color:'#c79c78'}),bodies.count);
-  const shirts=['#e4dcc4','#40586e','#ece9e1','#4d7385','#cc6c4c','#677052'];
-  for(let i=0;i<bodies.count;i++) { const s=seats[i*7];dummy.position.set(s.x,s.y+.36,s.z);dummy.rotation.set(0,s.angle,0);dummy.updateMatrix();bodies.setMatrixAt(i,dummy.matrix);bodies.setColorAt(i,new T.Color(shirts[i%shirts.length]));dummy.position.y+=.39;dummy.updateMatrix();heads.setMatrixAt(i,dummy.matrix);}
-  crowd.add(bodies,heads);crowd.visible=false;stand.group.add(crowd);
+  const crowd=seatedCrowd(seats);
+  crowd.visible=false;stand.group.add(crowd);
   stand.finish();stand.group.position.y=SEATING_LIFT;b.group.add(stand.group);
   return {group:b.finish(),lamps,crowd,seats:seats.length};
 }
@@ -259,7 +375,7 @@ export function buildContext(data: ContextData) {
   const ground=new GroundSurfaces();
   // Continuous terrain replaces the exposed sides of the old thick base slab.
   ground.polygon([[-1500,-1500],[1500,-1500],[1500,1500],[-1500,1500]],-.15,'#758268');
-  ground.polygon(EVENT_CONCOURSE,GROUND.concourse,'#a7aaa0');
+  ground.polygon(EVENT_CONCOURSE,GROUND.concourse,'#b8bcb8');
   grandSlamOval(venue('oval'));
   // Five hard courts are on the Eastern Plaza deck; clay courts remain at grade.
   venue('east').box(653,2.85,219,111,5.7,46,'#9babae');
@@ -270,7 +386,18 @@ export function buildContext(data: ContextData) {
   const riverShape=new T.Shape(riverRing.map(([x,z])=>new T.Vector2(x,-z)));
   const riverGeometry=new T.ShapeGeometry(riverShape);riverGeometry.rotateX(-Math.PI/2);riverGeometry.translate(0,-.06,0);
   const river=new T.Mesh(riverGeometry,new T.MeshStandardMaterial({color:'#547d80',roughness:.48,metalness:.12}));river.receiveShadow=true;b.group.add(river);
-  ground.polygon([[-31,-40],[33,-40],[33,42],[-31,42]],GROUND.apron,'#b2b4aa');
+  const apronRing=(w:number,d:number,r:number)=>roundedPath(w,d,r).getPoints(12).map(p=>[p.x,-p.y]);
+  ground.polygon(apronRing(33,41.5,13),GROUND.apron,'#cccac2');
+  ground.polygon(apronRing(25,34,14),GROUND.path-.013,'#a4adae',apronRing(24.2,33.2,13.2));
+  ground.polygon(apronRing(24.2,33.2,13.2),GROUND.path-.012,'#536066',apronRing(24.05,33.05,13.05));
+  const roadNodes=new Map<string,number>();
+  for(const feature of data.features){
+    if(feature.kind!=='path'||!routeFinish(feature)?.road)continue;
+    feature.points.forEach((p,i)=>{
+      const key=p.join(','),links=i===0||i===feature.points.length-1?1:2;
+      roadNodes.set(key,(roadNodes.get(key)??0)+links);
+    });
+  }
   for(const f of data.features){
     b=environment;
     if(f.kind==='green'&&f.points.length>3){
@@ -283,19 +410,29 @@ export function buildContext(data: ContextData) {
       for(let d=0;d<len;d+=2)b.box(a[0]+dx*d/len,.07,a[1]+dz*d/len,2,.08,.18,'#585955',angle);
     }
     if(f.kind==='path'){
+      const finish=routeFinish(f);
+      if(!finish)continue;
+      const bridge=f.name==='Tanderrum Bridge',width=bridge?6:finish.width;
+      const y=bridge?6.6:finish.road?GROUND.road:finish.color==='#828988'?GROUND.path-.006:GROUND.path;
+      let distance=0;
       for(let i=1;i<f.points.length;i++){
         const a=f.points[i-1], c=f.points[i], dx=c[0]-a[0],dz=c[1]-a[1];
+        const len=Math.hypot(dx,dz),start=distance;
+        distance+=len;
+        if(len<.001)continue;
         if(Math.abs((a[0]+c[0])/2)<24&&Math.abs((a[1]+c[1])/2)<33)continue;
-        const bridge=f.name==='Tanderrum Bridge',road=f.name==='Batman Avenue'||/^(primary|secondary|tertiary|service|residential|trunk|motorway)/.test(f.highway??'');
-        // Paths cross the road network. Keep their top surfaces above both
-        // asphalt and lane markings to avoid coplanar depth-buffer flicker.
-        const y=bridge?6.6:road?GROUND.road:GROUND.path,width=bridge?6:road?8:Math.max(2,f.width);
         const dry=outsideRingIntervals(a,c,riverRing);
-        const clipped=pathIntervals(a,c,courtExclusions,width/2+.15).flatMap(([lo,hi])=>dry.map(([u,v])=>[Math.max(lo,u),Math.min(hi,v)]).filter(([u,v])=>v-u>1e-5));
+        const clipped=pathIntervals(a,c,courtExclusions,width/2+(finish.road?.4:.15)).flatMap(([lo,hi])=>dry.map(([u,v])=>[Math.max(lo,u),Math.min(hi,v)]).filter(([u,v])=>v-u>1e-5));
         for(const [lo,hi] of bridge?[[0,1]]:clipped){
           const middle=(lo+hi)/2;
-          if(bridge)b.box(a[0]+dx*middle,y,a[1]+dz*middle,width,.5,Math.hypot(dx,dz)*(hi-lo),'#d7d4c5',Math.atan2(dx,dz));
-          else ground.strip([a[0]+dx*lo,a[1]+dz*lo],[a[0]+dx*hi,a[1]+dz*hi],width,y,road?'#626b6c':'#bebfb5',lo<1e-8,hi>1-1e-8);
+          if(bridge)b.box(a[0]+dx*middle,y,a[1]+dz*middle,width,.5,len*(hi-lo),'#d7d4c5',Math.atan2(dx,dz));
+          else{
+            const left=[a[0]+dx*lo,a[1]+dz*lo],right=[a[0]+dx*hi,a[1]+dz*hi];
+            // All carriageways sit above their kerb bands. Joining streets
+            // naturally cut through those bands and leave a continuous junction.
+            if(finish.road)ground.strip(left,right,width+.52,y-.009,'#a8aca8',lo<1e-8,hi>1-1e-8);
+            ground.strip(left,right,width,y,finish.color,lo<1e-8,hi>1-1e-8);
+          }
         }
         if(bridge){
           const len=Math.hypot(dx,dz),nx=dz/len*2.9,nz=-dx/len*2.9;
@@ -305,7 +442,14 @@ export function buildContext(data: ContextData) {
           }
           for(let d=8;d<len;d+=24){const t=d/len;b.box(a[0]+dx*t,3.15,a[1]+dz*t,1.1,6.3,1.1,'#aeb2a9');}
         }
-        if(road){const len=Math.hypot(dx,dz);for(let d=2;d<len-2;d+=8){const lo=(d-1.5)/len,hi=(d+1.5)/len;if(clipped.some(([u,v])=>lo>=u&&hi<=v))ground.strip([a[0]+dx*lo,a[1]+dz*lo],[a[0]+dx*hi,a[1]+dz*hi],.12,GROUND.markings,'#c8c9bc');}}
+        if(!finish.arterial)continue;
+        const entry=(roadNodes.get(a.join(','))??0)>2?4/len:0;
+        const exit=(roadNodes.get(c.join(','))??0)>2?1-4/len:1;
+        // Carry the dash rhythm around bends and leave intersecting roads clear.
+        for(let d=Math.floor(start/9)*9;d<distance;d+=9)for(const [u,v] of clipped){
+          const lo=Math.max(u,entry,(d-start)/len),hi=Math.min(v,exit,(d+2.8-start)/len);
+          if(hi>lo)ground.strip([a[0]+dx*lo,a[1]+dz*lo],[a[0]+dx*hi,a[1]+dz*hi],.11,GROUND.markings,'#eef0e7');
+        }
       }
     }
     if(f.kind==='court'&&f.id!=='way/126844352'){
@@ -409,13 +553,9 @@ export function buildContext(data: ContextData) {
         const p=ring[i],q=ring[(i+1)%ring.length],length=Math.hypot(q[0]-p[0],q[1]-p[1]);
         for(let d=0;d<length;d+=5){const t=d/length,x=p[0]+(q[0]-p[0])*t,z=p[1]+(q[1]-p[1])*t;b.rod([x,0,z],[x,25,z],.18,'#d2d6ca');}
       }
-      arenaBowl(b,cx,cz,40,48);
+      arenaBowl(b,cx,cz,40,48,false,22,true,spectatorsFor(b));
       facade(b,building.ring,1.2,12,'#536b78');
-      // Rectangular moving roof panels parked at the ends in the open preset.
-      for(const side of [-1,1]){
-        b.box(cx,27,cz+side*51,71,.65,27,'#dce0dd');
-        for(const dz of [-11,0,11])roofTruss(b,cx,cz+side*51+dz,71,27.5,3.2);
-      }
+      b.group.add(new ArenaRoof('john',cx,cz,ring,()=>new Builder()));
       for(const x of [cx-36,cx+36]){
         b.rod([x,27,cz-77],[x,27,cz+77],.3,'#a9b8bd');
         for(let z=cz-60;z<cz+65;z+=12)b.rod([x,18,z],[x,27,z],.17,'#d5dcda');
@@ -426,23 +566,47 @@ export function buildContext(data: ContextData) {
       const shell=roundedPath(55,64,30);shell.holes.push(new T.Path(roundedPath(49,58,26).getPoints(32).reverse()));
       const wall=new T.ExtrudeGeometry(shell,{depth:22,bevelEnabled:false,curveSegments:24});wall.rotateX(-Math.PI/2);wall.translate(154,0,72);b.add(wall,'#8b9799');
       const roofShape=roundedPath(56,65,31);roofShape.holes.push(new T.Path(roundedPath(35,35,3).getPoints(32).reverse()));
-      const roof=new T.ShapeGeometry(roofShape,36);roof.rotateX(-Math.PI/2);const pos=roof.getAttribute('position');
-      for(let i=0;i<pos.count;i++){const x=pos.getX(i),z=pos.getZ(i);pos.setXYZ(i,x+154,23+5*(1-Math.min(1,Math.max(Math.abs(x)/56,Math.abs(z)/65))),z+72);}roof.computeVertexNormals();b.add(roof,'#e4e5dc');
+      const roof=new T.ExtrudeGeometry(roofShape,{depth:.55,bevelEnabled:false,curveSegments:36});
+      roof.rotateX(-Math.PI/2);
+      const pos=roof.getAttribute('position');
+      for(let i=0;i<pos.count;i++){
+        const x=pos.getX(i),z=pos.getZ(i);
+        const top=23+5*(1-Math.min(1,Math.max(Math.abs(x)/56,Math.abs(z)/65)));
+        pos.setXYZ(i,x+154,top-.55+pos.getY(i),z+72);
+      }
+      roof.computeVertexNormals();b.add(roof,'#e4e5dc');
+      // Suspended soffit panels have a cooler, darker underside than the
+      // daylight roof. Their joints and hangers are visible from the seats.
+      const soffit=new T.ShapeGeometry(roofShape,36);soffit.rotateX(Math.PI/2);
+      const lining=soffit.getAttribute('position');
+      const ceiling=(x:number,z:number)=>22.27+5*(1-Math.min(1,Math.max(Math.abs(x)/56,Math.abs(z)/65)));
+      for(let i=0;i<lining.count;i++){
+        const x=lining.getX(i),z=lining.getZ(i);lining.setXYZ(i,x+154,ceiling(x,z),z+72);
+      }
+      soffit.computeVertexNormals();b.add(soffit,'#7c8a90');
+      const eave=roundedPath(35.15,35.15,3),rim=roundedPath(55.65,64.65,30.8);
+      for(let i=0;i<92;i++){
+        const a=eave.getPointAt(i/92),c=rim.getPointAt(i/92);
+        b.rod([154+a.x,ceiling(a.x,-a.y)-.075,72-a.y],[154+c.x,ceiling(c.x,-c.y)-.075,72-c.y],.072,'#67757c');
+      }
       // Keep roof seams on the solid bays rather than stretching across the opening.
       for(let z=-42;z<=42;z+=14){
         b.rod([103,24,72+z],[128,24,72+z],.10,'#bfc5c3');
         b.rod([180,24,72+z],[205,24,72+z],.10,'#bfc5c3');
       }
-      arenaBowl(b,154,72,46,55,false,22,true,spectatorsFor(b));
+      const interior=new Builder();
+      rodLaverBowl(interior,roundedPath,mouldedSeatGeometry(false));
+      court(interior,0,0,0,true,undefined,false,0,true);
+      const seating=interior.finish();seating.name='rod-laver-interior';seating.position.set(154,0,72);b.group.add(seating);
       const perimeter=roundedPath(55.15,64.15,30).getPoints(48).map(p=>[p.x+154,72-p.y]);
       facade(b,perimeter,2.2,9);
-      for(const z of [-48,-38,38,48])roofTruss(b,154,72+z,76,28,3);
-      for(const x of [116,192])b.rod([x,28,16],[x,28,128],.25,'#87999f');
-      for(const z of [-42,42]){
-        b.box(154,27.8,72+z,72,.5,13,'#d4dad8');
-        for(let x=122;x<190;x+=4)b.rod([x,28.15,72+z-6],[x,28.15,72+z+6],.045,'#a8b5b9');
+      b.group.add(new ArenaRoof('rla',154,72,perimeter,()=>new Builder()));
+      for(const x of [116,192]){
+        b.rod([x,28,2],[x,28,142],.25,'#87999f');
+        b.box(x,26.04,72,.94,3.49,120,'#839096');
+        for(let dz=-65;dz<=65;dz+=10)b.rod([x,23.25,72+dz*.91],[x,27.85,72+dz],.15,'#9eaaaa');
       }
-      for(const [x,z,w,d] of [[154,-3,23,10],[154,147,21,10],[92,83,11,24]]){
+      for(const [x,z,w,d] of rodLaverAnnexes){
         const pod=roundedPath(w,d,6),g=new T.ExtrudeGeometry(pod,{depth:7,bevelEnabled:false});g.rotateX(-Math.PI/2);g.translate(x,.2,z);b.add(g,'#bcc8c9');
         facade(b,pod.getPoints(24).map(p=>[x+p.x,z-p.y]),.3,5.8);
         const roof=new T.ShapeGeometry(pod);roof.rotateX(-Math.PI/2);roof.translate(x,7.3,z);b.add(roof,'#e0e3df');
@@ -469,12 +633,6 @@ export function buildContext(data: ContextData) {
     };
     // Separate roof bays and lower perimeter skirts, clipped to the footprint.
     const clipX=(poly:number[][],value:number,above:boolean)=>clip(poly.map(p=>[p[1],p[0]]),value,above).map(p=>[p[1],p[0]]);
-    const roofHeight=(x:number,z:number)=>{
-      const phase=((x-25)%8+8)%8,fold=1-Math.abs(phase-4)/4;
-      const skirt=Math.min(1,Math.max(0,(x-15)/12),Math.max(0,(130-x)/22));
-      const parked=x>=38&&x<=93&&((z>=-22&&z<=0)||(z>=45&&z<=67));
-      return 10.5+skirt*(4.5+fold*2.8)+(parked?.8:0);
-    };
     // Populous aerial reference: two pleated leaves parked beyond the baselines.
     // Include aperture edges in the tessellation so no partial bay bridges it.
     const xs=[...new Set([...Array.from({length:35},(_,i)=>5+i*4),38,93])].sort((a,c)=>a-c);
@@ -485,12 +643,11 @@ export function buildContext(data: ContextData) {
       const polygon=clipX(clipX(clip(clip(mca.ring.slice(0,-1),z,true),zh,false),xl,true),xh,false);
       if(polygon.length<3)continue;
       const g=new T.ShapeGeometry(new T.Shape(polygon.map(p=>new T.Vector2(p[0],-p[1]))));g.rotateX(-Math.PI/2);
-      const pos=g.getAttribute('position');for(let i=0;i<pos.count;i++)pos.setY(i,roofHeight(pos.getX(i),pos.getZ(i)));g.computeVertexNormals();
-      const roof=new T.Mesh(g,new T.MeshStandardMaterial({color:Math.round((xl-5)/4)%2===0?'#a86b49':'#be8059',roughness:.8,side:T.DoubleSide}));roof.castShadow=true;roof.receiveShadow=true;b.group.add(roof);
-      polygon.forEach((p,i)=>{const q=polygon[(i+1)%polygon.length];b.rod([p[0],roofHeight(...p as [number,number])+.04,p[1]],[q[0],roofHeight(...q as [number,number])+.04,q[1]],.045,'#d3ad89');});
+      const pos=g.getAttribute('position');for(let i=0;i<pos.count;i++)pos.setY(i,copperRoofHeight(pos.getX(i)));g.computeVertexNormals();
+      b.add(g,Math.round((xl-5)/4)%2===0?'#a86b49':'#be8059');
+      polygon.forEach((p,i)=>{const q=polygon[(i+1)%polygon.length];b.rod([p[0],copperRoofHeight(p[0])+.04,p[1]],[q[0],copperRoofHeight(q[0])+.04,q[1]],.045,'#d3ad89');});
     }
-    // Full-height glazed perimeter with visible mullions, doors and opaque fins.
-    for(const z of [0,45])roofTruss(b,65.5,z,55,15,1.8);
+    b.group.add(new ArenaRoof('mca',65.5,22.5,mca.ring,()=>new Builder()));
     for(const x of [38,93]){
       b.box(x,18.8,22.5,.3,.25,89,'#aeb7b3');
       for(const z of [-22,0,45,67])b.box(x,18.2,z,.8,.6,1.2,'#45545b');
@@ -500,7 +657,7 @@ export function buildContext(data: ContextData) {
       if(!i)return;const a=mca.ring[i-1],dx=p[0]-a[0],dz=p[1]-a[1],len=Math.hypot(dx,dz),angle=Math.atan2(dx,dz);
       for(let d=0;d<len;d+=1.5){
         const t=d/len,u=Math.min(1,(d+1.5)/len),x=a[0]+dx*t,z=a[1]+dz*t,xx=a[0]+dx*u,zz=a[1]+dz*u;
-        const h=roofHeight(x,z),hh=roofHeight(xx,zz);
+        const h=copperRoofHeight(x),hh=copperRoofHeight(xx);
         const fascia=new T.BufferGeometry();fascia.setAttribute('position',new T.Float32BufferAttribute([x,10.2,z,xx,10.2,zz,xx,hh,zz,x,10.2,z,xx,hh,zz,x,h,z],3));fascia.computeVertexNormals();
         fasciaParts.push(fascia);
       }
@@ -515,18 +672,7 @@ export function buildContext(data: ContextData) {
   }
 
   b=environment;
-  // Service pavilions and entry furniture are interpretive details.
-  for(let z=-18;z<=18;z+=12){
-    b.box(-28,1.7,z,4,3.4,7,'#66756f');b.box(-28,3.5,z,4.5,.18,7.5,'#dedacb');
-    b.box(-25.95,1.65,z,.04,1.4,4,'#324a4d');
-  }
-  for(let x=-16;x<19;x+=5){
-    b.box(x,.42,37,2.8,.14,.65,'#807c63');b.box(x-1,.2,37,.14,.5,.55,palette.steel);b.box(x+1,.2,37,.14,.5,.55,palette.steel);
-  }
-  for(const x of [-23,23])for(const z of [-34,34]){
-    b.box(x,1.8,z,.35,3.6,.45,palette.dark);
-    const sign=label('1573  →',2.8,.65,'#e5f0c9');sign.position.set(x,3.35,z+.26);b.group.add(sign);
-  }
+  arenaEntryFacilities(b);
   eventFacilities(environment,ground,data);
   ground.finish(environment.group);
   for(const builder of venues.values())environment.group.add(builder.finish());
@@ -534,9 +680,17 @@ export function buildContext(data: ContextData) {
 }
 
 export function disposeModel(group: T.Group) {
+  const geometries=new Set<T.BufferGeometry>(),materials=new Set<T.Material>(),textures=new Set<T.Texture>();
   group.traverse(obj=>{
-    if(obj instanceof T.Mesh){obj.geometry.dispose();const materials=Array.isArray(obj.material)?obj.material:[obj.material];materials.forEach(m=>{if('map' in m && m.map instanceof T.Texture)m.map.dispose();m.dispose();});}
+    if(!(obj instanceof T.Mesh))return;
+    if(obj instanceof T.InstancedMesh)obj.dispose();
+    geometries.add(obj.geometry);
+    for(const material of Array.isArray(obj.material)?obj.material:[obj.material]){
+      materials.add(material);
+      if('map' in material&&material.map instanceof T.Texture)textures.add(material.map);
+    }
   });
+  geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());
 }
 
 

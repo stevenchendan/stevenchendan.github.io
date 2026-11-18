@@ -4,13 +4,94 @@ import type { ContextData } from './model';
 import { eventCrossings, eventLayout, pocketRing } from './eventLayout';
 import type { GroundSurfaces } from './ground';
 
-function sign(b:Batch,text:string,x:number,y:number,z:number,width:number){
+function sign(b:Batch,text:string,x:number,y:number,z:number,width:number,angle=0){
   const canvas=document.createElement('canvas');canvas.width=512;canvas.height=128;
   const ctx=canvas.getContext('2d')!;ctx.fillStyle='#174c60';ctx.fillRect(0,0,512,128);
   ctx.font='bold 38px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#f4f1df';ctx.fillText(text,256,64);
   const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;
   const mesh=new T.Mesh(new T.PlaneGeometry(width,width/4),new T.MeshStandardMaterial({map:texture,roughness:.85}));
-  mesh.position.set(x,y,z);b.group.add(mesh);
+  mesh.position.set(x,y,z);mesh.rotation.y=angle;b.group.add(mesh);
+}
+
+function slattedBench(b:Batch,x:number,z:number,back=1){
+  for(let i=0;i<5;i++)b.box(x,.48,z+(i-2)*.132,2.5,.095,.108,'#ac8767');
+  for(const side of [-1,1]){
+    const leg=x+side*.86;
+    b.box(leg,.23,z,.10,.46,.51,'#41565d');
+    b.box(leg,.52,z+back*.27,.08,.54,.08,'#41565d');
+  }
+  for(const y of [.68,.84])b.box(x,y,z+back*.28,2.5,.11,.095,'#ac8767');
+}
+
+/** Sheltered benches on the 1573 apron, with a tensioned fabric hypar. */
+function benchCanopy(b:Batch){
+  const corners=[[-9,3.45,34.1],[8.6,4.45,34.1],[8.6,3.45,39.4],[-9,4.45,39.4]];
+  const point=(u:number,v:number)=>{
+    const weights=[(1-u)*(1-v),u*(1-v),u*v,(1-u)*v];
+    const pos=[0,0,0];
+    for(let n=0;n<4;n++)for(let k=0;k<3;k++)pos[k]+=corners[n][k]*weights[n];
+    // Scalloped edges bow toward the middle; all four corners meet their posts.
+    pos[0]+=(1-2*u)*.45*Math.sin(Math.PI*v);
+    pos[2]+=(1-2*v)*.5*Math.sin(Math.PI*u);
+    return pos;
+  };
+  const vertices:number[]=[],indices:number[]=[];
+  for(let i=0;i<=16;i++)for(let j=0;j<=6;j++){
+    const n=i*7+j;
+    vertices.push(...point(i/16,j/6));
+    if(i<16&&j<6)indices.push(n,n+1,n+7,n+7,n+1,n+8);
+  }
+  const cloth=new T.BufferGeometry();
+  cloth.setAttribute('position',new T.Float32BufferAttribute(vertices,3));cloth.setIndex(indices);cloth.computeVertexNormals();
+  const sail=new T.Mesh(cloth,new T.MeshStandardMaterial({color:'#eeeae0',side:T.DoubleSide,roughness:.94}));
+  sail.castShadow=true;sail.receiveShadow=true;b.group.add(sail);
+  for(const [x,y,z] of corners){
+    b.rod([x,0,z],[x,y+.14,z],.08,'#58696d');
+    b.box(x,.045,z,.32,.09,.32,'#8d989a');
+  }
+  for(let i=0;i<12;i++)for(const side of [0,1]){
+    b.rod(point(i/12,side),point((i+1)/12,side),.04,'#b3bdba');
+    b.rod(point(side,i/12),point(side,(i+1)/12),.04,'#b3bdba');
+  }
+  for(const x of [-5.8,-.2,5.4])slattedBench(b,x,37.25);
+}
+
+export function arenaEntryFacilities(b:Batch){
+  for(const z of [-13.5,12.5]){
+    const x=-28.9,front=x+2.35;
+    b.box(x,.11,z,5.15,.22,9.0,'#8a9695');
+    b.box(x,1.59,z,4.7,2.86,8.45,'#7d918e');
+    // Individual steel jambs, fascia and counter frame a recessed service hatch.
+    b.box(front+.035,1.88,z,.07,1.25,4.4,'#283f46');
+    for(const offset of [-2.25,2.25])b.box(front+.065,1.88,z+offset,.14,1.42,.11,'#bcc6bf');
+    b.box(front+.29,1.22,z,.64,.12,4.7,'#c9b397');
+    b.box(front+.12,2.96,z,.18,.48,8.5,'#25596a');
+    sign(b,z<0?'INFORMATION':'WATER',front+.22,2.96,z,2.15,Math.PI/2);
+    for(const end of [-1,1])for(let n=0;n<8;n++){
+      b.box(x-1.9+n*.5,1.52,z+end*4.245,.13,2.72,.095,'#a3aca2');
+    }
+    const awning=new T.BoxGeometry(6.5,.16,9.35);
+    awning.rotateZ(-.065);awning.translate(x+.57,3.48,z);b.add(awning,'#dedfd4');
+    for(const side of [-1,1]){
+      const edge=z+side*4.3;
+      b.rod([x+3.45,0,edge],[x+3.45,3.31,edge],.065,'#475b61');
+      b.rod([x+3.45,2.65,edge],[front,3.38,edge],.04,'#475b61');
+    }
+    for(let off=-4;off<=4;off+=1.33)b.rod([x-2.65,3.8,z+off],[x+3.78,3.39,z+off],.04,'#aeb7b2');
+  }
+  benchCanopy(b);
+  for(const [x,z] of [[-17.5,-34],[17.5,34]]){
+    b.box(x,1.32,z,.76,2.64,.22,'#254f60');
+    b.box(x,2.7,z,.76,.12,.22,'#75bbcb');
+    sign(b,'1573',x,2.28,z+.12,.74);
+    sign(b,'1573',x,2.28,z-.12,.74,Math.PI);
+    for(const side of [-1,1]){
+      const cx=x+side*.39;
+      b.box(cx,.5,z+1.5,.71,1,.55,'#56696d');
+      b.box(cx,1.015,z+1.5,.76,.08,.6,'#9baaa7');
+      b.box(cx,1.06,z+1.5,.43,.015,.22,'#32474d');
+    }
+  }
 }
 
 /** Original, tree-free event dressing; paths and courts remain unobstructed. */
@@ -19,14 +100,11 @@ export function eventFacilities(b:Batch,ground:GroundSurfaces,data:ContextData){
     const {x,z,dx,dz}=crossing,cx=x-dz*offset,cz=z+dx*offset;
     ground.strip([cx-dx*1.8,cz-dz*1.8],[cx+dx*1.8,cz+dz*1.8],.42,.026,'#eee9d9');
   }
-  const bench=(x:number,z:number,rotation=0)=>{
-    b.box(x,.5,z,2.6,.15,.65,'#ae8b65',rotation);
-    for(const side of [-1,1])b.box(x+side*Math.cos(rotation),.24,z-side*Math.sin(rotation),.12,.48,.55,'#45585e',rotation);
-  };
+  const bench=(x:number,z:number)=>slattedBench(b,x,z);
   const table=(x:number,z:number)=>{
     const top=new T.CylinderGeometry(.9,.9,.09,16);top.translate(x,.85,z);b.add(top,'#c4aa85');
     b.rod([x,.05,z],[x,.8,z],.09,'#485a60');
-    bench(x,z+1.5);bench(x,z-1.5);
+    slattedBench(b,x,z+1.5);slattedBench(b,x,z-1.5,-1);
   };
   for(const p of eventLayout(data)){
     const ring=pocketRing(p);

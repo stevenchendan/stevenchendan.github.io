@@ -1,11 +1,61 @@
 import * as T from 'three';
 
-/** Subtle, seamless material detail at a consistent world-space scale. */
-export function pavingMaterial(color:string,geometry:T.BufferGeometry,kind:'paving'|'asphalt'|'lawn'='paving'){
-  const material=new T.MeshStandardMaterial({color,roughness:kind==='paving'?.94:1});
+// The fine aggregate of a painted acrylic court is visible at court level and
+// disappears into the mipmaps when the visitor pulls back to the precinct.
+export function courtMaterial(color: string, geometry: T.BufferGeometry, painted: boolean) {
+  const size = 128;
+  const pixels = new Uint8Array(size * size * 4);
+  let seed = 1573;
+  for (let i = 0; i < pixels.length; i += 4) {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    const shade = 215 + (seed >>> 27);
+    pixels.set([shade, shade, shade, 255], i);
+  }
+  const grain = new T.DataTexture(pixels, size, size);
+  grain.wrapS = grain.wrapT = T.RepeatWrapping;
+  grain.generateMipmaps = true;
+  grain.magFilter = T.LinearFilter;
+  grain.minFilter = T.LinearMipmapLinearFilter;
+  grain.anisotropy = 4;
+  grain.needsUpdate = true;
+  const positions = geometry.getAttribute('position');
+  const uv = geometry.getAttribute('uv');
+  for (let i = 0; i < positions.count; i++) uv.setXY(i, positions.getX(i) * 2, positions.getZ(i) * 2);
+  const material=new T.MeshStandardMaterial({ color, map: grain, roughness: .94 });
+  if(painted){
+    // Put the paint directly into the acrylic surface. Derivatives soften
+    // subpixel edges at aerial distances without a raised, shadow-casting strip.
+    material.onBeforeCompile=shader=>{
+      shader.vertexShader='varying vec2 courtPosition;\n'+shader.vertexShader.replace('#include <begin_vertex>',
+        '#include <begin_vertex>\n courtPosition = position.xz;');
+      shader.fragmentShader=`varying vec2 courtPosition;
+        float paintStrip(float p, float centre, float width, float pixel) {
+          float halfWidth = max(width, .85 * pixel) * .5;
+          float overlap = min(p + pixel*.5, centre + halfWidth) - max(p - pixel*.5, centre - halfWidth);
+          return clamp(overlap / pixel, 0., 1.);
+        }\n`+shader.fragmentShader.replace('#include <color_fragment>',`
+        #include <color_fragment>
+        vec2 p = abs(courtPosition);
+        vec2 pixel = max(fwidth(courtPosition), vec2(.0001));
+        float singles = paintStrip(p.x,4.115,.05,pixel.x);
+        float doubles = paintStrip(p.x,5.485-max(.05,.85*pixel.x)*.5,.05,pixel.x);
+        float baseline = paintStrip(p.y,11.885-max(.065,.85*pixel.y)*.5,.065,pixel.y);
+        float service = paintStrip(p.y,6.4,.05,pixel.y) * (1.-smoothstep(4.115-pixel.x*.5,4.115+pixel.x*.5,p.x));
+        float centre = paintStrip(courtPosition.x,0.,.05,pixel.x);
+        centre *= max(1.-smoothstep(6.4-pixel.y*.5,6.4+pixel.y*.5,p.y),smoothstep(11.72-pixel.y*.5,11.72+pixel.y*.5,p.y));
+        float paint = max(max(singles,doubles),max(baseline,max(service,centre)));
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.93,.94,.91), paint);
+      `);
+    };
+  }
+  return material;
+}
+
+export type GroundFinish = 'paving' | 'asphalt' | 'lawn' | 'plain';
+function groundTexture(kind: GroundFinish){
   const canvas=document.createElement('canvas');canvas.width=256;canvas.height=256;
   const ctx=canvas.getContext('2d')!;
-  ctx.fillStyle=kind==='lawn'?'#d4dfcf':kind==='asphalt'?'#c5cac7':'#d6d5cb';
+  ctx.fillStyle=kind==='lawn'?'#d4dfcf':kind==='asphalt'?'#dee2e0':'#d9dcda';
   ctx.fillRect(0,0,256,256);
   let seed=73;
   const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
@@ -18,27 +68,40 @@ export function pavingMaterial(color:string,geometry:T.BufferGeometry,kind:'pavi
     }
     ctx.globalAlpha=1;
   }
-  for(let i=0;i<10500;i++){
+  if(kind==='paving'){
+    // Metre-long units in a staggered bond. The half tiles at both edges
+    // carry the same shade, so the repeated texture has no four-metre seam.
+    for(let row=0;row<8;row++){
+      const shades=Array.from({length:4},()=>Math.floor(229+random()*12));
+      for(let col=-1;col<4;col++){
+        const tone=shades[(col+4)%4];
+        ctx.fillStyle=`rgb(${tone},${tone},${tone-2})`;
+        ctx.fillRect(col*64+(row%2)*32+.45,row*32+.4,63.1,31.2);
+      }
+    }
+  }
+  for(let i=0;i<6800;i++){
     seed=(Math.imul(seed,1664525)+1013904223)>>>0;const x=seed%256;
     seed=(Math.imul(seed,1664525)+1013904223)>>>0;const y=seed%256;
     ctx.fillStyle=kind==='lawn'?(i%2?'#a5b99e':'#edf0df'):kind==='asphalt'?(i%2?'#969f9e':'#e3e4dd'):(i%2?'#b8b8ad':'#efede4');
     ctx.globalAlpha=.13;ctx.fillRect(x,y,1,1);
   }
   ctx.globalAlpha=1;
-  if(kind==='paving'){
-    ctx.strokeStyle='#aeb0a7';ctx.lineWidth=1;
-    ctx.beginPath();
-    for(let y=0;y<=256;y+=64){ctx.moveTo(0,y);ctx.lineTo(256,y);}
-    for(let row=0;row<4;row++)for(let x=(row%2)*64;x<=256;x+=128){ctx.moveTo(x,row*64);ctx.lineTo(x,(row+1)*64);}
-    ctx.stroke();
-  }
   const texture=new T.CanvasTexture(canvas);texture.wrapS=texture.wrapT=T.RepeatWrapping;
   texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=8;
   texture.minFilter=T.LinearMipmapLinearFilter;
+  return texture;
+}
+
+/** Original, seamless finishes using one shared texture per ground material. */
+export function pavingMaterial(color:string,geometry:T.BufferGeometry,kind:GroundFinish='paving',shared?:T.Texture){
+  const material=new T.MeshStandardMaterial({color,roughness:kind==='paving'?.92:.98});
+  if(kind==='plain')return material;
+  material.map=shared??groundTexture(kind);
   const position=geometry.getAttribute('position'),uv=new Float32Array(position.count*2);
   const tileSize=kind==='lawn'?16:4;
   for(let i=0;i<position.count;i++){uv[i*2]=position.getX(i)/tileSize;uv[i*2+1]=position.getZ(i)/tileSize;}
-  geometry.setAttribute('uv',new T.BufferAttribute(uv,2));material.map=texture;
+  geometry.setAttribute('uv',new T.BufferAttribute(uv,2));
   return material;
 }
 

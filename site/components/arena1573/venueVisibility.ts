@@ -8,6 +8,7 @@ export function courtVenue(id:string,x:number){
   if(id==='way/1239949234')return 'mca';
   if(id==='way/1239949235')return 'rla';
   if(id==='way/1239949236')return 'kia';
+  if(id==='way/1239949237'||id==='way/1239949238')return 'village';
   if(id==='john-cain-interior')return 'john';
   return x>590?'east':'west';
 }

@@ -3,6 +3,20 @@ import { courtFrame, pathIntervals, pointInRing, type CourtFrame } from './preci
 
 export type EventPocket= CourtFrame & {kind:'lawn'|'food'|'lounge';zone:string};
 export const PLAZA_OUTLINE=[[-93,-240],[120,-240],[120,-70],[245,-70],[245,-42],[475,-42],[475,140],[590,140],[590,151],[900,151],[900,273],[570,273],[490,256],[210,256],[175,147],[-46,147],[-93,80]];
+
+/** Three metres is the extraction's fallback when a mapped width is missing. */
+export function routeFinish(feature: ContextData['features'][number]) {
+  const highway = feature.highway ?? 'path';
+  if (['corridor','elevator','construction'].includes(highway) || (feature.layer ?? 0) < 0) return null;
+  const arterial = ['motorway','trunk','primary','secondary','tertiary'].includes(highway);
+  const link = highway.endsWith('_link');
+  const road = arterial || link || ['service','unclassified','residential'].includes(highway);
+  let width = Math.max(1.5, feature.width);
+  if (road && width === 3) width = arterial ? 7.1 : link ? 4.5 : highway === 'service' ? 4.2 : 5.5;
+  if (highway === 'pedestrian' && width === 3) width = 4.5;
+  const asphalt = road || feature.surface === 'asphalt' || (highway === 'cycleway' && !feature.surface);
+  return {width, road, arterial, color: road ? '#636a6b' : asphalt ? '#828988' : '#c8cac4'};
+}
 export function pocketRing(p:EventPocket,margin=0){
   const w=p.width/2+margin,d=p.depth/2+margin,cut=1.5;
   return [[-w+cut,-d],[w-cut,-d],[w,-d+cut],[w,d-cut],[w-cut,d],[-w+cut,d],[-w,d-cut],[-w,-d+cut]].map(([x,z])=>[p.x+x,p.z+z]);
@@ -16,7 +30,10 @@ export function eventLayout(data:ContextData):EventPocket[]{
     {x:154,z:72,width:152,depth:183,rotation:0},{x:345,z:79,width:69,depth:89,rotation:0},
     {x:300,z:188,width:196,depth:121,rotation:0},{x:653,z:219,width:115,depth:51,rotation:0},
     ...rings.map(courtFrame)];
-  const paths=data.features.filter(f=>['path','rail'].includes(f.kind)).flatMap(f=>f.points.slice(1).map((b,i)=>({a:f.points[i],b,width:f.kind==='rail'?4:Math.max(2,f.width)})));
+  const paths=data.features.filter(f=>['path','rail'].includes(f.kind)).flatMap(f=>{
+    const width=f.kind==='rail'?4:routeFinish(f)?.width??f.width;
+    return f.points.slice(1).map((b,i)=>({a:f.points[i],b,width}));
+  });
   const zones=[{name:'West walk',x:-73,z:-202,nx:30,nz:46},{name:'Arena walk',x:212,z:-25,nx:36,nz:37},{name:'East walk',x:590,z:158,nx:41,nz:15}];
   const selected:EventPocket[]=[];
   for(const zone of zones){

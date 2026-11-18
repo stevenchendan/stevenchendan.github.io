@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as T from 'three';
+import type { RoofMotion } from './roofs';
 
 /** A bounded, camera-following shower. One draw call, no per-frame allocations. */
-export default function Rain({ ink }: { ink: boolean }) {
+export default function Rain({ ink, roofs }: { ink: boolean; roofs: RoofMotion }) {
   const [reducedMotion, setReducedMotion] = useState(true);
   useEffect(() => {
     const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -38,11 +39,16 @@ export default function Rain({ ink }: { ink: boolean }) {
       const y = camera.position.y + (.45 - phase) * span;
       const z = camera.position.z + (shower.seeds[seed + 2] - .5) * span;
       const length = span * .014;
+      // Clip streaks to the fixed canopy and to the current position of its
+      // moving leaves. Drops inside a sheltered bowl collapse to a point.
+      const drift = length * .18;
+      const floor = Math.max(roofs.rainFloor(x,z), roofs.rainFloor(x+drift,z));
+      const fall = Math.max(0, Math.min(length, y-floor));
       shower.positions[p] = x;
-      shower.positions[p + 1] = Math.max(.15, y);
+      shower.positions[p + 1] = Math.max(floor, y);
       shower.positions[p + 2] = z;
-      shower.positions[p + 3] = x + (y > .15 ? length * .18 : 0);
-      shower.positions[p + 4] = Math.max(.15, y - length);
+      shower.positions[p + 3] = x + fall * .18;
+      shower.positions[p + 4] = shower.positions[p + 1] - fall;
       shower.positions[p + 5] = z;
     }
     shower.geometry.attributes.position.needsUpdate = true;

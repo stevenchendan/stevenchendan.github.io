@@ -1,17 +1,22 @@
 # 1573 Arena — Court Atlas
 
-## Portfolio copy
+## Interactive experience
 
-Copied from `D:/dev/Tennis-Agent/frontend` and served here at `/australian-open`.
-The Astro route mounts the original React experience in the browser, with the
-original CSS reset, context data, GLB models and cinema audio. The Next.js home
-link is replaced with a native anchor; scene code and styling are unchanged.
-Run `npm run build`, `node scripts/check-1573-solar.mjs`,
-`node scripts/check-1573-rally.mjs` and `node scripts/check-ao-precinct.mjs` here.
-The following notes preserve the upstream modelling history; regeneration tools
-and editable Blender sources remain in Tennis-Agent.
+The Australian Open portfolio experience lives at `/australian-open/`. The first view is Gracchus250's photograph of Rod Laver Arena during the 2023 quarterfinal. The original, photographer and CC BY-SA 4.0 licence are linked in the application. The two locally resized, cropped WebP presentations carry the same licence. All other court views use the interactive model. Six rendered stills also provide a fallback when WebGL is unavailable.
 
-## Upstream notes
+The film has five authored shots through the precinct, the Margaret Court roof, the Rod Laver bowl, the 1573 rally and John Cain Arena. Reduced motion starts the film paused. From a ticket section, dragging changes the direction of the gaze while keeping the eye at the seat. Follow player uses a courtside camera tracking the near athlete. A visit to `?arena=rla&section=6` restores that section, and `?view=player` opens the rally close-up.
+
+The illustrated seating guide references Ticketmaster's 17 January 2027 day-session plans. It maps 54 Rod Laver, 41 Margaret Court and 80 John Cain bays, with the official plans and booking links in the guide. Three-dimensional sightlines are approximate. The Rod Laver interior has two distinct seating banks above the sunken court, section-aligned aisles, fascia, hanging screens and roof catwalks, reconstructed using match-day photographs and Tennis Australia's venue account. Live sales, assigned rows and seat inventory are managed by Ticketmaster.
+
+Rain drives a reversible, accelerated roof motor at the three retractable-roof venues. The falling rain follows the opening and stops at the fixed canopy or moving roof leaf. Reduced motion changes to the resulting roof position immediately. The autograph guide links to the official practice schedule, shows the Practice Village in the model, and distinguishes public viewing opportunities from event-specific signing arrangements.
+
+Each athlete has an independent skinned skeleton. The captured strokes, calibrated racket release and Quaternius running animation share a single ball and footwork timeline. Recovery changes from short shuffles to crossover runs as the distance increases. World-space foot contacts constrain the stance foot during a stride. The active venue uses detailed character meshes, while the distant courts share sampled skinning data. Sources and redistribution notices are in `public/models/tennis/motion-credits.txt`.
+
+Run `npm run build` and the `scripts/check-*.mjs` checks. To regenerate athlete assets, use the Blender modelling script and `pack-rally-athlete.mjs` with the Tennis-Agent frontend checkout, then `node scripts/pack-precinct-motion.mjs`.
+
+## Historical upstream notes
+
+The following entries describe earlier iterations of the Tennis-Agent source. Current behaviour is documented above.
 
 Portfolio event-ground update: `eventLayout.ts` places original food, coffee,
 shaded viewing and lawn pockets in clear concourse space. Layout checks reserve

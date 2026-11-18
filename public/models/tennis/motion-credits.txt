@@ -1,0 +1,31 @@
+Court Atlas — Tennis player and motion credits
+
+Captured swings
+J. D. Pulgarin-Giraldo, A. M. Alvarez-Meza, L. G. Melo-Betancourt, S. Ramos-Bermudez and G. Castellanos-Dominguez.
+Tennis-MoCap: https://github.com/jdpulgarin/Tennis-MoCap
+A Similarity Indicator for Differentiating Kinematic Performance Between Qualified Tennis Players (2017).
+https://doi.org/10.1007/978-3-319-52277-7_38
+
+The original recordings and the derived forehand, volley and backhand-volley animation tracks in rally-athlete.glb and their baked precinct-motion.bin poses are licensed under Creative Commons Attribution-ShareAlike 3.0 Unported.
+https://creativecommons.org/licenses/by-sa/3.0/
+
+Source recordings for subject jarua: jarua_Derecha_18seg.bvh, jarua_VDerecha.bvh and jarua_VReves.bvh. The Tennis-Agent adaptation trimmed and sampled the performances at 50 Hz, converted units, normalized facing and travel, retargeted the rotations to the character and calibrated a fixed racket grip. Court Atlas packages these tracks in glTF, reconstructs the racket release and wrist orientation from the captured hand and elbow paths, blends the stroke with recovery steps and synchronizes a choreographed ball to editorial impact markers. The original dataset records body motion. Ball and racket tracking were authored for this experience.
+
+Athlete
+Quaternius — original rigged human character and running animation, CC0 1.0.
+https://quaternius.com/
+https://github.com/UMRAM-Bilkent/supine-human-model/blob/main/assets/human.glb
+https://creativecommons.org/publicdomain/zero/1.0/
+Tennis-Agent adapted the mesh scale, orientation and clothing colours. Court Atlas creates the fitted tennis kit and adapts the wrist-mounted racket from the original Tennis-Agent club athlete. The models depict two fictional professionals.
+
+Facial anatomy
+MakeHuman Community — hm08 base mesh and MPFB adult morphology targets, CC0 1.0.
+https://github.com/makehumancommunity/makehuman/blob/master/makehuman/data/3dobjs/base.obj
+https://github.com/makehumancommunity/mpfb2/tree/master/src/mpfb/data/targets/macrodetails
+https://static.makehumancommunity.org/mpfb/faq/build_other_chargen.html
+Court Atlas shaped and painted two original faces in Blender, fitted them to the animated skeleton, and modelled the eyes, brows, hair, headwear and hard-court footwear.
+
+Tournament visual references
+Australian Open — practice and match photography, viewed as visual reference only.
+https://ausopen.com/articles/news/stars-prepare-ahead-ao-2026
+https://ausopen.com/articles/news/my-best-shot-photographers-top-picks-ao-2025
