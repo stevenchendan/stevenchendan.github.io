@@ -18,7 +18,8 @@ function blend(a,b,t){
 }
 
 function measure(p,axis){
-  if(axis==='neckline')return p.y-1.406-1.58*p.x*p.x-.225*(.085-p.z);
+  if(axis==='wrist')return Math.abs(p.x);
+  if(axis==='neckline')return p.y-1.439-1.12*p.x*p.x-.19*(.078-p.z);
   if(axis==='raglan')return Math.abs(p.x)-.124-(1.416-p.y)*.73;
   if(axis==='sidePanel')return Math.abs(p.x)-.127-Math.abs(p.z)*.48;
   return p[axis];
@@ -54,13 +55,14 @@ export function tailorAthlete(mesh,models){
     const athletic= .010*Math.exp(-((lateral-.235)**2/.008+(v.p.y-1.365)**2/.012))
       + .006*Math.exp(-((lateral-.435)**2/.021+(v.p.y-1.335)**2/.009))
       + .006*Math.exp(-((v.p.y-.58)**2/.017))*(lateral<.2?1:0);
-    const hemDistance=Math.min(...[.215,.697,.93,1.443].map(h=>Math.abs(h-v.p.y)),Math.abs(lateral-.34));
+    const hemDistance=Math.min(...[.215,.697,.93,1.443].map(h=>Math.abs(h-v.p.y)),
+      ...[.34,.69,.735].map(x=>Math.abs(lateral-x)),Math.abs(measure(v.p,'neckline')));
     origin.copy(v.p).addScaledVector(v.n,athletic+offset*T.MathUtils.smoothstep(hemDistance,0,.022)).applyMatrix4(local).toArray(pos,pos.length);
     direction.copy(v.n).applyNormalMatrix(normalToLocal).toArray(normal,normal.length);
     color.toArray(colors,colors.length);
     for(let i=0;i<4;i++){joints.push(v.joints[i]??0);weights.push(v.weights[i]??0);}
   }
-  const collarEdge=new Map();
+  const collarEdge=new Map(),wristEdges={Left:new Map(),Right:new Map()};
   const indices=mesh.geometry.index?.array??source.map((_,i)=>i);
   const triangles=[];
   function splitChest(tri,depth){
@@ -74,16 +76,18 @@ export function tailorAthlete(mesh,models){
     else triangles.push(tri);
   }
   for(const tri of triangles){
-    const levels=[.072,.20,.215,.697,.716,.93,.944,1.493].map(v=>['y',v]);
-    if(tri.some(v=>v.p.y>1.2 && Math.abs(v.p.x)>.29))for(const v of [-.755,-.69,-.34,-.330, .330,.34,.69,.755])levels.push(['x',v]);
+    const levels=[.072,.20,.215,.697,.716,.93,.944,1.455].map(v=>['y',v]);
+    if(tri.some(v=>v.p.y>1.2 && Math.abs(v.p.x)>.29))for(const v of [-.735,-.69,-.34,-.330, .330,.34,.69,.735])levels.push(['x',v]);
     if(tri.some(v=>v.p.y>.91&&v.p.y<1.51))levels.push(['neckline',0],['neckline',-.009],['raglan',0],['raglan',.004],['sidePanel',0]);
+    if(tri.some(v=>Math.abs(v.p.x)>.73))levels.push(['wrist',.745]);
     let polygons=[tri];
     for(const [axis,value] of levels)polygons=polygons.flatMap(poly=>divide(poly,axis,value));
     for(const poly of polygons){
       if(poly.length<3)continue;
       const p=poly.reduce((v,u)=>v.add(u.p),new T.Vector3()).divideScalar(poly.length);
-      if(p.y<.072 || p.y>1.493)continue;
-      for(const v of poly)if(Math.abs(v.p.y-1.493)<1e-6)collarEdge.set(key(v.p),v);
+      if(p.y<.072 || p.y>1.455 || Math.abs(p.x)>.745)continue;
+      for(const v of poly)if(Math.abs(v.p.y-1.455)<1e-6)collarEdge.set(key(v.p),v);
+      for(const v of poly)if(Math.abs(Math.abs(v.p.x)-.745)<1e-6)wristEdges[v.p.x>0?'Left':'Right'].set(key(v.p),v);
       let color=skinTone,offset=0;
       if(p.y<.215){color=p.y<.20?sock:trim;offset=.002;}
       if(p.y>=.697 && p.y<.93){color=p.y<.716?new T.Color('#334954'):shorts;offset=.016;}
@@ -94,38 +98,81 @@ export function tailorAthlete(mesh,models){
         offset=.009;
       }
       if(p.y>.93 && p.y<.944 && Math.abs(p.x)<.33)color=trim;
-      if(p.y>1.23 && p.y<1.385 && Math.abs(p.x)>.69 && Math.abs(p.x)<.755){color=sock;offset=.0035;}
+      if(p.y>1.23 && p.y<1.385 && Math.abs(p.x)>.69 && Math.abs(p.x)<.735){color=sock;offset=.0035;}
       for(let j=1;j<poly.length-1;j++)for(const v of [poly[0],poly[j],poly[j+1]])vertex(v,color,offset);
     }
   }
-  // Extend the actual cut neck ring under the mandible. Its base keeps the
-  // original shoulder/neck influences and its top travels with the skull.
-  const head=mesh.skeleton.bones.findIndex(b=>b.name==='Head');
-  const collar=[...collarEdge.values()].sort((a,b)=>Math.atan2(a.p.z+.012,a.p.x)-Math.atan2(b.p.z+.012,b.p.x));
-  for(let j=0;j<collar.length;j++){
-    const a=collar[j],b=collar[(j+1)%collar.length];
-    const raised=(v,t)=>{
-      const top={p:new T.Vector3(v.p.x*.95,1.581,(v.p.z+.012)*.90-.007),n:new T.Vector3(v.p.x,0,v.p.z+.012).normalize(),joints:[head],weights:[1]};
-      return blend(v,top,t);
-    };
-    for(let i=0;i<5;i++){
-      const u=raised(a,i/5),v=raised(b,i/5),w=raised(a,(i+1)/5),x=raised(b,(i+1)/5);
-      for(const pt of [u,w,v,v,w,x])vertex(pt,skinTone);
-    }
-  }
   // Both laced Blender shoes are rigidly weighted to their matching foot.
-  function graft(part,boneName){
-    const matrix=part.matrixWorld,norm=new T.Matrix3().getNormalMatrix(matrix);
+  function graft(part,boneName,matrix=part.matrixWorld){
+    const norm=new T.Matrix3().getNormalMatrix(matrix);
     const joint=mesh.skeleton.bones.findIndex(b=>b.name===boneName);
     const g=part.geometry,indices=g.index?.array??Array.from({length:g.attributes.position.count},(_,i)=>i);
     for(const i of indices){
       const p=new T.Vector3().fromBufferAttribute(g.attributes.position,i).applyMatrix4(matrix);
       const n=new T.Vector3().fromBufferAttribute(g.attributes.normal,i).applyNormalMatrix(norm);
-      vertex({p,n,joints:[joint],weights:[1]},new T.Color().fromBufferAttribute(g.attributes.color,i));
+      vertex({p,n,joints:[joint],weights:[1]},boneName.endsWith('Hand')?skinTone:new T.Color().fromBufferAttribute(g.attributes.color,i));
+    }
+  }
+  // Connect the original forearm boundary to the Blender wrist in bind space.
+  // Each side of the seam retains its own skin weights as the wrist extends.
+  function joinRings(arm,palm,axis){
+    const ring=list=>{
+      const centre=list.reduce((p,v)=>p.add(v.p),new T.Vector3()).divideScalar(list.length);
+      return list.map(v=>({v,angle:T.MathUtils.euclideanModulo(Math.atan2(v.p.z-centre.z,v.p[axis]-centre[axis]),2*Math.PI)})).sort((a,b)=>a.angle-b.angle);
+    };
+    const a=ring([...arm.values()]),b=ring([...palm.values()]);
+    if(a.length<3||b.length<3)throw new Error('Missing anatomical attachment ring');
+    function face(v,u,w){
+      const normal=u.p.clone().sub(v.p).cross(w.p.clone().sub(v.p));
+      const out=normal.dot(v.n.clone().add(u.n).add(w.n))>=0?[v,u,w]:[v,w,u];
+      for(const e of out)vertex(e,skinTone);
+    }
+    let i=0,j=0;
+    while(i<a.length||j<b.length){
+      const n=i+1<a.length?a[i+1].angle:a[0].angle+2*Math.PI,m=j+1<b.length?b[j+1].angle:b[0].angle+2*Math.PI;
+      const v=a[i%a.length].v,u=b[j%b.length].v;
+      if(j===b.length||i<a.length&&n<m){face(v,u,a[++i%a.length].v);}
+      else {face(v,u,b[++j%b.length].v);}
     }
   }
   models.updateMatrixWorld(true);
-  for(const side of ['Left','Right'])graft(models.getObjectByName('Shoe'+side),side+'Foot');
+  // The nape, jaw and throat come from the same sculpt. Anchor the clavicle
+  // end to the neck joint and the shared jaw edge to the skull during rotation.
+  const head=mesh.skeleton.bones.findIndex(b=>b.name==='Head');
+  const neck=mesh.skeleton.bones.findIndex(b=>b.name==='Neck');
+  const throat=models.getObjectByName('NeckSkin').geometry;
+  const throatRing=new Map(),baseHeight=1.483;
+  const vertices=Array.from({length:throat.attributes.position.count},(_,i)=>{
+    const p=new T.Vector3().fromBufferAttribute(throat.attributes.position,i);
+    const n=new T.Vector3().fromBufferAttribute(throat.attributes.normal,i);
+    const w=T.MathUtils.smoothstep(p.y,baseHeight,1.51);
+    return {p,n,joints:[neck,head],weights:[1-w,w]};
+  });
+  for(let i=0;i<throat.index.count;i+=3){
+    const tri=[0,1,2].map(j=>vertices[throat.index.getX(i+j)]);
+    for(const poly of divide(tri,'y',baseHeight)){
+      if(!poly.some(v=>v.p.y>baseHeight+1e-7))continue;
+      for(const v of poly)if(Math.abs(v.p.y-baseHeight)<1e-6)throatRing.set(key(v.p),v);
+      for(let j=1;j<poly.length-1;j++)for(const v of [poly[0],poly[j],poly[j+1]])vertex(v,skinTone);
+    }
+  }
+  joinRings(collarEdge,throatRing,'x');
+  for(const side of ['Left','Right']){
+    graft(models.getObjectByName('Shoe'+side),side+'Foot');
+    const hand=mesh.skeleton.bones.find(b=>b.name===side+'Hand');
+    const socket=new T.Matrix4().compose(hand.getWorldPosition(new T.Vector3()),hand.getWorldQuaternion(new T.Quaternion()),new T.Vector3(1,1,1));
+    const part=models.getObjectByName('Hand'+side),g=part.geometry.attributes,palm=new Map();
+    const joint=mesh.skeleton.bones.indexOf(hand),normals=new T.Matrix3().getNormalMatrix(socket);
+    for(let i=0;i<g.position.count;i++){
+      const p=new T.Vector3().fromBufferAttribute(g.position,i);
+      if(Math.abs(p.y)>1e-6)continue;
+      p.applyMatrix4(socket);
+      const n=new T.Vector3().fromBufferAttribute(g.normal,i).applyNormalMatrix(normals);
+      palm.set(key(p),{p,n,joints:[joint],weights:[1]});
+    }
+    joinRings(wristEdges[side],palm,'y');
+    graft(part,side+'Hand',socket);
+  }
   const geometry=new T.BufferGeometry();
   for(const [name,data,size] of [['position',pos,3],['normal',normal,3],['color',colors,3],['skinWeight',weights,4]])geometry.setAttribute(name,new T.Float32BufferAttribute(data,size));
   geometry.setAttribute('skinIndex',new T.Uint16BufferAttribute(joints,4));

@@ -6,7 +6,7 @@ import {rodLaverSeatEye} from './rodLaverProfile';
 export type View = 'hero' | 'plan' | 'seat' | 'court' | 'precinct' | 'ao';
 export type Light = 'day' | 'golden' | 'night' | 'rain' | 'solar';
 export type Theme = 'classic' | 'ink';
-export type Shot = {view:View;serial:number;stand?:Stand;destination?:string;section?:SectionId;follow?:boolean};
+export type Shot = {view:View;serial:number;stand?:Stand;destination?:string;section?:SectionId;court?:string;end?:1;follow?:boolean};
 export function isRoofed(id?:string):id is SeatingVenue {return id==='rla'||id==='mca'||id==='john';}
 
 export function sectionEye(venue:SeatingVenue,id:SectionId){
@@ -37,6 +37,12 @@ export const destinations = [
   {id:'west',name:'西侧球场',target:[0,0,-155],offset:[-80,255,165]},
   {id:'east',name:'东侧球场',target:[738,0,220],offset:[0,255,210]},
   {id:'oval',name:'Grand Slam Oval',target:[300,0,188],offset:[-80,185,150]},
+  {id:'hilltop',name:'AO Hilltop',target:[-382,2,-244],offset:[20,28,43]},
+  {id:'ballpark',name:'AO Ballpark',target:[-326,2,-177],offset:[20,29,55]},
+  {id:'topcourt',name:'TOPCOURT',target:[-193,3,-193],offset:[-6,13,55]},
+  {id:'garden',name:'Garden Square',target:[160,2,-53],offset:[-23,13,-18]},
+  {id:'terrace',name:'Rod Laver Arena Terrace',target:[273,2,72],offset:[12,17,31]},
+  {id:'courtside',name:'Courtside Bar',target:[62,3,-155],offset:[-27,34,38]},
 ] satisfies {id:string;name:string;target:[number,number,number];offset:[number,number,number]}[];
 export const standCameras:Record<Stand,[number,number,number]>={north:[4,5.4+SEATING_LIFT,-25.5],east:[16.2,5.4+SEATING_LIFT,9],south:[-4,5.4+SEATING_LIFT,25.5],west:[-16.2,5.4+SEATING_LIFT,9]};
 export const views: {id:View;label:string}[] = [

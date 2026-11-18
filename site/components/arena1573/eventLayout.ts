@@ -1,5 +1,6 @@
 import type { ContextData } from './model';
 import { courtFrame, pathIntervals, pointInRing, type CourtFrame } from './precinctGeometry';
+import { eventWorlds } from './eventWorlds';
 
 export type EventPocket= CourtFrame & {kind:'lawn'|'food'|'lounge';zone:string};
 export const PLAZA_OUTLINE=[[-93,-240],[120,-240],[120,-70],[245,-70],[245,-42],[475,-42],[475,140],[590,140],[590,151],[900,151],[900,273],[570,273],[490,256],[210,256],[175,147],[-46,147],[-93,80]];
@@ -40,8 +41,10 @@ export function eventLayout(data:ContextData):EventPocket[]{
     // Larger social pockets first, then smaller lawn islands in the remaining space.
     for(const kind of ['food','lounge','lawn'] as const){
       let placed=0;
-      for(let j=0;j<zone.nz&&placed<(kind==='lawn'?5:2);j++)for(let i=0;i<zone.nx&&placed<(kind==='lawn'?5:2);i++){
+      const limit=kind==='lawn'?3:1;
+      for(let j=0;j<zone.nz&&placed<limit;j++)for(let i=0;i<zone.nx&&placed<limit;i++){
         const p:EventPocket={x:zone.x+i*7.5,z:zone.z+j*7.5,width:kind==='lawn'?10:16,depth:kind==='lawn'?14:18,rotation:0,kind,zone:zone.name};
+        if(Object.values(eventWorlds).some(world=>pocketRing(p,2).some(point=>pointInRing(point,world.ring))))continue;
         if(!pocketRing(p,2).every(point=>pointInRing(point,PLAZA_OUTLINE)))continue;
         if([...obstacles,...selected].some(o=>{
           const c=Math.abs(Math.cos(o.rotation)),s=Math.abs(Math.sin(o.rotation));

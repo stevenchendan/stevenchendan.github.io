@@ -2,9 +2,13 @@ export type Language = 'en' | 'zh';
 
 // Chinese is the original copy; proper names and architectural signage stay intact.
 const english: Record<string, string> = {
+  '园区地表 · 墨尔本市 2020 年 5 月航摄影像（已裁切、重投影和遮罩）↗': 'Ground imagery © City of Melbourne, May 2020 (cropped, reprojected and masked) ↗',
+  '园区航摄影像授权 · CC BY 4.0 ↗': 'Aerial imagery licence · CC BY 4.0 ↗',
+  '澳网比赛日航拍参考 · Lensaloft ↗': 'Tournament aerial reference · Lensaloft ↗',
+  '澳网 2026 园区地图 ↗': 'AO 2026 precinct map ↗',
   '查找座区':'Find a section','罗德·拉沃尔球场内景 · 澳网 ↗':'Rod Laver Arena interior · Australian Open ↗','球员练习照片参考 · 澳网 ↗':'Player practice references · Australian Open ↗',
   '查看玛格丽特球场屋顶':'See Margaret Court’s roof','拖动环顾 · 滚轮缩放':'Drag to look around · Scroll to zoom','拖动环顾看台':'Drag to look around',
-  '球员特写':'Player close-up','返回全场':'Full court','跟拍球员':'Follow player',
+  '近端球员':'Near-end player','远端球员':'Far-end player','选择球场':'Choose a court','切换球员':'Switch player','球员特写':'Player close-up','返回全场':'Full court','跟拍球员':'Follow player',
   '签名攻略':'Autograph guide','训练村':'Practice Village',
   '园区平面图':'Melbourne Park grounds map',
   '封面照片 · Gracchus250 ↗':'Cover photograph · Gracchus250 ↗','照片授权 · CC BY-SA 4.0（已缩放、转码和裁切）↗':'Photograph licence · CC BY-SA 4.0 (resized, re-encoded and cropped) ↗',

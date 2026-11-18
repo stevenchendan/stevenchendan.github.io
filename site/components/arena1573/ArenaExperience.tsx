@@ -2,8 +2,10 @@
 
 import { Component, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { ContextData } from './model';
+import {courtDirectory,venueCourts} from './courtPlacements';
 import { getTranslator, type Language } from './i18n';
 import { destinations, points, views, isRoofed, type Light, type Shot, type Theme, type View } from './views';
+import {benchDescription,benchLayout} from './playerBenches';
 import SectionPicker from './SectionPicker';
 import GroundsPlan from './GroundsPlan';
 import Autographs from './Autographs';
@@ -12,6 +14,8 @@ import type {RoofStatus} from './roofs';
 import {film} from './film';
 import { summerSun, type ShadeResult, type SolarDate, type Stand } from './solar';
 import SunControls, { standNames } from './SunControls';
+import SeatDaylight, { firstMinute, lastMinute, openingDay, readSeatDate, sunlightPlaybackSpeed, useSeatDaylight } from './SeatDaylight';
+import { clockTime } from './solar';
 import Icon from './Icon';
 import styles from './arena.module.css';
 
@@ -20,6 +24,10 @@ const moods = [
   {id:'day',label:'日间'}, {id:'golden',label:'日落'}, {id:'night',label:'夜场'}, {id:'rain',label:'雨天'},
 ] as const;
 const sources = [
+  ['园区地表 · 墨尔本市 2020 年 5 月航摄影像（已裁切、重投影和遮罩）↗','https://discover.data.vic.gov.au/dataset/2020-aerial-imagery'],
+  ['园区航摄影像授权 · CC BY 4.0 ↗','https://creativecommons.org/licenses/by/4.0/'],
+  ['澳网比赛日航拍参考 · Lensaloft ↗','https://www.lensaloft.com.au/projects/melbourne-park-australian-open/'],
+  ['澳网 2026 园区地图 ↗','https://ausopen.com/sites/default/files/2026-01/ao26_transport-map.pdf'],
   ['卫星图参考 · Google Maps ↗','https://www.google.com/maps/place/1573+Arena/@-37.8208432,144.9768967,113m/data=!3m1!1e3'],
   ['场馆位置参考 · Tennis Australia ↗','https://officiating.tennis.com.au/pdf/ImportantlocationsAO21.pdf'],
   ['建筑轮廓 · City of Melbourne · CC BY 4.0 ↗','https://data.melbourne.vic.gov.au/explore/dataset/2020-building-footprints/information/'],
@@ -68,7 +76,8 @@ export default function ArenaExperience(){
   const [seats,setSeats]=useState(0);
   const [shot,setShot]=useState<Shot>({view:'hero',serial:0});
   const [light,setLight]=useState<Light>('day');
-  const [solarDate,setSolarDate]=useState<SolarDate>({year:2027,month:1,day:15,minutes:14*60});
+  const [solarDate,setSolarDate]=useState<SolarDate>(openingDay);
+  const [studyClosed,setStudyClosed]=useState(false),[sunPlaying,setSunPlaying]=useState(false);
   const [shade,setShade]=useState<ShadeResult|null>(null);
   const [rotate,setRotate]=useState(false),[context,setContext]=useState(true),[crowd,setCrowd]=useState(true);
   const [markers,setMarkers]=useState(false),[rally,setRally]=useState(true);
@@ -79,25 +88,72 @@ export default function ArenaExperience(){
   const [chapter,setChapter]=useState(0),[playing,setPlaying]=useState(false);
   const [roof,setRoof]=useState<RoofStatus>('open');
   const [seatVenue,setSeatVenue]=useState<SeatingVenue>('rla'),[section,setSection]=useState<SectionId|null>(null);
+  const cameraStrip=useRef<HTMLDivElement>(null);
   const currentShot=useRef(shot);
   currentShot.current=shot;
   const container=useRef<HTMLElement>(null),canvas=useRef<HTMLCanvasElement|null>(null);
   const audio=useRef<HTMLAudioElement>(null),compassRef=useRef<HTMLElement>(null);
   const tr=getTranslator(language);
   const sun=useMemo(()=>light==='solar'?summerSun(solarDate):null,[light,solarDate]);
+  const seatedStudy=shot.section!==undefined&&isRoofed(shot.destination)&&light==='solar';
+  const studyVisible=panel==='sections'||(seatedStudy&&!cover&&!cinema&&!panel);
+  const clockVisible=panel==='sections'||(!cover&&!cinema&&!panel&&light==='solar'&&ready);
+  const visibility=useSeatDaylight(studyVisible);
+  const study={...visibility,date:solarDate,closed:studyClosed,playing:sunPlaying,
+    setClosed:setStudyClosed,setDate:(date:SolarDate)=>{setSolarDate(date);setSunPlaying(false);},
+    toggle:()=>{
+      if(!sunPlaying&&solarDate.minutes>=lastMinute)setSolarDate(d=>({...d,minutes:firstMinute}));
+      setSunPlaying(p=>!p);
+    }};
+  useEffect(()=>{
+    if(!clockVisible||solarDate.minutes>=lastMinute){setSunPlaying(false);return;}
+    if(!sunPlaying)return;
+    // The original pace advances ten Melbourne minutes every 450 ms.
+    // Measure elapsed time so a busy court can catch up after a delayed frame.
+    const stepMs=450/sunlightPlaybackSpeed;
+    let lastStep=performance.now();
+    const resetClock=()=>{lastStep=performance.now();};
+    const timer=window.setInterval(()=>{
+      if(document.hidden)return;
+      const steps=Math.floor((performance.now()-lastStep)/stepMs);
+      if(!steps)return;
+      lastStep+=steps*stepMs;
+      setSolarDate(d=>({...d,minutes:Math.min(lastMinute,d.minutes+steps*10)}));
+    },Math.ceil(stepMs));
+    document.addEventListener('visibilitychange',resetClock);
+    return ()=>{window.clearInterval(timer);document.removeEventListener('visibilitychange',resetClock);};
+  },[clockVisible,sunPlaying,solarDate.minutes>=lastMinute]);
+  useEffect(()=>{
+    const strip=cameraStrip.current, item=strip?.querySelector<HTMLElement>('[aria-pressed=true]');
+    if(!strip||!item||strip.scrollWidth<=strip.clientWidth)return;
+    const box=strip.getBoundingClientRect(),button=item.getBoundingClientRect();
+    if(button.left<box.left)strip.scrollLeft+=button.left-box.left;
+    else if(button.right>box.right)strip.scrollLeft+=button.right-box.right;
+  },[shot.view,cover,cinema,language]);
+  useEffect(()=>{
+    if(!seatedStudy)return;
+    const url=new URL(window.location.href);
+    url.searchParams.set('date',[solarDate.year,String(solarDate.month).padStart(2,'0'),String(solarDate.day).padStart(2,'0')].join('-'));
+    url.searchParams.set('time',clockTime(solarDate.minutes));
+    if(studyClosed)url.searchParams.set('roof','closed');else url.searchParams.delete('roof');
+    history.replaceState(history.state,'',url);
+  },[seatedStudy,solarDate,studyClosed,shot.serial]);
 
   useEffect(()=>{
     const query=new URLSearchParams(window.location.search);
     setInteractive(true);
     const arena=query.get('arena')??undefined,sectionId=query.get('section');
+    const court=query.get('court')??undefined,end=query.get('end')==='far'?1 as const:undefined;
     if(isRoofed(arena)){
       const choice=seatSections[arena].find(s=>String(s.id)===sectionId);
+      if(choice){setLight('solar');setSolarDate(readSeatDate(query));setStudyClosed(query.get('roof')==='closed');}
       setSeatVenue(arena);setSection(choice?.id??null);setCover(false);
-      setShot(choice?{view:'seat',serial:1,destination:arena,section:choice.id}:query.get('view')==='player'?{view:'court',destination:arena,follow:true,serial:1}:{view:'ao',destination:arena,serial:1});
+      setShot(choice?{view:'seat',serial:1,destination:arena,section:choice.id}:query.get('view')==='player'?{view:'court',destination:arena,follow:true,end,serial:1}:{view:'ao',destination:arena,serial:1});
     }else if(query.get('view')==='player'){
-      setShot({view:'court',follow:true,serial:1});setCover(false);
+      const destination=arena&&['1573','kia','west','east','village'].includes(arena)?arena:undefined;
+      setShot({view:'court',destination,court,end,follow:true,serial:1});setCover(false);
     }else if(arena&&destinations.some(d=>d.id===arena)){
-      setShot({view:arena==='1573'?'hero':'ao',destination:arena,serial:1});setCover(false);
+      setShot({view:arena==='1573'?'hero':'ao',destination:arena,court,serial:1});setCover(false);
     }
     try{
       const savedTheme=localStorage.getItem('1573-arena-theme'), savedLanguage=localStorage.getItem('1573-arena-language');
@@ -127,7 +183,10 @@ export default function ArenaExperience(){
   }
   const navigate=useCallback((next:Omit<Shot,'serial'>)=>{
     const url=new URL(window.location.href);
-    for(const key of ['arena','section','view'])url.searchParams.delete(key);
+    for(const key of ['arena','section','view','date','time','roof'])url.searchParams.delete(key);
+    url.searchParams.delete('court');url.searchParams.delete('end');
+    if(next.court)url.searchParams.set('court',next.court);
+    if(next.follow&&next.end===1)url.searchParams.set('end','far');
     if(next.destination)url.searchParams.set('arena',next.destination);
     if(next.section!==undefined)url.searchParams.set('section',String(next.section));
     if(next.follow)url.searchParams.set('view','player');
@@ -138,8 +197,9 @@ export default function ArenaExperience(){
   },[]);
   const openSeats=useCallback(()=>{
     if(isRoofed(shot.destination)&&shot.destination!==seatVenue){setSeatVenue(shot.destination);setSection(null);}
+    if(light!=='solar')setStudyClosed(light==='rain');
     setPanel('sections');
-  },[shot.destination,seatVenue]);
+  },[shot.destination,seatVenue,light]);
   const selectView=useCallback((view:View)=>{
     if(view==='seat'&&isRoofed(shot.destination)){openSeats();return;}
     navigate({view});
@@ -210,24 +270,31 @@ export default function ArenaExperience(){
     }catch{setToast('画面暂时无法保存，请重试。');}
   }
   function viewStand(stand:Stand){navigate({view:'seat',stand});}
+  function activateClock(){
+    setContext(true);setLight('solar');
+  }
   function setSolar(){
     if(light==='solar')setLight('day');
     else {setContext(true);setLight('solar');}
   }
   const venue=destinations.find(d=>d.id===shot.destination);
+  const directory=useMemo(()=>data?courtDirectory(data):[],[data]);
+  const playable=venueCourts(directory,venue?.id??(['court','hero'].includes(shot.view)?'1573':undefined));
+  const chosen=playable.find(c=>c.key===shot.court)??playable[0];
+  const showStandComparison=venue?.id==='1573'||(!venue&&shot.view!=='ao'&&shot.view!=='precinct');
   const wide=!!venue||shot.view==='ao'||shot.view==='precinct';
-  const title=venue?tr(venue.name):wide?tr('墨尔本公园'):'1573 Arena';
+  const title=chosen&&shot.court?chosen[language]:venue?tr(venue.name):wide?tr('墨尔本公园'):'1573 Arena';
   const detail=points.find(point=>point.id===selected);
   const activeView=views.find(view=>view.id===shot.view)!;
   const currentSeat=shot.view==='seat'?tr(standNames[shot.stand??'west']):null;
-  const caption=shot.follow?tr('球员特写'):shot.section!==undefined?(language==='en'?`Section ${shot.section} · Approximate view`:`${shot.section} 区 · 模拟视角`):venue?tr('场馆建筑模型'):shot.view==='ao'?tr('澳网全景'):shot.view==='precinct'?tr('西区场馆与练习场'):currentSeat??(shot.view==='court'?tr('底线视角'):tr('室外硬地球场'));
+  const caption=shot.follow?tr(shot.end===1?'远端球员':'近端球员'):shot.section!==undefined?(language==='en'?`Section ${shot.section} · Approximate view`:`${shot.section} 区 · 模拟视角`):venue?tr('场馆建筑模型'):shot.view==='ao'?tr('澳网全景'):shot.view==='precinct'?tr('西区场馆与练习场'):currentSeat??(shot.view==='court'?tr('底线视角'):tr('室外硬地球场'));
   const close=()=>setPanel(null);
   const heading=panel==='autographs'?tr('签名攻略'):panel==='sections'?tr('座区指南'):panel==='settings'?tr('场景设置'):panel==='venues'?tr('选择场馆'):panel==='detail'&&detail?tr(detail.title):tr('关于模型');
   const staticView=shot.view;
 
   return <main ref={container} className={styles.experience} data-interactive={interactive} data-cover={cover||undefined} data-cinema={cinema||undefined} data-roof={roof} lang={language==='zh'?'zh-CN':'en'}>
     <header className={styles.header}>
-      <a href="/" className={styles.brand} aria-label={tr('返回作品集')}><Icon name="ball"/><span>Court Atlas</span></a>
+      <a href="/australian-open/" className={styles.brand} aria-label={language==='zh'?'Court Atlas · 返回澳网首页':'Court Atlas · Australian Open home'}><Icon name="ball"/><span>Court Atlas</span></a>
       <span className={styles.eventName}>{tr('澳大利亚网球公开赛')}</span>
       <nav className={styles.topActions} inert={!interactive} aria-label={tr('场馆工具')}>
         <button aria-haspopup="dialog" onClick={openSeats} aria-label={tr('座区指南')}><Icon name="seat"/><span>{tr('座区指南')}</span></button>
@@ -256,11 +323,17 @@ export default function ArenaExperience(){
         <img src={`/images/court-atlas/${staticView}.webp`} alt={tr(activeView.label)} fetchPriority="high"/>
       </picture>}
       {!cover&&!failure&&data&&<div className={styles.viewport}>
-        <SceneBoundary onFailure={onFailure}><Suspense fallback={null}><ArenaScene {...{data,shot,light,rotate,crowd,rally,onSelect,onReady,onInteract,language,theme,sun,onFailure,reducedMotion,compassRef,onCut}} chapter={cinema?chapter:null} playing={cinema&&playing} context={cinema||context} onRoof={setRoof} markers={markers&&!cinema} onShade={setShade} canvasRef={canvas}/></Suspense></SceneBoundary>
+        <SceneBoundary onFailure={onFailure}><Suspense fallback={null}><ArenaScene {...{data,shot,light,rotate,crowd,rally,onSelect,onReady,onInteract,language,theme,sun,onFailure,reducedMotion,compassRef,onCut}} compareStands={showStandComparison&&panel==='settings'} closedStudyRoof={light==='solar'&&seatedStudy&&studyClosed} chapter={cinema?chapter:null} playing={cinema&&playing} context={cinema||context} onRoof={setRoof} markers={markers&&!cinema} onShade={setShade} canvasRef={canvas}/></Suspense></SceneBoundary>
       </div>}
       <div className={styles.shade}/>
       {!cinema&&!cover&&<div className={styles.stageBar}>
-        {!failure&&<div className={styles.moods} role="group" aria-label={tr('光线氛围')}>{moods.map(mood=><button key={mood.id} disabled={!ready} aria-pressed={light===mood.id} aria-label={tr(mood.label)} title={tr(mood.label)} onClick={()=>setLight(mood.id)}><Icon name={mood.id}/><span>{tr(mood.label)}</span></button>)}{light==='solar'&&<button aria-label={tr('夏日日照')} aria-pressed="true" onClick={()=>setPanel('settings')}><Icon name="solar"/><span>{tr('夏日日照')}</span></button>}</div>}
+        {!failure&&<div className={styles.lightingStack}>
+          <div className={styles.moods} role="group" aria-label={tr('光线氛围')}>{moods.map(mood=><button key={mood.id} disabled={!ready} aria-pressed={light===mood.id} aria-label={tr(mood.label)} title={tr(mood.label)} onClick={()=>{setSunPlaying(false);setLight(mood.id);}}><Icon name={mood.id}/><span>{tr(mood.label)}</span></button>)}</div>
+          {ready&&<SeatDaylight compact language={language} active={light==='solar'} activate={activateClock}
+            venue={seatedStudy&&isRoofed(shot.destination)?shot.destination:undefined} id={seatedStudy?shot.section:undefined}
+            study={{...study,setDate:date=>{activateClock();setShade(null);study.setDate(date);},toggle:()=>{activateClock();study.toggle();}}}
+            transitioning={roof==='closing'||roof==='opening'}/>}
+        </div>}
         <div className={styles.tools}>
           <button disabled={!ready} onClick={()=>navigate({view:'hero'})} aria-label={tr('重置视角')} title={tr('重置视角 · R')}><Icon name="reset"/></button>
           <button disabled={!ready} onClick={capture} aria-label={tr('保存画面')} title={tr('保存画面')}><Icon name="capture"/></button>
@@ -272,10 +345,19 @@ export default function ArenaExperience(){
         <h1>{title}</h1>
         <p className={styles.facts}>{caption}{!wide&&<><i/>{shot.view==='court'||shot.view==='plan'?'23.77 × 10.97 m':seats?`${seats.toLocaleString(language)} ${tr('模型座椅').toLowerCase()}`:'23.77 × 10.97 m'}</>}{isRoofed(venue?.id)&&<><i/>{tr(roofNames[roof])}</>}</p>
         {isRoofed(venue?.id)&&<button className={styles.seatLink} onClick={openSeats}><Icon name="seat"/>{tr('查看座区')}<Icon name="next"/></button>}
-        {(isRoofed(venue?.id)||shot.view==='court'||shot.view==='hero')&&ready&&<button className={styles.seatLink} aria-pressed={!!shot.follow} onClick={()=>{
-          if(shot.follow)navigate(isRoofed(venue?.id)?{view:'ao',destination:venue.id}:{view:'court'});
-          else navigate({view:'court',destination:venue?.id,follow:true});
-        }}><Icon name="camera"/>{tr(shot.follow?'返回全场':'跟拍球员')}</button>}
+        {chosen&&ready&&<>
+          {playable.length>1&&<select className={styles.courtChoice} aria-label={tr('选择球场')} value={shot.follow||shot.court?chosen.key:''} onChange={e=>navigate({view:'court',destination:venue?.id,court:e.target.value,follow:shot.follow,end:shot.end})}>
+            <option value="" disabled>{tr('选择球场')}</option>
+            {playable.map(c=><option key={c.key} value={c.key}>{c[language]}</option>)}
+          </select>}
+          {(shot.court||shot.follow||playable.length===1)&&<details className={styles.benchGuide} key={chosen.key}>
+            <summary>{language==='zh'?'球员休息席':'Player benches'}</summary>
+            <p>{benchDescription(chosen.key,language)}</p>
+            {benchLayout(chosen.key).source&&<a href={benchLayout(chosen.key).source} target="_blank" rel="noreferrer">{language==='zh'?'澳网场地布置图（2025）':'AO court layout (2025)'} ↗</a>}
+          </details>}
+          <button className={styles.seatLink} aria-pressed={!!shot.follow} onClick={()=>navigate({view:shot.follow&&venue?'ao':'court',destination:venue?.id,court:playable.length>1?chosen.key:undefined,follow:!shot.follow})}><Icon name="camera"/>{tr(shot.follow?'返回全场':'跟拍球员')}</button>
+          {shot.follow&&<button className={styles.seatLink} onClick={()=>navigate({view:'court',destination:venue?.id,court:playable.length>1?chosen.key:undefined,follow:true,end:shot.end===1?undefined:1})}>{tr('切换球员')}</button>}
+        </>}
         {venue?.id==='village'&&<button className={styles.seatLink} onClick={()=>setPanel('autographs')}>{tr('签名攻略')}<Icon name="next"/></button>}
       </div>}
       {cinema&&ready&&<div className={styles.filmBar}><div><small>{String(chapter+1).padStart(2,'0')} / 05</small><strong>{tr(film[chapter].title)}</strong></div><button aria-label={tr(playing?'暂停短片':'播放短片')} onClick={togglePlayback}><Icon name={playing?'pause':'play'}/></button><button aria-label={tr('下一镜头')} onClick={()=>setChapter((chapter+1)%film.length)}><Icon name="next"/></button></div>}
@@ -285,14 +367,14 @@ export default function ArenaExperience(){
     </section>
     {!cinema&&!cover&&<nav className={styles.cameraNav} aria-labelledby="camera-heading">
       <div className={styles.railHeading}><h2 id="camera-heading">{tr('相机视角')}</h2>{ready&&!shot.follow&&<p className={styles.gesture}><span className={styles.north} title={tr('地理北向参考 · 8°')}><i ref={compassRef}/>N</span><Icon name="mouse"/><span>{tr(shot.section===undefined?'拖动旋转 · 滚轮缩放':'拖动环顾 · 滚轮缩放')}</span><b>{tr(shot.section===undefined?'拖动旋转 · 双指缩放':'拖动环顾看台')}</b></p>}</div>
-      <div className={styles.filmstrip}>{views.map((view,index)=><button className={styles.cameraCard} key={view.id} aria-label={tr(view.label)} aria-pressed={shot.view===view.id} title={`${tr(view.label)} · ${index+1}`} onClick={()=>selectView(view.id)}>
+      <div ref={cameraStrip} className={styles.filmstrip}>{views.map((view,index)=><button className={styles.cameraCard} key={view.id} aria-label={tr(view.label)} aria-pressed={shot.view===view.id} title={`${tr(view.label)} · ${index+1}`} onClick={()=>selectView(view.id)}>
         <span className={styles.thumb}><img src={`/images/court-atlas/${view.id}-thumb.webp`} alt="" draggable="false"/><kbd>{index+1}</kbd></span>
         <span className={styles.cardLabel}>{tr(view.label)}{shot.view===view.id&&<Icon name="check"/>}</span>
       </button>)}</div>
     </nav>}
     <audio ref={audio} src="/audio/cinema-music.mp3" preload="none" loop/>
     {panel&&<Drawer title={heading} closeLabel={tr('关闭')} onClose={close} wide={panel==='sections'||panel==='venues'}>
-      {panel==='sections'&&<SectionPicker venue={seatVenue} section={section} language={language} canView={!failure&&!!data} onSelect={setSection} onVenueChange={id=>{setSeatVenue(id);setSection(null);}} onView={id=>{setSection(id);navigate({view:'seat',destination:seatVenue,section:id});}}/>}
+      {panel==='sections'&&<SectionPicker venue={seatVenue} section={section} language={language} study={study} canView={!failure&&!!data} onSelect={setSection} onVenueChange={id=>{setSeatVenue(id);setSection(null);}} onView={id=>{setSection(id);setLight('solar');setContext(true);navigate({view:'seat',destination:seatVenue,section:id});}}/>}
       {(panel==='sections'||panel==='venues')&&<button className={styles.guideLink} onClick={()=>setPanel('autographs')}>{tr('签名攻略')}<Icon name="next"/></button>}
       {panel==='autographs'&&<Autographs language={language} visit={()=>{setContext(true);navigate({view:'ao',destination:'village'});}}/>}
       {panel==='venues'&&<>
@@ -314,7 +396,7 @@ export default function ArenaExperience(){
           <label className={styles.switch}><span>{tr('球员回合')}</span><input type="checkbox" checked={rally} onChange={e=>setRally(e.target.checked)}/></label>
         </fieldset>
         <button className={styles.solarButton} disabled={!ready} aria-pressed={light==='solar'} aria-expanded={light==='solar'} onClick={setSolar}><Icon name="solar"/>{tr('夏日日照')}<span aria-hidden="true">{light==='solar'?'−':'+'}</span></button>
-        {light==='solar'&&<SunControls date={solarDate} onChange={date=>{setShade(null);setSolarDate(date);}} language={language} shade={shade} onStand={viewStand}/>}
+        {light==='solar'&&(isRoofed(shot.destination)?<button className={styles.guideLink} onClick={openSeats}>{tr('查看座区')}<Icon name="seat"/></button>:<SunControls date={solarDate} onChange={date=>{setShade(null);setSolarDate(date);}} language={language} shade={shade} onStand={showStandComparison?viewStand:undefined}/>)}
         <button className={styles.aboutButton} onClick={()=>setPanel('about')}><Icon name="info"/>{tr('关于模型')}<Icon name="next"/></button>
       </>}
       {panel==='detail'&&detail&&<div className={styles.prose}><p>{tr(detail.description)}</p><button className={styles.textLink} onClick={()=>{navigate({view:'hero'});setMarkers(true);}}>{tr('返回场馆全景 ↗')}</button></div>}

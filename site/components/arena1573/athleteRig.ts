@@ -1,12 +1,14 @@
 import * as T from 'three';
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { rallyFrame } from './rallyMotion';
+import {playerContactShadows} from './playerContactShadows';
 import {footwork} from './footwork';
-import type { StrokeKind } from './strokeContacts';
+import {portraits,skinTones} from './athleteKits';
+import {impactTime,type StrokeKind} from './strokeContacts';
 
 type Actor = ReturnType<typeof rallyFrame>['players'][number];
 const smooth = (value:number) => T.MathUtils.smoothstep(value,0,1);
-const contactTime=.6;
+
 type Step=ReturnType<typeof footwork>['feet'][number];
 
 function recoveryLeg(body:T.Object3D,root:T.Group,side:'Left'|'Right'){
@@ -54,8 +56,20 @@ function recoveryLeg(body:T.Object3D,root:T.Group,side:'Left'|'Right'){
 export function makeAthlete(source:T.Group,clips:T.AnimationClip[],shirt:string,cap:boolean){
   const body=clone(source),group=new T.Group(), ownedGeometry:T.BufferGeometry[]=[];
   group.add(body);
-  body.getObjectByName('TennisCap')!.visible=cap;
-  body.getObjectByName('HeadbandPlayer')!.visible=!cap;
+  const heads=portraits.map(name=>body.getObjectByName(name)!);
+  const jerseySlots:{colors:T.BufferAttribute|T.InterleavedBufferAttribute;body:number[];panel:number[];skin:number[];shorts:number[]}[]=[];
+  function setKit(hex:string,portrait=cap?0:1,shorts='#213944'){
+    heads.forEach((h,i)=>h.visible=i===portrait);
+    const flesh=new T.Color(skinTones[portrait]),woven=new T.Color(shorts);
+    const c=new T.Color(hex),p=c.clone().multiplyScalar(.74);
+    for(const {colors,body,panel,skin,shorts} of jerseySlots){
+      for(const i of skin)colors.setXYZ(i,flesh.r,flesh.g,flesh.b);
+      for(const i of shorts)colors.setXYZ(i,woven.r,woven.g,woven.b);
+      for(const i of body)colors.setXYZ(i,c.r,c.g,c.b);
+      for(const i of panel)colors.setXYZ(i,p.r,p.g,p.b);
+      colors.needsUpdate=true;
+    }
+  }
   body.traverse(o=>{
     if(!(o instanceof T.Mesh))return;
     o.castShadow=true;o.receiveShadow=true;
@@ -64,17 +78,22 @@ export function makeAthlete(source:T.Group,clips:T.AnimationClip[],shirt:string,
     // Each player has a separate vertex-colour buffer and skeleton while the
     // racket, cap and skin material stay shared between the two athletes.
     o.geometry=o.geometry.clone();ownedGeometry.push(o.geometry);
-    const colors=o.geometry.getAttribute('color'),base=new T.Color('#277b9a'),team=new T.Color(shirt);
-    const panel=new T.Color('#206980'),sideTeam=team.clone().multiplyScalar(.74);
-    const skin=new T.Color('#c89779'),secondSkin=new T.Color('#8c5c45');
+    const colors=o.geometry.getAttribute('color'),base=new T.Color('#277b9a'),bodySlots:number[]=[],panelSlots:number[]=[];
+    const panel=new T.Color('#206980');
+    const skinSlots:number[]=[],shortSlots:number[]=[];
+    jerseySlots.push({colors,body:bodySlots,panel:panelSlots,skin:skinSlots,shorts:shortSlots});
+    const skin=new T.Color('#c89779'),fabric=new T.Color('#213944');
     for(let i=0;i<colors.count;i++){
       const r=colors.getX(i),g=colors.getY(i);
-      if(Math.abs(r-base.r)<.001 && Math.abs(g-base.g)<.001)colors.setXYZ(i,team.r,team.g,team.b);
-      if(Math.abs(r-panel.r)<.001 && Math.abs(g-panel.g)<.001)colors.setXYZ(i,sideTeam.r,sideTeam.g,sideTeam.b);
-      if(!cap && Math.abs(r-skin.r)<.001 && Math.abs(g-skin.g)<.001)colors.setXYZ(i,secondSkin.r,secondSkin.g,secondSkin.b);
+      if(Math.abs(r-base.r)<.001 && Math.abs(g-base.g)<.001)bodySlots.push(i);
+      if(Math.abs(r-panel.r)<.001 && Math.abs(g-panel.g)<.001)panelSlots.push(i);
+      if(Math.abs(r-skin.r)<.001 && Math.abs(g-skin.g)<.001)skinSlots.push(i);
+      if(Math.abs(r-fabric.r)<.001 && Math.abs(g-fabric.g)<.001)shortSlots.push(i);
     }
     colors.needsUpdate=true;
   });
+  setKit(shirt);
+  const shadows=playerContactShadows(group,body);
   const hips=body.getObjectByName('Hips')!;
   const hipRest=hips.position.clone();
   const q=new T.Quaternion(),pos=new T.Vector3();
@@ -91,15 +110,18 @@ export function makeAthlete(source:T.Group,clips:T.AnimationClip[],shirt:string,
     return [clip.name as StrokeKind|'run',{duration:clip.duration,samplers}] as const;
   }));
   const left=recoveryLeg(body,group,'Left'),right=recoveryLeg(body,group,'Right');
+  const head=body.getObjectByName('Head')!,neck=body.getObjectByName('Neck')!;
+  const look=new T.Quaternion(),parentQ=new T.Quaternion(),around=new T.Vector3(),across=new T.Vector3();
+  const pitchQ=new T.Quaternion();
   // Convert a metre along the actor's up axis to the imported armature units.
   const up=new T.Vector3(0,1,0).applyQuaternion(hips.parent!.getWorldQuaternion(q).invert())
     .divide(hips.parent!.getWorldScale(new T.Vector3()));
-  function pose(actor:Actor){
+  function pose(actor:Actor,gait=footwork(actor)){
     group.position.set(actor.x,.095,actor.z);group.rotation.y=actor.yaw;
     const clip=library.get(actor.kind)!;
-    const t=contactTime+actor.relativeTime*actor.pace;
+    const t=impactTime(actor.kind)+actor.relativeTime*actor.pace;
     const weight=smooth(Math.min(t/.22,(clip.duration-t)/.23));
-    const gait=footwork(actor),run=library.get('run');
+    const run=library.get('run');
     const moving=smooth(gait.speed/1.9);
     const grounded=weight*(1-smooth((gait.speed-.12)/1.65));
     for(let i=0;i<poseBones.length;i++)poseBones[i].quaternion.copy(rest[i]);
@@ -132,9 +154,26 @@ export function makeAthlete(source:T.Group,clips:T.AnimationClip[],shirt:string,
     const vertical=.047*actor.split-.035*moving*(1-actor.turn);
     hips.position.addScaledVector(up,vertical*(1-grounded));
     group.updateWorldMatrix(true,true);
+    // Keep the ball in sight while recovering. At impact the capture supplies
+    // the full head turn. Spread the smaller tracking motion over both joints.
+    if(actor.court && weight<1){
+      group.getWorldQuaternion(q);
+      for(const joint of [neck,head]){
+        const share=(joint===neck?.32:.68)*(1-weight);
+        joint.parent!.getWorldQuaternion(parentQ).invert();
+        around.set(0,1,0).applyQuaternion(q).applyQuaternion(parentQ);
+        across.set(1,0,0).applyQuaternion(q).applyQuaternion(parentQ);
+        look.setFromAxisAngle(around,actor.lookYaw*share);
+        pitchQ.setFromAxisAngle(across,actor.lookPitch*share);
+        joint.quaternion.premultiply(look.multiply(pitchQ));
+        joint.updateWorldMatrix(false,false);
+      }
+    }
     left(gait.feet[0],grounded);right(gait.feet[1],grounded);
+    shadows.update(actor.x,actor.z,actor.yaw);
   }
-  return {group,pose,dispose(){
+  return {group,pose,setKit,dispose(){
+    shadows.dispose();
     ownedGeometry.forEach(g=>g.dispose());
     body.traverse(o=>{if(o instanceof T.SkinnedMesh)o.skeleton.dispose();});
   }};

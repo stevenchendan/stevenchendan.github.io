@@ -58,11 +58,11 @@ mountRacket(wrist,racket);
 // Attach the original Blender portraits to the bone in their fitted bind pose.
 // Precompute an additional small index buffer for the precinct representation.
 await MeshoptSimplifier.ready;
-for(const [name,role] of [['CapPlayer','TennisCap'],['BandPlayer','HeadbandPlayer']]){
+for(const [name,role] of [['CapPlayer','TennisCap'],['BandPlayer','HeadbandPlayer'],['CropPlayer','CroppedPlayer'],['TiePlayer','TiedPlayer']]){
   const head=portraits.getObjectByName(name);head.name=role;
   const g=head.geometry;
-  const [detailed]=MeshoptSimplifier.simplify(Uint32Array.from(g.index.array),g.attributes.position.array,3,5200*3,.0009,['Permissive']);
-  const [distant]=MeshoptSimplifier.simplify(detailed,g.attributes.position.array,3,500*3,.009,['Permissive']);
+  const [detailed]=MeshoptSimplifier.simplify(Uint32Array.from(g.index.array),g.attributes.position.array,3,8500*3,.00055,['LockBorder']);
+  const [distant]=MeshoptSimplifier.simplify(detailed,g.attributes.position.array,3,520*3,.009,['Permissive']);
   head.userData.distantIndices=Array.from(distant);
   g.setIndex(new T.BufferAttribute(Uint16Array.from(detailed),1));
   athlete.getObjectByName('Head').attach(head);
@@ -75,7 +75,14 @@ for(const side of ['Left','Right']){
     .multiply(foot.getWorldQuaternion(new T.Quaternion())).toArray();
 }
 
-for(const kind of ['forehand','volley','backhand-volley'])calibrateRelease(kind,recordings[kind],bones,racket);
+const kinds=['forehand','volley','backhand-volley','backhand','serve'];
+for(const kind of kinds)calibrateRelease(kind,recordings[kind],bones,racket);
+for(const kind of kinds){
+  const record=recordings[kind],pose=record.poses[Math.round(record.contact/record.dt)];
+  bones[0].position.fromArray(pose.h);
+  bones.forEach((b,i)=>b.quaternion.fromArray(pose.b[i]).normalize());
+  console.log(kind,'impact',racket.getWorldPosition(new T.Vector3()).toArray().map(v=>v.toFixed(6)).join(', '));
+}
 
 const hips=bones[0],ready=recordings.volley.poses.at(-1);
 for(const [i,bone] of bones.entries())bone.quaternion.fromArray(ready.b[i]).normalize();
@@ -112,7 +119,7 @@ readyArm('Left',throat.add(new T.Vector3(-.045,-.035,.045)),new T.Vector3(-.42,.
 athlete.updateMatrixWorld(true);
 
 // Keep 50 Hz sampling at each impact. Only varying tracks need every frame.
-const clips=['forehand','volley','backhand-volley'].map(kind=>{
+const clips=kinds.map(kind=>{
   const {poses,dt}=recordings[kind],times=poses.map((_,i)=>i*dt);
   const tracks=[new T.VectorKeyframeTrack('Hips.position',times,poses.flatMap(p=>p.h))];
   for(const [i,bone] of bones.entries()){
@@ -126,4 +133,4 @@ clips.push(await loadRunningClip(upstream,athlete));
 athlete.userData.motionCredits='motion-credits.txt';
 const bytes=await new GLTFExporter().parseAsync(athlete,{binary:true,animations:clips});
 await fs.writeFile(new URL('rally-athlete.glb',base),Buffer.from(bytes));
-console.log('Packed articulated tennis athlete, racket and three captured strokes:',bytes.byteLength,'bytes');
+console.log('Packed articulated tennis athlete, racket and five captured strokes:',bytes.byteLength,'bytes');

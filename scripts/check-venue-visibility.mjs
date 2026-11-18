@@ -1,28 +1,14 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import vm from 'node:vm';
-import ts from 'typescript';
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-
-const modules=new Map();
-// Only canvas labels/textures are stubbed; all geometry uses real Three.js.
-const document={createElement:()=>({width:0,height:0,getContext:()=>({fillRect(){},fillText(){},beginPath(){},moveTo(){},lineTo(){},stroke(){},ellipse(){},fill(){}})})};
-function load(name){
-  if(name==='three')return THREE;
-  if(name.startsWith('three/'))return {mergeGeometries};
-  const key=name.replace('./','');if(modules.has(key))return modules.get(key);
-  const m={exports:{}};modules.set(key,m.exports);
-  const source=fs.readFileSync(`site/components/arena1573/${key}.ts`,'utf8');
-  vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{module:m,exports:m.exports,require:load,document});
-  return m.exports;
-}
-const {buildContext,disposeModel}=load('model');
+import {loadArenaModule as load} from './arena-model-fixture.mjs';
+const {buildContext,buildArena,disposeModel}=load('model');
 const {venueVisible,courtVenue}=load('venueVisibility');
-const {rallyCourts}=load('courtPlacements');
+const {rallyCourts,courtDirectory}=load('courtPlacements');
 const data=JSON.parse(fs.readFileSync('public/data/1573-context.json','utf8'));
 const context=buildContext(data);
-const ids=['mca','rla','kia','village','john','centrepiece','ntc','west','east','oval'];
+const ids=['mca','rla','kia','village','john','centrepiece','ntc','west','east','oval',
+  'hilltop','ballpark','topcourt','garden','terrace','courtside'];
 for(const id of ids){
   const groups=context.children.filter(child=>venueVisible(child.userData.venue,id,false));
   assert.equal(groups.length,1,`${id} retains exactly its own venue group`);
@@ -59,6 +45,61 @@ audience.traverseVisible(node=>{
 });
 assert.equal(distantCalls,1,'The 200 m crowd view is one draw');
 assert.ok(distantTriangles<30000,'A distant occupied venue uses cutouts');
+const {courtFrame}=load('precinctGeometry');
+for(const id of ['rla','mca','john','kia','west','east']){
+  const fans=context.getObjectByName('venue-'+id).getObjectsByProperty('name','seated-spectators');
+  if(id==='west'||id==='east'){
+    // Show courts have sideline grandstands. Smaller practice courts each
+    // have one audience shared across the four corner benches.
+    const courts=data.features.filter(f=>f.kind==='court'&&courtVenue(f.id,courtFrame(f.points).x)===id);
+    assert.ok(courts.length>0,`${id} includes the mapped outdoor courts`);
+    assert.equal(fans.length,courts.length,`${id} has one audience per mapped court`);
+  }else{
+    assert.equal(fans.length,1,`${id} has one batched stadium crowd`);
+  }
+  for(const batch of fans){
+    assert.ok(batch.count>0,`${id} uses the shared photographic audience`);
+    assert.ok(batch.castShadow&&batch.receiveShadow,'Spectators participate in the sunlight and stadium shade');
+    assert.equal(batch.customDepthMaterial.map,batch.material.map,'Shadow outlines match the photographed silhouettes');
+  }
+}
+const {bindSpectators}=load('seatedCrowd');
+const home=buildArena().group;
+const courts=courtDirectory(data),instance=new THREE.Matrix4(),seat=new THREE.Vector3();
+const {benchLayout}=load('playerBenches');
+assert.equal(courts.filter(c=>benchLayout(c.key).source).length,17);
+for(const court of courts){
+  const root=court.key==='1573'?home:context.getObjectByName('venue-'+court.venue);
+  root.updateWorldMatrix(true,true);
+  const small=['west','east','village'].includes(court.venue)&&court.key!=='west-show';
+  const c=Math.cos(court.rotation),s=Math.sin(court.rotation);
+  let occupied=0;
+  for(const batch of root.getObjectsByProperty('name','seated-spectators')){
+    for(let i=0;i<batch.count;i++){
+      batch.getMatrixAt(i,instance);seat.setFromMatrixPosition(instance).applyMatrix4(batch.matrixWorld);
+      const dx=seat.x-court.x,dz=seat.z-court.z,x=Math.abs(dx*c-dz*s),z=Math.abs(dx*s+dz*c);
+      if(seat.y<court.y || seat.y>court.y+15)continue;
+      if(small ? (x<10&&z>15&&z<19.7)||(z<15&&x>9.7&&x<16.5) : Math.hypot(dx,dz)<45)occupied++;
+    }
+  }
+  assert.ok(occupied>0,'An occupied stand at the height of '+court.en);
+}
+disposeModel(home);
+const tickCrowd=bindSpectators(context,()=>{}),seatCamera=new THREE.PerspectiveCamera();
+const lower=seatSections.rla.find(s=>s.id===6),sampleEye=rodLaverSeatEye(lower.x,lower.z,.26);
+seatCamera.position.set(154+sampleEye[0],sampleEye[1],72+sampleEye[2]);seatCamera.updateMatrixWorld(true);
+tickCrowd(seatCamera,.04,false);
+const neighbours=audience.getObjectByName('seated-neighbours');
+assert.ok(neighbours.visible&&neighbours.count>0&&neighbours.count<=40,'Nearby bodies use a bounded relief mesh');
+assert.ok(neighbours.geometry.index.count*neighbours.count/3<=41600,'Close seats stay within the detail triangle budget');
+const shader={uniforms:{},vertexShader:'',fragmentShader:''};
+neighbours.material.onBeforeCompile(shader,null);
+const phase=shader.uniforms.crowdTime;
+assert.equal(phase.value,0,'Camera and wardrobe can update while motion is paused');
+tickCrowd(seatCamera,.04,true);assert.equal(phase.value,.04);
+tickCrowd(aerialEye,.04,false);
+assert.equal(phase.value,.04);
+assert.equal(neighbours.visible,false,'Moving to the overview removes the detail draw');
 audience.visible=false;
 const structure=interior.children.filter(node=>node.isMesh&&!node.isInstancedMesh);
 const position=new THREE.Matrix4();

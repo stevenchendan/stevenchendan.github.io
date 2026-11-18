@@ -108,6 +108,37 @@ export function pavingMaterial(color:string,geometry:T.BufferGeometry,kind:Groun
 /** Original procedural paving: metre-scaled UVs, no reference imagery reused. */
 export function precinctMaterial(color:string,geometry:T.BufferGeometry){
   const material=new T.MeshStandardMaterial({color,roughness:.83});
+  // Copper pleats pick up the directional light. A small variation between
+  // neighbouring panels retains the continuous terracotta roof in the aerial.
+  if(color==='#a86b49')material.color.set('#b57561');
+  if(color==='#be8059')material.color.set('#bd7c68');
+  const glazing=['#465a65','#344f5d','#536b78','#425b62','#344b59'].includes(color);
+  const metal=['#e4e5dc','#e4e7e2','#cbd0ce','#cbd1cd','#be8059','#a86b49','#cdd4d1','#d3d7d3'].includes(color);
+  if(glazing||metal){
+    material.roughness=glazing?.39:.60;
+    material.metalness=glazing?.11:.18;
+    material.onBeforeCompile=shader=>{
+      shader.vertexShader='varying vec3 finishPoint;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n finishPoint=position;');
+      shader.fragmentShader='varying vec3 finishPoint;\n'+shader.fragmentShader.replace('#include <color_fragment>',glazing?`
+        #include <color_fragment>
+        vec2 bay=vec2((finishPoint.x+finishPoint.z)*.35,finishPoint.y*.28);
+        float variation=fract(sin(dot(floor(bay),vec2(73.1,19.7)))*2845.9);
+        float sky=.5+.5*sin((finishPoint.x+finishPoint.z)*.041+finishPoint.y*.37);
+        diffuseColor.rgb*=.83+.24*variation;
+        diffuseColor.rgb+=vec3(.028,.043,.055)*(sky*.54+.46*smoothstep(1.,15.,finishPoint.y));
+      `:`
+        #include <color_fragment>
+        vec2 sheet=vec2(finishPoint.x/.56,finishPoint.z/10.);
+        vec2 footprint=max(fwidth(sheet),vec2(.0001));
+        vec2 joint=abs(fract(sheet+.5)-.5);
+        vec2 seam=(1.-smoothstep(vec2(.006),vec2(.026)+footprint*.55,joint))*(1.-smoothstep(vec2(.16),vec2(.85),footprint));
+        float weathering=.98+.02*sin(finishPoint.z*.19+sin(finishPoint.x*.13));
+        diffuseColor.rgb*=weathering-.13*seam.x-.15*seam.y;
+      `);
+    };
+    material.customProgramCacheKey=()=>glazing?'precinct-glazing':'precinct-standing-seams';
+    return material;
+  }
   if(!['#979d9b','#a3aaa8','#9da5a4','#d7d4c5'].includes(color))return material;
   const canvas=document.createElement('canvas');canvas.width=256;canvas.height=256;
   const ctx=canvas.getContext('2d')!;

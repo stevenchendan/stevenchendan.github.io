@@ -1,8 +1,9 @@
 import * as T from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Batch } from './architecture';
+import { seatedCrowd } from './seatedCrowd';
 import { sectionDoors, seatSections } from './seating';
-import { rodLaverBanks, rodLaverRow, rodLaverRowPoint, rodLaverSeatEye, type RodLaverTier } from './rodLaverProfile';
+import { rodLaverBanks, rodLaverRow, rodLaverRowPoint, type RodLaverTier } from './rodLaverProfile';
 
 // Match-day architecture and room layout references:
 // https://ausopen.com/articles/news/concert-tennis-mode-transformation-rod-laver-arena
@@ -102,42 +103,6 @@ function railing(b:Batch,path:T.Shape,base:number,height:number){
   }
 }
 
-function ballAttendant(b:Batch,side:number){
-  const world=(x:number,y:number,z:number)=>[side*(8.85+x),.1+y,side*(20.49+z)];
-  const oval=(x:number,y:number,z:number,w:number,h:number,d:number,color:string,tilt=0)=>{
-    const g=new T.SphereGeometry(1,14,9);g.scale(w,h,d);g.rotateX(tilt);
-    if(side<0)g.rotateY(Math.PI);g.translate(...world(x,y,z) as [number,number,number]);b.add(g,color);
-  };
-  const limb=(a:number[],c:number[],r0:number,r1:number,color:string)=>{
-    const start=new T.Vector3(...world(a[0],a[1],a[2])),end=new T.Vector3(...world(c[0],c[1],c[2]));
-    const direction=end.clone().sub(start),g=new T.CylinderGeometry(r1,r0,direction.length(),11);
-    g.applyQuaternion(new T.Quaternion().setFromUnitVectors(new T.Vector3(0,1,0),direction.normalize()));
-    g.translate(...start.lerp(end,.5).toArray());b.add(g,color);
-  };
-  const shirt='#327489',shorts='#23374f',skin='#b58b70',shoe='#d5d9d4';
-  // One knee rests on the runoff; the other foot is flat with forearms
-  // resting over the raised thigh. Each cap brim points towards the court.
-  oval(0,.51,0,.153,.127,.124,shorts);oval(0,.731,-.062,.165,.238,.113,shirt,-.27);
-  oval(0,.881,-.099,.18,.087,.106,shirt);
-  limb([0,.86,-.10],[0,.99,-.14],.067,.055,skin);
-  oval(0,1.054,-.145,.093,.122,.091,skin);oval(0,1.046,-.227,.026,.027,.027,skin);
-  oval(0,1.126,-.142,.103,.063,.105,'#213c56');oval(0,1.104,-.222,.091,.014,.106,'#213c56');
-  const joints=[
-    {hip:[-.088,.51,-.015],knee:[-.136,.464,-.332],ankle:[-.15,.099,-.37]},
-    {hip:[.088,.51,.013],knee:[.146,.079,.05],ankle:[.142,.075,.405]},
-  ];
-  for(const {hip,knee,ankle} of joints){
-    const hem=hip.map((v,i)=>v+(knee[i]-v)*.60);
-    limb(hip,hem,.098,.088,shorts);limb(hem,knee,.08,.062,skin);oval(knee[0],knee[1],knee[2],.065,.068,.063,skin);
-    limb(knee,ankle,.063,.04,skin);oval(ankle[0],ankle[1]-.029,ankle[2]-.052,.056,.049,.104,shoe);
-  }
-  for(const s of [-1,1]){
-    const shoulder=[s*.139,.868,-.102],cuff=[s*.169,.755,-.142],elbow=[s*.157,.65,-.21],hand=[s*.083,.548,-.329];
-    limb(shoulder,cuff,.085,.067,shirt);limb(cuff,elbow,.061,.049,skin);
-    limb(elbow,hand,.051,.032,skin);oval(hand[0],hand[1],hand[2],.035,.034,.054,skin);
-  }
-}
-
 function seatFurniture(b:Batch,displays:Displays){
   // Player benches and camera wells live beside the sideline, behind the chair.
   for(const s of [-1,1]){
@@ -162,17 +127,6 @@ function seatFurniture(b:Batch,displays:Displays){
   displays.panel('AO',-7.49,1.51,0,.93,.46,Math.PI/2);
   b.rod([-8.42,2.45,-.51],[-8.58,3.55,-.51],.066,'#354650');
   b.box(-8.13,3.58,0,1.14,.13,1.35,'#364750');
-  const head=(x:number,y:number,z:number)=>{
-    const g=new T.SphereGeometry(1,12,8);g.scale(.102,.135,.104);g.translate(x,y,z);b.add(g,'#bc8e71');
-    const cap=new T.SphereGeometry(.111,10,5,0,Math.PI*2,0,1.4);cap.translate(x,y+.026,z);b.add(cap,'#243f55');
-  };
-  b.rod([-8.08,2.56,0],[-8.05,2.94,0],.17,'#386775');head(-8.02,3.13,0);
-  for(const s of [-1,1]){
-    b.rod([-8.03,2.52,s*.1],[-7.77,2.44,s*.12],.091,'#3c4652');
-    b.rod([-7.77,2.44,s*.12],[-7.73,2.13,s*.12],.071,'#3c4652');
-    b.rod([-8.01,2.87,s*.15],[-7.84,2.71,s*.18],.058,'#bc8e71');
-    ballAttendant(b,s);
-  }
   for(const s of [-1,1])displays.panel('MELBOURNE',0,.135,s*15.2,6.45,1.06,s<0?Math.PI:0,true);
 }
 
@@ -282,147 +236,6 @@ function bowlGalleries(b:Batch,outline:Outline,displays:Displays){
   }
 }
 
-function bowlSpectators(group:T.Group,seats:Seat[]){
-  const eyes=seatSections.rla.map(s=>rodLaverSeatEye(s.x,s.z,s.tier==='upper'?.82:.26));
-  const near:Seat[]=[],far:Seat[]=[];
-  const zones=new Map<Seat,number>();
-  const venueLOD=new T.LOD(),banks=new T.Group(),aerial=new T.Group();
-  venueLOD.addLevel(banks,0);venueLOD.addLevel(aerial,108,.1);group.add(venueLOD);
-  const cluster=(center:T.Vector3,withDetail:boolean)=>{
-    const lod=new T.LOD(),detail=new T.Group(),simple=new T.Group(),cards=new T.Group();
-    lod.position.copy(center);
-    for(const g of [detail,simple,cards])g.position.copy(center).negate();
-    if(withDetail)lod.addLevel(detail,0);
-    lod.addLevel(simple,withDetail?6:0,.12);lod.addLevel(cards,26,.12);banks.add(lod);
-    return {detail,simple,cards};
-  };
-  const clusters=eyes.map(eye=>cluster(new T.Vector3(...eye),true));
-  for(const p of seats){
-    if(p.seed%100>=71)continue;
-    let distance=Infinity,nearest=-1;
-    for(let i=0;i<eyes.length;i++){
-      const eye=eyes[i];
-      const dx=p.x-eye[0],dz=p.z-eye[2];
-      if(Math.abs(dx)>=5||Math.abs(dz)>=5)continue;
-      const d=Math.hypot(dx,dz);
-      if(d<distance){distance=d;nearest=i;}
-    }
-    // A visitor takes the virtual seat in a clear part of the row. Neighbours
-    // within a few rows use rounder heads, ears, articulated arms and clothing.
-    if(distance<1.74)continue;
-    if(distance<4.55){near.push(p);zones.set(p,nearest);}else far.push(p);
-  }
-  const occupants=[...far,...near];
-  const groups:Seat[][]=Array.from({length:8},()=>[]);
-  for(const p of far){
-    const angle=(Math.atan2(p.z/48,p.x/40)+Math.PI*2)%(Math.PI*2);
-    groups[Math.floor(angle*4/Math.PI)].push(p);
-  }
-  for(const sector of groups){
-    if(!sector.length)continue;
-    const center=new T.Vector3();
-    for(const p of sector){center.x+=p.x;center.y+=p.y;center.z+=p.z;}
-    center.divideScalar(sector.length);
-    const zone=clusters.length;clusters.push(cluster(center,false));
-    for(const p of sector)zones.set(p,zone);
-  }
-  // A spectator is only a few pixels high across the court. Camera-facing
-  // cutouts preserve the mix of clothing and heads with two triangles each.
-  // Very distant precinct views use a single batch for the entire arena.
-  const canvas=document.createElement('canvas');canvas.width=512;canvas.height=96;
-  const ctx=canvas.getContext('2d')!;
-  const clothes=['#e2dbc4','#6c97ad','#cc8c74','#4b6376','#e4e1d8','#919f7f','#bcaa97','#93a5bb'];
-  const skins=['#bc9478','#d8ac88','#ae8369','#845f4a'];
-  const paint=(x:number,y:number,w:number,h:number,color:string)=>{
-    ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(x,y,w,h,0,0,Math.PI*2);ctx.fill();
-  };
-  clothes.forEach((shirt,i)=>{
-    const x=i*64+32,skin=skins[i%4];
-    paint(x,75,15,15,'#47545b');paint(x,54,15,22,shirt);paint(x-12,51,5,12,shirt);paint(x+12,51,5,12,shirt);
-    paint(x-13,62,3,7,skin);paint(x+13,62,3,7,skin);paint(x,29,8.5,11,skin);
-    paint(x,22,8.8,5.6,i%4===1?'#e5dcc9':i%3===2?'#9b8065':'#54443a');
-  });
-  const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;
-  const cardMaterial=new T.MeshLambertMaterial({map:texture,alphaTest:.28,side:T.DoubleSide});
-  cardMaterial.onBeforeCompile=shader=>{
-    shader.vertexShader='attribute float outfit;\n'+shader.vertexShader
-      .replace('#include <uv_vertex>','#include <uv_vertex>\n vMapUv.x=(vMapUv.x+outfit)/8.0;')
-      .replace('#include <beginnormal_vertex>','#include <beginnormal_vertex>\n objectNormal=vec3(0.0,.86,.51);')
-      .replace('#include <project_vertex>',`vec4 mvPosition=modelViewMatrix*instanceMatrix*vec4(0.,0.,0.,1.);
-        mvPosition.xy+=position.xy*length(instanceMatrix[0].xyz);
-        gl_Position=projectionMatrix*mvPosition;`);
-  };
-  const plane=new T.PlaneGeometry(.76,1.05);plane.translate(0,.39,0);
-  const tilePeople:Seat[][]=clusters.map(()=>[]);
-  for(const p of occupants)tilePeople[zones.get(p)!].push(p);
-  const dummy=new T.Object3D();
-  const addCards=(parent:T.Group,people:Seat[])=>{
-    if(!people.length)return;
-    const g=plane.clone(),kits=new Float32Array(people.length);
-    const instances=new T.InstancedMesh(g,cardMaterial,people.length);
-    people.forEach((p,i)=>{
-      dummy.position.set(p.x,p.y,p.z);dummy.rotation.y=p.angle;dummy.scale.setScalar(.92+(p.seed%17)*.011);dummy.updateMatrix();
-      instances.setMatrixAt(i,dummy.matrix);kits[i]=(p.seed>>>5)%8;
-    });
-    g.setAttribute('outfit',new T.InstancedBufferAttribute(kits,1));parent.add(instances);
-  };
-  addCards(aerial,occupants);tilePeople.forEach((people,i)=>addCards(clusters[i].cards,people));plane.dispose();
-  const transform=new T.Object3D(),color=new T.Color();
-  const hairColors=['#604c3c','#3d3431','#91765a','#50423b','#afa493','#774f3b','#b59b76'];
-  for(const close of [false,true]){
-    const people=close?near:occupants,sides=close?12:6,rings=close?6:3;
-    const batch=(parts:T.BufferGeometry[],people:Seat[],colors:string[],bit:number)=>{
-      const g=mergeGeometries(parts)!;parts.forEach(part=>part.dispose());
-      const material=new T.MeshStandardMaterial({roughness:.91});
-      const buckets=new Map<T.Group,Seat[]>();
-      for(const p of people){
-        const parent=clusters[zones.get(p)!][close?'detail':'simple'];
-        const list=buckets.get(parent);
-        if(list)list.push(p);else buckets.set(parent,[p]);
-      }
-      for(const [parent,rows] of buckets){
-        const mesh=new T.InstancedMesh(g,material,rows.length);
-        rows.forEach((p,i)=>{
-          transform.position.set(p.x,p.y,p.z);transform.rotation.y=p.angle+((p.seed>>>19)%23-11)*.015;
-          transform.scale.setScalar(.88+((p.seed>>>11)%31)*.008);transform.updateMatrix();mesh.setMatrixAt(i,transform.matrix);
-          mesh.setColorAt(i,color.set(colors[(p.seed>>>bit)%colors.length]));
-        });
-        mesh.receiveShadow=true;parent.add(mesh);
-      }
-    };
-    const oval=(x:number,y:number,z:number,w:number,h:number,d:number)=>{
-      const g=new T.SphereGeometry(1,sides,rings);g.scale(w,h,d);g.translate(x,y,z);return g;
-    };
-    const jacket=new T.CylinderGeometry(.182,.153,.31,close?14:7);
-    jacket.scale(1,1,.73);jacket.rotateX(-.12);jacket.translate(0,.282,-.034);
-    const shirts:T.BufferGeometry[]=[jacket,oval(0,.414,-.048,.192,.08,.13)],legs:T.BufferGeometry[]=[];
-    const skin=[oval(0,.626,-.076,.096,.13,.107)];
-    for(const s of [-1,1]){
-      shirts.push(oval(s*.154,.385,-.047,.066,.105,.084));
-      skin.push(oval(s*.165,.268,-.124,.056,.095,.095));
-      legs.push(oval(s*.092,.085,-.14,.089,.10,.175));
-      const shin=new T.CylinderGeometry(.067,.049,.266,5);shin.translate(s*.107,-.066,-.25);legs.push(shin);
-      if(close){
-        skin.push(oval(s*.164,.213,-.214,.047,.046,.096),oval(s*.137,.191,-.283,.05,.034,.052));
-        skin.push(oval(s*.094,.62,-.060,.018,.034,.021));
-        legs.push(oval(s*.107,-.195,-.3,.055,.046,.11));
-      }
-    }
-    if(close)skin.push(oval(0,.492,-.051,.067,.073,.067),oval(0,.618,-.176,.025,.028,.028));
-    batch(shirts,people,['#eee8d6','#98b6bd','#d4b38b','#61798a','#eeede1','#a4a598','#d9957b','#333d42','#d6c7cc','#bac8db','#e5d39d','#678177'],5);
-    batch(legs,people,['#41525e','#53565c','#777a77','#a8a297'],9);
-    batch(skin,people,['#b88866','#dfb392','#cd9a77','#906448','#79563f','#e2bfa6'],14);
-    const hair=new T.SphereGeometry(1,sides,close?7:3,0,2*Math.PI,0,1.56);
-    hair.scale(.102,.135,.11);hair.rotateX(.13);hair.translate(0,.638,-.072);
-    const hairParts=[hair];
-    if(close)hairParts.push(oval(0,.617,-.004,.093,.089,.054));
-    batch(hairParts,people,hairColors,18);
-    if(close)batch([oval(0,.551,.014,.077,.106,.044),oval(0,.472,.038,.046,.083,.045)],people.filter(p=>(p.seed>>>3)%5===1),hairColors,18);
-    const hats=people.filter(p=>(p.seed>>>3)%5===0);
-    batch([oval(0,.713,-.072,.113,.069,.116),oval(0,.697,-.15,.105,.014,.107)],hats,['#efece1','#26546d','#bca88b','#e1d7bd'],6);
-  }
-}
-
 export function rodLaverBowl(b:Batch,outline:Outline,seatGeometry:T.BufferGeometry){
   const displays=new Displays(),seats:Seat[]=[];
   courtWalls(b,outline,displays);seatFurniture(b,displays);
@@ -435,6 +248,6 @@ export function rodLaverBowl(b:Batch,outline:Outline,seatGeometry:T.BufferGeomet
     chairs.setMatrixAt(i,transform.matrix);chairs.setColorAt(i,color.set(palette[p.seed%palette.length]));
   });
   chairs.name='rod-laver-seats';chairs.receiveShadow=true;b.group.add(chairs);
-  const crowd=new T.Group();crowd.name='precinct-spectators';crowd.visible=false;
-  bowlSpectators(crowd,seats);b.group.add(crowd);displays.finish(b.group);
+  const crowd=seatedCrowd(seats,.71);crowd.name='precinct-spectators';crowd.visible=false;
+  b.group.add(crowd);displays.finish(b.group);
 }

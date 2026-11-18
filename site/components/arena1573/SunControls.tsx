@@ -6,7 +6,7 @@ import styles from './arena.module.css';
 
 export const standNames: Record<Stand,string> = {north:'北侧看台',east:'东侧看台',south:'南侧看台',west:'西侧看台'};
 
-export default function SunControls({date,onChange,language,shade,onStand}:{date:SolarDate;onChange:(date:SolarDate)=>void;language:Language;shade:ShadeResult|null;onStand:(stand:Stand)=>void}){
+export default function SunControls({date,onChange,language,shade,onStand}:{date:SolarDate;onChange:(date:SolarDate)=>void;language:Language;shade:ShadeResult|null;onStand?:(stand:Stand)=>void}){
   const tr=getTranslator(language),sun=summerSun(date),daylight=summerDaylight(date.year,date.month,date.day);
   return <section className={styles.sunControls} aria-label={tr('夏日日照')}>
     <div className={styles.sunDate}>
@@ -19,12 +19,12 @@ export default function SunControls({date,onChange,language,shade,onStand}:{date
     <div className={styles.sunTicks}><span>05:00</span><span>AEDT · UTC+11</span><span>22:00</span></div>
     <div className={styles.sunFacts}><span>{tr('日出')} {clockTime(daylight.sunrise)}</span><span>{tr('日落')} {clockTime(daylight.sunset)}</span></div>
     <p className={styles.sunPosition}>{sun.aboveHorizon?`${tr('太阳高度')} ${sun.elevation.toFixed(0)}° · ${tr('方位')} ${sun.azimuth.toFixed(0)}°`:tr('太阳已在地平线以下')}</p>
-    <details className={styles.shadeDetails} open>
+    {onStand&&<details className={styles.shadeDetails} open>
       <summary>{tr('看台遮阴对比')}</summary>
       <p>{tr('遮阴采样点 / 每侧9点')}</p>
       {STANDS.map(stand=><button key={stand} onClick={()=>onStand(stand)} className={styles.standRow}><span>{tr(standNames[stand])}</span><span className={styles.shadeBar} aria-hidden="true"><i style={{width:sun.aboveHorizon&&shade?`${shade[stand]/9*100}%`:'0%'}}/></span><b>{!sun.aboveHorizon?'—':shade?`${shade[stand]}/9`:'…'}</b><span>↗</span></button>)}
       <small>{tr('点击看台查看视角。比较不同时段，再选择座位。')}</small>
-    </details>
+    </details>}
     <p className={styles.sunCaveat}>{tr('仅为近似建筑模型的遮阴参考，不含云层、紫外线或临时设施；不是座位遮阴保证。')}</p>
     <a className={styles.sunSource} href="https://gml.noaa.gov/grad/solcalc/solareqns.PDF" target="_blank" rel="noreferrer">{tr('太阳位置算法 · NOAA ↗')}</a>
   </section>;

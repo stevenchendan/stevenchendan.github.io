@@ -45,7 +45,7 @@ export function supportBuilding(b:Batch,building:Building){
   const h=ntc?13:centre?15:pavilion?14:office?22:height;
   const shape=new T.Shape(ring.map(p=>new T.Vector2(p[0],-p[1])));
   const mass=new T.ExtrudeGeometry(shape,{depth:h,bevelEnabled:false});mass.rotateX(-Math.PI/2);mass.translate(0,base,0);
-  b.add(mass,centre?'#b4aa95':ntc?'#bac4c5':pavilion?'#a8b3b7':'#969e9d');
+  b.add(mass,centre?'#9ba6a7':ntc?'#bac4c5':pavilion?'#a8b3b7':'#969e9d');
   const cap=new T.ShapeGeometry(shape);cap.rotateX(-Math.PI/2);cap.translate(0,base+h+.08,0);b.add(cap,'#cbd0ce');
   if(ntc){
     // Eight roof bays, three raised cowls each, observed in the aerial reference.
@@ -63,9 +63,29 @@ export function supportBuilding(b:Batch,building:Building){
   }else if(centre||pavilion||office){
     facade(b,ring,base,centre?8:office?20:9);
     for(let x=left+5;x<right-5;x+=5)for(let z=back-22;z<back-5;z+=3){
+      if(centre&&Math.floor((x-left)/5)%6===0)continue;
       if(pointInRing([x,z],ring))b.box(x,base+h+.25,z,4.4,.15,2.5,'#344b59');
     }
     for(let x=left+4;x<right;x+=9){if(pointInRing([x,cz],ring))b.rod([x,base+h+.2,front+4],[x,base+h+.2,back-4],.06,'#9ba8ac');}
+    if(centre){
+      // Upper function-room windows, deep eaves and broadcast studios face
+      // the Central Terrace. The glass reads through both floors from the oval.
+      b.box(cx,base+7.9,back+1.1,w-.3,.45,2.35,'#b9c2c5');
+      b.box(cx,base+13.55,back+1.15,w-.35,.32,2.5,'#bcc7c8');
+      b.box(cx,base+14.48,back+.15,w-.2,1.45,.35,'#aeb7b8');
+      for(let x=left+2.5;x<right-2;x+=4.45){
+        b.box(x,base+5.7,back+.15,4.31,4.12,.16,'#344f5d');
+        b.box(x,base+10.85,back+.13,4.30,4.23,.18,'#465a65');
+        b.box(x-2.18,base+10.85,back+.26,.075,4.32,.12,'#aeb8ba');
+        if((Math.round((x-left-2.5)/4.45)%3)===0)b.box(x,base+3.8,back+.96,.52,7.6,.61,'#a8b3b7');
+      }
+      for(let x=left+7;x<right-7;x+=13){
+        const run=23,z=front+25;
+        if(!pointInRing([x,z-run/2],ring)||!pointInRing([x,z+run/2],ring))continue;
+        b.box(x,base+h+.34,z,1.85,.49,run,'#81959b');
+        b.box(x,base+h+.64,z,2.05,.14,run+.2,'#bbc9c9');
+      }
+    }
   }else if(building.roof==='Gable'&&w>2&&d>2){
     const axis=w<d?0:1,mid=axis===0?cx:cz,span=axis===0?w:d,rise=Math.min(3.8,span*.22);
     const heightAt=(p:number[])=>top+.12+rise*(1-Math.abs(p[axis]-mid)/(span/2));

@@ -2,9 +2,13 @@
 
 import { useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { Language } from './i18n';
+import {benchDescription,benchLayout} from './playerBenches';
 import Icon from './Icon';
 import { seatSections, sectionDoors, seatingVenues, type SeatSection, type SectionId, type SeatingVenue } from './seating';
 import styles from './seating.module.css';
+import SeatDaylight, { bayExposure, exposureNames, type Study } from './SeatDaylight';
+import { summerSun } from './solar';
+import { sectionSun } from './seatSun';
 
 type Props = {
   venue: SeatingVenue;
@@ -14,6 +18,7 @@ type Props = {
   onSelect: (section: SectionId) => void;
   onView: (section: SectionId) => void;
   canView?: boolean;
+  study: Study;
 };
 
 const copy = {
@@ -91,17 +96,21 @@ const shells = {
   john: 'M111 5H224L247 33L312 59V206L250 230L223 261H111L85 234L26 207V60L83 35Z',
 };
 
-function CourtMark({ venue }: { venue: SeatingVenue }) {
-  return <g transform={venue === 'john' ? 'rotate(90 169 134)' : undefined} aria-hidden="true" className={styles.court}>
+function CourtMark({venue,language}:{venue:SeatingVenue;language:Language}) {
+  return <g transform={venue === 'john' ? 'rotate(-90 169 134)' : undefined} aria-hidden="true" className={styles.court}>
     <rect x="112" y="103" width="114" height="62" rx="8" fill="#367eab" />
     <rect x="135" y="119" width="68" height="30" fill="#156798" />
     <path d="M135 119h68v30h-68z M135 123h68 M135 145h68 M151 123v22 M187 123v22 M151 134h36" />
     <path className={styles.net} d="M169 116v36"/>
-    <g fill="#26485c"><rect x="149" y="159" width="10" height="2" rx="1"/><rect x="177" y="159" width="10" height="2" rx="1"/></g>
+    <g fill="#ffca6a" stroke="#443624" strokeWidth=".7">
+      <title>{language==='zh'?'球员休息席及裁判椅':'Player benches and umpire chair'}</title>
+      <rect x="149" y="106" width="12" height="4" rx="1"/><rect x="177" y="106" width="12" height="4" rx="1"/>
+      <rect x="167" y="108" width="4" height="4" rx=".7"/>
+    </g>
   </g>;
 }
 
-export default function SectionPicker({ venue, section, language, onSelect, onView, onVenueChange, canView = true }: Props) {
+export default function SectionPicker({ venue, section, language, onSelect, onView, onVenueChange, study, canView = true }: Props) {
   const labels = copy[language];
   const sections = seatSections[venue];
   const selected = sections.find(s => s.id === section) ?? sections[0];
@@ -109,6 +118,8 @@ export default function SectionPicker({ venue, section, language, onSelect, onVi
   const venueId = useId();
   const sectionId = useId();
   const clipId = useId();
+  const sun = summerSun(study.date);
+  const exposureLabels = exposureNames[language];
   const arranged = useMemo(() => sections.map(s => ({
     ...s, point: project(venue, s),
     path: s.footprints.map(points => coordinates(points.map(p => project(venue, p)))).join(' '),
@@ -155,62 +166,7 @@ export default function SectionPicker({ venue, section, language, onSelect, onVi
       </div>
     </div>
 
-    <div className={styles.map}>
-      <div className={styles.mapHeading}>
-        <h3>{labels.plan}</h3>
-        <span className={styles.north}>{labels.compass} <span aria-hidden="true">{venue === 'john' ? '↑' : '→'}</span></span>
-        <button className={styles.zoom} type="button" aria-label={zoomed ? labels.fit : labels.enlarge}
-          title={zoomed ? labels.fit : labels.enlarge} aria-pressed={zoomed} onClick={() => setZoomed(!zoomed)}>
-          <Icon name={zoomed ? 'exit' : 'expand'} />
-        </button>
-      </div>
-      <div className={styles.pan} ref={scroller} data-zoomed={zoomed}>
-        <svg className={styles.diagram} viewBox="0 0 338 268" data-venue={venue} role="group" aria-label={seatingVenues[venue].name + ' · ' + labels.map}>
-          <defs><clipPath id={clipId}><path d={arranged.map(s => s.path).join(' ')} /></clipPath></defs>
-          <path d={shells[venue]} className={styles.shell} />
-          {arranged.map(s => {
-            const name = labels.section + ' ' + s.id + ' · ' + labels[location(venue, s)] + ' · ' + labels[s.tier];
-            return <g key={s.id} data-section={s.id} data-tier={s.tier} role="button" aria-label={name}
-              aria-pressed={s.id === selected.id} tabIndex={s.id === selected.id ? 0 : -1}
-              className={styles.block} onClick={() => onSelect(s.id)} onKeyDown={e => onMapKey(e, s)}>
-              <title>{name}</title><path d={s.path} />
-            </g>;
-          })}
-          <g clipPath={'url(#' + clipId + ')'} aria-hidden="true" className={styles.rowLines}>
-            {Array.from({ length: 29 }, (_, i) => {
-              const t = i / 28;
-              const [w, h] = extent[venue];
-              const width = w * (.34 + .68 * t), height = h * (.31 + .71 * t);
-              return <rect key={i} x={169 - width} y={134 - height} width={width * 2} height={height * 2}
-                rx={venue === 'john' ? 4 : (11 + 53 * t)} />;
-            })}
-          </g>
-          <CourtMark venue={venue} />
-          {venue !== 'john' && <path className={styles.entry} aria-label={labels.entry} role="img"
-            transform={venue === 'rla' ? 'translate(208 97)' : 'translate(216 180) rotate(180)'}
-            d="M0 -2.9L3 2.4H-3Z"><title>{labels.entry}</title></path>}
-          <line className={styles.sightline} x1={selectedX} y1={selectedY} x2="169" y2="134" aria-hidden="true" />
-          <circle cx="169" cy="134" r="2" className={styles.target} aria-hidden="true" />
-          {sectionDoors[venue].map((door, index) => {
-            const [x, y] = project(venue, door);
-            return <circle key={index} cx={x} cy={y} r={door.id === selected.nearbyDoor ? 2.7 : 1.15}
-              className={door.id === selected.nearbyDoor ? styles.activeDoor : styles.door} aria-hidden="true" />;
-          })}
-          <g className={styles.numbers} aria-hidden="true">
-            {arranged.map(s => <text key={s.id} x={s.point[0]} y={s.point[1]} dy=".34em" textAnchor="middle"
-              data-tier={s.tier} data-active={s.id === selected.id} data-letter={typeof s.id === 'string'}>
-              {s.id}
-            </text>)}
-          </g>
-        </svg>
-      </div>
-      <div className={styles.legend} aria-hidden="true">
-        {(['courtside','lower','middle','upper'] as const).filter(t => sections.some(s => s.tier === t)).map(t =>
-          <span key={t} data-tier={t}><i />{labels[t]}</span>)}
-        {venue !== 'john' && <span className={styles.entryKey}><b>▲</b>{labels.entry}</span>}
-      </div>
-    </div>
-
+    <SeatDaylight {...{language, venue, study}} id={selected.id}/>
     <div className={styles.selection}>
       <div className={styles.selectionTop}>
         <div className={styles.sectionControl}>
@@ -232,10 +188,70 @@ export default function SectionPicker({ venue, section, language, onSelect, onVi
         <span>{labels[selected.tier]} · {labels[location(venue, selected)]}</span>
         {selected.nearbyDoor && <span className={styles.doorInfo}>{labels.door} {selected.nearbyDoor}</span>}
       </div>
-      {selected.sunMarked && <p className={styles.sun}><Icon name="day" />{labels.sun}</p>}
+    </div>
+
+    <div className={styles.map}>
+      <div className={styles.mapHeading}>
+        <h3>{labels.plan}</h3>
+        <span className={styles.north}>{labels.compass} <span aria-hidden="true">{venue === 'john' ? '↑' : '→'}</span></span>
+        <button className={styles.zoom} type="button" aria-label={zoomed ? labels.fit : labels.enlarge}
+          title={zoomed ? labels.fit : labels.enlarge} aria-pressed={zoomed} onClick={() => setZoomed(!zoomed)}>
+          <Icon name={zoomed ? 'exit' : 'expand'} />
+        </button>
+      </div>
+      <div className={styles.legend}>
+        {(sun.aboveHorizon ? ['shade','mixed','sun'] as const : ['dark'] as const).map(state =>
+          <span key={state} data-exposure={state}><i />{exposureLabels[state]}</span>)}
+        {venue !== 'john' && <span className={styles.entryKey}><b>▲</b>{labels.entry}</span>}
+      </div>
+      <div className={styles.pan} ref={scroller} data-zoomed={zoomed}>
+        <svg className={styles.diagram} viewBox="0 0 338 268" data-venue={venue} role="group" aria-label={seatingVenues[venue].name + ' · ' + labels.map}>
+          <defs><clipPath id={clipId}><path d={arranged.map(s => s.path).join(' ')} /></clipPath></defs>
+          <path d={shells[venue]} className={styles.shell} />
+          {arranged.map(s => {
+            const count = study.atlas ? sectionSun(study.atlas, venue, s.id, sun, study.closed) : null;
+            const exposure = bayExposure(count, sun.aboveHorizon, study.closed);
+            const name = labels.section + ' ' + s.id + ' · ' + labels[location(venue, s)] + ' · ' + labels[s.tier] + ' · ' + exposureLabels[exposure];
+            return <g key={s.id} data-section={s.id} data-tier={s.tier} data-exposure={exposure} role="button" aria-label={name}
+              aria-pressed={s.id === selected.id} tabIndex={s.id === selected.id ? 0 : -1}
+              className={styles.block} onClick={() => onSelect(s.id)} onKeyDown={e => onMapKey(e, s)}>
+              <title>{name}</title><path d={s.path} />
+            </g>;
+          })}
+          <g clipPath={'url(#' + clipId + ')'} aria-hidden="true" className={styles.rowLines}>
+            {Array.from({ length: 29 }, (_, i) => {
+              const t = i / 28;
+              const [w, h] = extent[venue];
+              const width = w * (.34 + .68 * t), height = h * (.31 + .71 * t);
+              return <rect key={i} x={169 - width} y={134 - height} width={width * 2} height={height * 2}
+                rx={venue === 'john' ? 4 : (11 + 53 * t)} />;
+            })}
+          </g>
+          <CourtMark venue={venue} language={language} />
+          {venue !== 'john' && <path className={styles.entry} aria-label={labels.entry} role="img"
+            transform={venue === 'rla' ? 'translate(208 97)' : 'translate(216 180) rotate(180)'}
+            d="M0 -2.9L3 2.4H-3Z"><title>{labels.entry}</title></path>}
+          <line className={styles.sightline} x1={selectedX} y1={selectedY} x2="169" y2="134" aria-hidden="true" />
+          <circle cx="169" cy="134" r="2" className={styles.target} aria-hidden="true" />
+          {sectionDoors[venue].map((door, index) => {
+            const [x, y] = project(venue, door);
+            return <circle key={index} cx={x} cy={y} r={door.id === selected.nearbyDoor ? 2.7 : 1.15}
+              className={door.id === selected.nearbyDoor ? styles.activeDoor : styles.door} aria-hidden="true" />;
+          })}
+          <g className={styles.numbers} aria-hidden="true">
+            {arranged.map(s => <text key={s.id} x={s.point[0]} y={s.point[1]} dy=".34em" textAnchor="middle"
+              data-tier={s.tier} data-active={s.id === selected.id} data-dark={!sun.aboveHorizon} data-letter={typeof s.id === 'string'}>
+              {s.id}
+            </text>)}
+          </g>
+        </svg>
+      </div>
     </div>
 
     <footer className={styles.sources}>
+      <p><span className={styles.benchKey} aria-hidden="true"/> <strong>{language==='zh'?'球员休息席':'Player benches'}</strong> · {benchDescription(venue,language)}</p>
+      <a href={benchLayout(venue).source} target="_blank" rel="noreferrer">{language==='zh'?'澳网场地布置图（2025）':'AO court layout (2025)'} ↗</a>
+      <p>{language === 'zh' ? '颜色根据所选时刻、太阳位置和场馆模型计算。屋顶开合与天气以比赛现场为准。' : 'Colours estimate direct sun from the arena model at your chosen time. Actual roof operation and weather vary.'}</p>
       <p>{labels.note}</p>
       <div>
         <a href={seatingVenues[venue].map} target="_blank" rel="noreferrer">{labels.source} ↗</a>

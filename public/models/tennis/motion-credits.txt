@@ -6,26 +6,32 @@ Tennis-MoCap: https://github.com/jdpulgarin/Tennis-MoCap
 A Similarity Indicator for Differentiating Kinematic Performance Between Qualified Tennis Players (2017).
 https://doi.org/10.1007/978-3-319-52277-7_38
 
-The original recordings and the derived forehand, volley and backhand-volley animation tracks in rally-athlete.glb and their baked precinct-motion.bin poses are licensed under Creative Commons Attribution-ShareAlike 3.0 Unported.
+The original recordings and the derived forehand, backhand, serve, volley and backhand-volley animation tracks in rally-athlete.glb and their baked precinct-motion.bin poses are licensed under Creative Commons Attribution-ShareAlike 3.0 Unported.
 https://creativecommons.org/licenses/by-sa/3.0/
 
-Source recordings for subject jarua: jarua_Derecha_18seg.bvh, jarua_VDerecha.bvh and jarua_VReves.bvh. The Tennis-Agent adaptation trimmed and sampled the performances at 50 Hz, converted units, normalized facing and travel, retargeted the rotations to the character and calibrated a fixed racket grip. Court Atlas packages these tracks in glTF, reconstructs the racket release and wrist orientation from the captured hand and elbow paths, blends the stroke with recovery steps and synchronizes a choreographed ball to editorial impact markers. The original dataset records body motion. Ball and racket tracking were authored for this experience.
+Source recordings for subject jarua: jarua_Derecha_18seg.bvh, jarua_Reves.bvh, jarua_Servicio.bvh, jarua_VDerecha.bvh and jarua_VReves.bvh. The Tennis-Agent adaptation trimmed and sampled the performances at 50 Hz, converted units, normalized facing and travel, retargeted the rotations to the character and calibrated a fixed racket grip. Court Atlas packages these tracks in glTF, reconstructs the racket release and wrist orientation from the captured hand and elbow paths, blends the stroke with recovery steps and synchronizes a choreographed ball to editorial impact markers. The original dataset records body motion. Ball and racket tracking were authored for this experience.
+
+Upstream recorded-motion samples also acknowledge the tracked racket trials from M. Skublewska-Paszkowska, P. Powroźnik, E. Łukasik and J. Smołka (3DTennisDS, Lublin University of Technology, 2024) and the serve data of Durlind, Martinez-Hernandez and Assaf (University of Bath, 2025, CC BY 4.0). Court Atlas recalibrates the final racket orientation.
+https://tennisdb.cs.pollub.pl/
+https://researchdata.bath.ac.uk/1454/
+https://creativecommons.org/licenses/by/4.0/
 
 Athlete
 Quaternius — original rigged human character and running animation, CC0 1.0.
 https://quaternius.com/
 https://github.com/UMRAM-Bilkent/supine-human-model/blob/main/assets/human.glb
 https://creativecommons.org/publicdomain/zero/1.0/
-Tennis-Agent adapted the mesh scale, orientation and clothing colours. Court Atlas creates the fitted tennis kit and adapts the wrist-mounted racket from the original Tennis-Agent club athlete. The models depict two fictional professionals.
+Tennis-Agent adapted the mesh scale, orientation and clothing colours. Court Atlas creates the fitted tennis kit and adapts the wrist-mounted racket from the original Tennis-Agent club athlete. The four player portraits and the court crew depict fictional people.
 
 Facial anatomy
-MakeHuman Community — hm08 base mesh and MPFB adult morphology targets, CC0 1.0.
+MakeHuman Community — hm08 base mesh, MPFB adult morphology targets and the System Assets young_lightskinned_male_diffuse skin texture, CC0 1.0.
 https://github.com/makehumancommunity/makehuman/blob/master/makehuman/data/3dobjs/base.obj
 https://github.com/makehumancommunity/mpfb2/tree/master/src/mpfb/data/targets/macrodetails
 https://static.makehumancommunity.org/mpfb/faq/build_other_chargen.html
-Court Atlas shaped and painted two original faces in Blender, fitted them to the animated skeleton, and modelled the eyes, brows, hair, headwear and hard-court footwear.
+Court Atlas shaped four faces, their continuous anatomical neck and a pair of fitted hands in Blender, fitted them to the animated skeleton, and modelled the eyes, brows, hair, headwear and hard-court footwear.
 
 Tournament visual references
-Australian Open — practice and match photography, viewed as visual reference only.
+Australian Open — practice and match photography and the Federer–Nadal 2017 final highlight, viewed as references for original scenes and point construction.
+https://www.youtube.com/watch?v=FBVi4wLxotU
 https://ausopen.com/articles/news/stars-prepare-ahead-ao-2026
 https://ausopen.com/articles/news/my-best-shot-photographers-top-picks-ao-2025

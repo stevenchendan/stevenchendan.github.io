@@ -1,15 +1,19 @@
 import * as T from 'three';
-import {BALL_RADIUS, COURT_FLOOR, RALLY_SECONDS, rallyFrame} from './rallyMotion';
+import {matchPair,portraits,skinTones} from './athleteKits';
+import {courtFrameAt} from './courtMatches';
+import {extraPoseRows,matchPoseRow} from './strokePoseRows';
+import {nearbyAthletes} from './nearbyAthletes';
+import {BALL_RADIUS, COURT_FLOOR, RALLY_SECONDS} from './rallyMotion';
 
-export type RallyCourt = {x:number;y:number;z:number;rotation:number;phase:number};
+export type RallyCourt = {x:number;y:number;z:number;rotation:number;phase:number;key?:string};
 
 export function readPoseAtlas(buffer:ArrayBuffer){
   const [frames,joints,indexCount]=new Uint32Array(buffer,0,3);
   const times=new Float32Array(buffer,12,frames);
-  const pixels=new Uint16Array(buffer,12+4*frames,frames*2*joints*8);
+  const pixels=new Uint16Array(buffer,12+4*frames,(frames*2+extraPoseRows)*joints*8);
   const indices=new Uint16Array(buffer,pixels.byteOffset+pixels.byteLength);
   if(indices.length!==indexCount)throw new Error('Invalid tennis pose atlas');
-  const texture=new T.DataTexture(pixels,joints*2,frames*2,T.RGBAFormat,T.HalfFloatType);
+  const texture=new T.DataTexture(pixels,joints*2,frames*2+extraPoseRows,T.RGBAFormat,T.HalfFloatType);
   texture.minFilter=texture.magFilter=T.LinearFilter;
   texture.needsUpdate=true;
   return {times,texture,indices};
@@ -43,7 +47,8 @@ function playerGeometry(scene:T.Group,skinIndices:Uint16Array){
       const jersey=attachment===-1&&Math.abs(c.r-shirt.r)<.001&&Math.abs(c.g-shirt.g)<.001;
       const skin=attachment===-1&&Math.abs(c.r-skinColor.r)<.001&&Math.abs(c.g-skinColor.g)<.001;
       const sidePanel=attachment===-1&&Math.abs(c.r-panel.r)<.001&&Math.abs(c.g-panel.g)<.001;
-      kitPart.push(jersey?1:skin?4:sidePanel?5:part);
+      const shorts=attachment===-1&&Math.abs(c.r-.01521)<.001&&Math.abs(c.g-.04092)<.001;
+      kitPart.push(jersey?1:skin?4:sidePanel?5:shorts?6:part);
       if(attachment!==-1){joints.push(attachment,0,0,0);weights.push(1,0,0,0);}
       else for(let k=0;k<4;k++){joints.push(attr.skinIndex.getComponent(i,k));weights.push(attr.skinWeight.getComponent(i,k));}
     }
@@ -64,15 +69,17 @@ function playerGeometry(scene:T.Group,skinIndices:Uint16Array){
     const transform=new T.Matrix4().compose(a.lerp(b,.5),axis,new T.Vector3(1,1,1));
     append(rod,transform,racketIndex,tint);rod.dispose();
   }
-  rod(0,-.489,0,-.286,.016,graphite);rod(0,-.296,-.098,-.145,.009,graphite);rod(0,-.296,.098,-.145,.009,graphite);
-  for(let i=-3;i<=3;i++){
-    const f=i/4,extent=Math.sqrt(1-f*f);
+  rod(0,-.489,0,-.471,.019,graphite);
+  rod(0,-.471,0,-.286,.016,new T.Color('#d4d9cb'));
+  rod(0,-.296,-.098,-.145,.009,graphite);rod(0,-.296,.098,-.145,.009,graphite);
+  for(let i=-4;i<=4;i++){
+    const f=i/5,extent=Math.sqrt(1-f*f);
     rod(.147*f,-.186*extent,.147*f,.186*extent,.0015,strings);
     rod(-.147*extent,.186*f,.147*extent,.186*f,.0015,strings);
   }
-  for(const [i,name] of ['TennisCap','HeadbandPlayer'].entries()){
+  for(const [i,name] of portraits.entries()){
     const head=scene.getObjectByName(name) as T.Mesh;
-    append(head.geometry,identity,racketIndex+1,undefined,2+i,head.userData.distantIndices);
+    append(head.geometry,identity,racketIndex+1,undefined,10+i,head.userData.distantIndices);
   }
   const result=new T.BufferGeometry();
   for(const [name,data,size] of [['position',position,3],['normal',normal,3],['color',color,3],['kitPart',kitPart,1],['jointIndex',joints,4],['jointWeight',weights,4]] as const){
@@ -89,13 +96,15 @@ function animateMaterial(material:T.Material,atlas:T.DataTexture){
       uniform highp sampler2D poses;
       attribute vec4 jointIndex, jointWeight;
       attribute vec2 playerPose;
-      attribute vec3 shirtColor;
+      attribute vec3 shirtColor, skinColor, shortsColor;
+      attribute float portrait;
       attribute float kitPart;
       vec3 rotateJoint(vec4 q,vec3 v){return v+2.0*cross(q.xyz,cross(q.xyz,v)+q.w*v);}
     `).replace('#include <color_vertex>',`#include <color_vertex>
       if(kitPart==1.0)vColor.rgb=shirtColor;
       if(kitPart==5.0)vColor.rgb=shirtColor*.74;
-      if(kitPart==4.0 && playerPose.y<.5)vColor.rgb=vec3(${new T.Color('#8c5c45').toArray().join(',')});
+      if(kitPart==4.0)vColor.rgb=skinColor;
+      if(kitPart==6.0)vColor.rgb=shortsColor;
     `).replace('void main() {',`void main() {
       vec3 posedPosition=vec3(0.0),posedNormal=vec3(0.0);
       vec2 pixel=1.0/vec2(textureSize(poses,0));
@@ -108,11 +117,11 @@ function animateMaterial(material:T.Material,atlas:T.DataTexture){
         posedPosition+=(rotateJoint(q,position*tr.w)+tr.xyz)*w;
         posedNormal+=rotateJoint(q,normal)*w;
       }
-    `).replace('#include <beginnormal_vertex>','vec3 objectNormal=normalize(posedNormal);').replace('#include <begin_vertex>','vec3 transformed=((kitPart==2.0 && playerPose.y<0.5)||(kitPart==3.0 && playerPose.y>0.5))?vec3(0.0):posedPosition;');
+    `).replace('#include <beginnormal_vertex>','vec3 objectNormal=normalize(posedNormal);').replace('#include <begin_vertex>','vec3 transformed=(kitPart>=10.0 && kitPart!=10.0+portrait)?vec3(0.0):posedPosition;');
   };
 }
 
-export function makePrecinctPlayers(scene:T.Group,buffer:ArrayBuffer,courts:readonly RallyCourt[]){
+export function makePrecinctPlayers(scene:T.Group,buffer:ArrayBuffer,courts:readonly RallyCourt[],clips?:T.AnimationClip[]){
   const group=new T.Group(),{times,texture,indices}=readPoseAtlas(buffer);
   const geometry=playerGeometry(scene,indices),count=courts.length*2;
   const material=new T.MeshStandardMaterial({vertexColors:true,roughness:.86,side:T.DoubleSide});
@@ -125,30 +134,45 @@ export function makePrecinctPlayers(scene:T.Group,buffer:ArrayBuffer,courts:read
   athletes.castShadow=true;athletes.receiveShadow=true;athletes.customDepthMaterial=depth;
   const balls=new T.InstancedMesh(new T.SphereGeometry(BALL_RADIUS,8,6),new T.MeshStandardMaterial({color:'#dbea43',roughness:.88}),courts.length);
   for(const mesh of [athletes,balls]){mesh.frustumCulled=false;mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);group.add(mesh);}
-  const kits=[new T.Color('#286e82'),new T.Color('#df8f38')];
-  for(let i=0;i<count;i++)shirts.setXYZ(i,kits[i%2].r,kits[i%2].g,kits[i%2].b);
+  const tint=new T.Color(),skin=new T.InstancedBufferAttribute(new Float32Array(count*3),3);
+  const bottoms=new T.InstancedBufferAttribute(new Float32Array(count*3),3),faces=new T.InstancedBufferAttribute(new Float32Array(count),1);
+  geometry.setAttribute('skinColor',skin);geometry.setAttribute('shortsColor',bottoms);geometry.setAttribute('portrait',faces);
+  courts.forEach((c,i)=>matchPair(c.key).forEach((kit,side)=>{
+    const slot=i*2+side;
+    tint.set(kit.shirt);shirts.setXYZ(slot,tint.r,tint.g,tint.b);
+    tint.set(skinTones[kit.portrait]);skin.setXYZ(slot,tint.r,tint.g,tint.b);
+    tint.set(kit.shorts);bottoms.setXYZ(slot,tint.r,tint.g,tint.b);faces.setX(slot,kit.portrait);
+  }));
   const placements=courts.map(c=>({...c,cos:Math.cos(c.rotation),sin:Math.sin(c.rotation)}));
   const obj=new T.Object3D();
+  const detail=clips?nearbyAthletes(scene,clips,courts):undefined;
+  if(detail)group.add(detail.group);
   let previous=Number.NaN;
-  function pose(seconds:number){
-    if(previous===seconds)return;
+  let frames:ReturnType<typeof courtFrameAt>[]=[];
+  const previousDetail=new Set<number>();
+  function pose(seconds:number,camera?:T.Camera,height=0){
+    const moving=previous!==seconds;
+    if(moving)frames=placements.map(c=>courtFrameAt(seconds+c.phase,c.key));
+    const selected=camera&&detail?detail.update(camera,height,frames,seconds):undefined;
+    if(!moving && (!selected||selected.size===previousDetail.size&&[...selected].every(i=>previousDetail.has(i))))return;
     previous=seconds;
+    previousDetail.clear();if(selected)for(const index of selected)previousDetail.add(index);
     for(const [i,c] of placements.entries()){
-      const t=seconds+c.phase,frame=rallyFrame(t),row=poseRow(times,t);
+      const t=seconds+c.phase,frame=frames[i],row=poseRow(times,t);
       for(let side=0;side<2;side++){
         const actor=frame.players[side],slot=i*2+side;
-        uniforms.setXY(slot,row+side*times.length,side===0?1:0);
+        uniforms.setXY(slot,c.key?matchPoseRow(actor,2*times.length):row+side*times.length,side===0?1:0);
         obj.position.set(c.x+actor.x*c.cos+actor.z*c.sin,c.y+COURT_FLOOR,c.z-actor.x*c.sin+actor.z*c.cos);
-        obj.rotation.y=c.rotation+actor.yaw;obj.updateMatrix();athletes.setMatrixAt(slot,obj.matrix);
+        obj.rotation.y=c.rotation+actor.yaw;obj.scale.setScalar(selected?.has(i)?0:1);obj.updateMatrix();athletes.setMatrixAt(slot,obj.matrix);
       }
       const [x,y,z]=frame.ball;
       obj.position.set(c.x+x*c.cos+z*c.sin,c.y+y,c.z-x*c.sin+z*c.cos);
-      obj.updateMatrix();balls.setMatrixAt(i,obj.matrix);
+      obj.scale.setScalar(frame.ballVisible?1:0);obj.updateMatrix();balls.setMatrixAt(i,obj.matrix);
     }
     uniforms.needsUpdate=true;athletes.instanceMatrix.needsUpdate=true;balls.instanceMatrix.needsUpdate=true;
   }
   return {group,pose,dispose(){
     for(const mesh of [athletes,balls]){mesh.dispose();mesh.geometry.dispose();mesh.material.dispose();}
-    depth.dispose();texture.dispose();
+    detail?.dispose();depth.dispose();texture.dispose();
   }};
 }

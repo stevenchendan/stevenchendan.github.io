@@ -1,4 +1,5 @@
 import { grandSlamOval } from './GrandSlamOval';
+import { festivalStructures } from './FestivalStructures';
 import { outerCourtStands } from './OuterCourtStands';
 import { SEATING_LIFT } from './dimensions';
 import { seatedCrowd } from './seatedCrowd';
@@ -177,6 +178,13 @@ function mouldedSeatGeometry(close:boolean) {
   seat.setIndex(indices);seat.computeVertexNormals();return seat;
 }
 
+function addSeatMounts(group:T.Group,chairs:T.InstancedMesh){
+  const pedestal=new T.BoxGeometry(.16,.42,.15);
+  pedestal.translate(0,-.20,.025);
+  const mounts=new T.InstancedMesh(pedestal,new T.MeshStandardMaterial({color:'#45565c',roughness:.84}),chairs.count);
+  mounts.instanceMatrix=chairs.instanceMatrix;mounts.receiveShadow=true;group.add(mounts);
+}
+
 // A real interior surface and stepped bowl beneath each open roof, so terrain
 // colours and pedestrian paths cannot read as the arena floor.
 function arenaBowl(b:Builder,x:number,z:number,w:number,d:number,onlySeats=false,rows=22,drawCourt=true,spectators?:T.Group){
@@ -215,31 +223,15 @@ function arenaBowl(b:Builder,x:number,z:number,w:number,d:number,onlySeats=false
     for(let i=0;i<count;i++){
       const f=i/count;if((f*16)%1<.08)continue;
       const p=path.getPointAt(f),v=path.getTangentAt(f);
-      seatPositions.push({x:x+p.x,y:(onlySeats?1.4:1)+row*(onlySeats?.48:.57),z:z-p.y,angle:Math.atan2(v.y,v.x)});
+      seatPositions.push({x:x+p.x,y:(onlySeats?1.4:1.25)+row*(onlySeats?.48:.57),z:z-p.y,angle:Math.atan2(v.y,v.x)});
     }
   }
   const seat=mouldedSeatGeometry(false),mesh=new T.InstancedMesh(seat,new T.MeshStandardMaterial({roughness:.66,side:T.DoubleSide}),seatPositions.length),o=new T.Object3D();
   const shades=(b.group.userData.venue==='john'?['#5e839d','#648aa2','#7194a7']:['#4286b0','#4e90b7','#609bbd']).map(color=>new T.Color(color));
   seatPositions.forEach((p,i)=>{o.position.set(p.x,p.y,p.z);o.rotation.y=p.angle;o.updateMatrix();mesh.setMatrixAt(i,o.matrix);mesh.setColorAt(i,shades[i%17===0?2:i%5===0?1:0]);});
-  mesh.castShadow=true;mesh.receiveShadow=true;b.group.add(mesh);
-  if(indoor){
-    const foot=new T.BoxGeometry(.16,.18,.15);foot.translate(0,-.08,.025);
-    const mounts=new T.InstancedMesh(foot,new T.MeshStandardMaterial({color:'#45565c',roughness:.84}),seatPositions.length);
-    mounts.instanceMatrix=mesh.instanceMatrix;mounts.receiveShadow=true;b.group.add(mounts);
-  }
-  if(spectators){
-    // Sample actual seats after aisle exclusions so nobody floats or blocks stairs.
-    const occupied=seatPositions.filter((_,i)=>((i*17+Math.floor(i/11))%13)<5);
-    const bodies=new T.InstancedMesh(new T.CapsuleGeometry(.15,.28,3,5),new T.MeshStandardMaterial({roughness:.9}),occupied.length);
-    const heads=new T.InstancedMesh(new T.SphereGeometry(.125,6,5),new T.MeshStandardMaterial({roughness:.85}),occupied.length);
-    const shirts=['#e4dcc4','#40586e','#ece9e1','#4d7385','#cc6c4c','#677052','#b9a0bb'];
-    const skin=['#c79c78','#976c50','#dfb99a','#694936'];
-    occupied.forEach((p,i)=>{
-      o.position.set(p.x,p.y+.42,p.z);o.rotation.set(0,p.angle,0);o.updateMatrix();bodies.setMatrixAt(i,o.matrix);bodies.setColorAt(i,new T.Color(shirts[i%shirts.length]));
-      o.position.y+=.39;o.updateMatrix();heads.setMatrixAt(i,o.matrix);heads.setColorAt(i,new T.Color(skin[i%skin.length]));
-    });
-    spectators.add(bodies,heads);
-  }
+  mesh.name='arena-bowl-seats';mesh.castShadow=true;mesh.receiveShadow=true;b.group.add(mesh);
+  if(!onlySeats) addSeatMounts(b.group,mesh);
+  if(spectators) spectators.add(seatedCrowd(seatPositions,b.group.userData.venue==='john'?.87:indoor?.73:.59));
   if(!onlySeats&&drawCourt)court(b,x,z,0,false);
 }
 
@@ -259,7 +251,7 @@ export function buildArena() {
       const t=i/count, p=path.getPointAt(t), tangent=path.getTangentAt(t);
       // Twelve radial aisles retained through every seating tier.
       if ((t*12)%1 < .105 || (t*12)%1 > .94) continue;
-      seats.push({x:p.x,y:.87+row*.43,z:-p.y,angle:Math.atan2(tangent.y,tangent.x)});
+      seats.push({x:p.x,y:1.02+row*.43,z:-p.y,angle:Math.atan2(tangent.y,tangent.x)});
     }
   }
   ring(stand,9.48,10.9,.1,5.24,palette.concrete);
@@ -328,16 +320,16 @@ export function buildArena() {
   b.group.add(lamps);
   // Umpire chair and access ladder, player benches, umbrellas, bins, camera.
   for(const z of [-.55,.55]){
-    b.rod([8.8,.1,z],[9.1,2.25,z],.035);b.rod([9.8,.1,z],[9.45,2.25,z],.035);
+    b.rod([-8.8,.1,z],[-9.1,2.25,z],.035);b.rod([-9.8,.1,z],[-9.45,2.25,z],.035);
   }
-  b.box(9.24,2.2,0,.72,.14,1.25,palette.dark);b.box(9.57,2.65,0,.13,.8,1.25,palette.dark);
-  for(let y=.35;y<2.1;y+=.3)b.rod([9.7,y,-.5],[9.7,y,.5],.035);
+  b.box(-9.24,2.2,0,.72,.14,1.25,palette.dark);b.box(-9.57,2.65,0,.13,.8,1.25,palette.dark);
+  for(let y=.35;y<2.1;y+=.3)b.rod([-9.7,y,-.5],[-9.7,y,.5],.035);
   for(const z of [-7,7]){
-    b.box(8.4,.52,z,.72,.14,2.7,palette.white);b.box(8.75,.9,z,.1,.65,2.7,palette.white);
-    [-1,1].forEach(s=>b.box(8.4,.28,z+s,.45,.5,.15,palette.steel));
-    b.rod([9.2,.1,z],[9.2,3.3,z],.045,palette.white);
-    const umbrella=new T.ConeGeometry(1.9,.58,8);umbrella.translate(9.2,3.25,z);b.add(umbrella,'#ecdfc2');
-    b.box(9.2,.45,z+2, .65,.7,.65,palette.dark);
+    b.box(-8.4,.52,z,.72,.14,2.7,palette.white);b.box(-8.75,.9,z,.1,.65,2.7,palette.white);
+    [-1,1].forEach(s=>b.box(-8.4,.28,z+s,.45,.5,.15,palette.steel));
+    b.rod([-9.2,.1,z],[-9.2,3.3,z],.045,palette.white);
+    const umbrella=new T.ConeGeometry(1.9,.58,8);umbrella.translate(-9.2,3.25,z);b.add(umbrella,'#ecdfc2');
+    b.box(-9.2,.45,z+2, .65,.7,.65,palette.dark);
   }
   const scoreboard = label('1573     •     MELBOURNE PARK',10.5,1.4,'#c8f586','#122d37');scoreboard.position.set(0,7.7,-29.7);stand.group.add(scoreboard);
   stand.box(0,7.7,-29.86,10.8,1.65,.3,palette.dark);
@@ -348,6 +340,7 @@ export function buildArena() {
   const dummy=new T.Object3D();
   seats.forEach((s,i)=>{dummy.position.set(s.x,s.y,s.z);dummy.rotation.set(0,s.angle,0);dummy.updateMatrix();seatMesh.setMatrixAt(i,dummy.matrix);seatMesh.setColorAt(i,new T.Color(i%13===0?'#86b3d3':i%5===0?'#649fc8':'#5895c4'));});
   seatMesh.castShadow=true;seatMesh.receiveShadow=true;stand.group.add(seatMesh);
+  addSeatMounts(stand.group,seatMesh);
   const crowd=seatedCrowd(seats);
   crowd.visible=false;stand.group.add(crowd);
   stand.finish();stand.group.position.y=SEATING_LIFT;b.group.add(stand.group);
@@ -377,15 +370,15 @@ export function buildContext(data: ContextData) {
   ground.polygon([[-1500,-1500],[1500,-1500],[1500,1500],[-1500,1500]],-.15,'#758268');
   ground.polygon(EVENT_CONCOURSE,GROUND.concourse,'#b8bcb8');
   grandSlamOval(venue('oval'));
+  festivalStructures(venue,id=>spectatorsFor(venue(id)));
   // Five hard courts are on the Eastern Plaza deck; clay courts remain at grade.
   venue('east').box(653,2.85,219,111,5.7,46,'#9babae');
   for(let x=600;x<708;x+=6)venue('east').box(x,2.4,242,.35,4.5,.3,'#c1c8c7');
-  // Riverbank follows the existing Yarra Trail, offset toward the water.
-  const bank=[[-210,-260],[-175,-170],[-151,-82],...(data.features.find(f=>f.id==='way/991624386')?.points??[])];
-  const riverRing=[...bank.map(([x,z])=>[x-16,z]),[-325,260],[-325,-265]];
+  // Both Yarra shorelines in the same metre grid as the city orthophoto.
+  const riverRing=[[-598,-153],[-527,-163],[-457,-168],[-398,-162],[-347,-152],[-290,-132],[-233,-107],[-175,-68],[-133,-18],[-97,37],[-60,82],[-8,132],[48,175],[93,222],[145,273],[202,328],[272,397],[335,470],[377,527],[272,535],[213,470],[167,417],[113,358],[60,305],[8,257],[-40,212],[-92,170],[-138,118],[-177,73],[-217,32],[-257,-3],[-303,-33],[-352,-55],[-403,-68],[-455,-73],[-507,-68],[-603,-47]];
   const riverShape=new T.Shape(riverRing.map(([x,z])=>new T.Vector2(x,-z)));
   const riverGeometry=new T.ShapeGeometry(riverShape);riverGeometry.rotateX(-Math.PI/2);riverGeometry.translate(0,-.06,0);
-  const river=new T.Mesh(riverGeometry,new T.MeshStandardMaterial({color:'#547d80',roughness:.48,metalness:.12}));river.receiveShadow=true;b.group.add(river);
+  const river=new T.Mesh(riverGeometry,new T.MeshStandardMaterial({color:'#547d80',roughness:.55,metalness:.03}));river.name='ground-water';river.receiveShadow=true;b.group.add(river);
   const apronRing=(w:number,d:number,r:number)=>roundedPath(w,d,r).getPoints(12).map(p=>[p.x,-p.y]);
   ground.polygon(apronRing(33,41.5,13),GROUND.apron,'#cccac2');
   ground.polygon(apronRing(25,34,14),GROUND.path-.013,'#a4adae',apronRing(24.2,33.2,13.2));
@@ -459,7 +452,7 @@ export function buildContext(data: ContextData) {
       // Landmark interiors are constructed once, with their own floor and bowl.
       if(data.buildings.some(building=>building.name&&pointInRing([x,z],building.ring)))continue;
       if(f.id==='way/126844350'){
-        arenaBowl(b,x,z,22,31,false,12);
+        arenaBowl(b,x,z,22,31,false,12,true,spectatorsFor(b));
         const canopy=roundedPath(24,33,10);canopy.holes.push(new T.Path(roundedPath(19.5,28.5,8).getPoints(24).reverse()));
         const g=new T.ExtrudeGeometry(canopy,{depth:.25,bevelEnabled:false});g.rotateX(-Math.PI/2);g.translate(x,8.2,z);b.add(g,'#dce1df');
         facade(b,roundedPath(23,32,9).getPoints(32).map(p=>[x+p.x,z-p.y]),0,7,'#5d7079');
@@ -467,7 +460,7 @@ export function buildContext(data: ContextData) {
       }
       const elevation=courtElevation(x,f.layer);
       court(b,x,z,rotation,false,f.points,f.surface==='clay',elevation);
-      outerCourtStands(b,{x,z,rotation,width,depth},f.name,spectatorsFor(b));
+      if(f.id!=='way/1239949236')outerCourtStands(b,{x,z,rotation,width,depth},f.name,spectatorsFor(b),elevation);
       if(f.id==='way/1239949236'){
         const floor=new T.ShapeGeometry(roundedPath(12.4,22.1,3));floor.rotateX(-Math.PI/2);floor.translate(x,.075,z);b.add(floor,'#397fac');
         continue;
@@ -492,7 +485,7 @@ export function buildContext(data: ContextData) {
     }
   }
   b=venue('kia');
-  arenaBowl(b,344.8375,78.58,30,40,true);
+  arenaBowl(b,344.8375,78.58,30,40,true,22,false,spectatorsFor(b));
   data.buildings.forEach(building=>{
     const id=buildingVenue(building);b=id?venue(id):environment;
     if(building.id==='805343-2-0')return; // Duplicate Olympic Boulevard bridge tier.
@@ -502,7 +495,26 @@ export function buildContext(data: ContextData) {
       const cx=654,cz=391,outer=roundedPath(97,103,32),inner=roundedPath(49,70,12);
       const wall=roundedPath(94,100,30);wall.holes.push(new T.Path(roundedPath(81,88,23).getPoints(48).reverse()));
       const shell=new T.ExtrudeGeometry(wall,{depth:15,bevelEnabled:false});shell.rotateX(-Math.PI/2);shell.translate(cx,0,cz);b.add(shell,'#93a8ac');
-      b.box(cx,.1,cz,75,.15,112,'#507f50');
+      const pitch=new T.PlaneGeometry(81,119);pitch.rotateX(-Math.PI/2);pitch.translate(cx,.18,cz);
+      const turf=new T.Mesh(pitch,new T.MeshStandardMaterial({color:'#507f50',roughness:.94}));turf.name='ortho-aami';turf.receiveShadow=true;b.group.add(turf);
+      // The lower seating banks join the field apron to the shaded canopy.
+      const bowlEdge=roundedPath(40.8,60,7),seatVertices:number[]=[],seatColors:number[]=[];
+      function seatVertex(p:T.Vector2,q:T.Vector2,t:number,shade:T.Color){
+        seatVertices.push(cx+p.x+(q.x-p.x)*t,.45+17*t,cz-p.y-(q.y-p.y)*t);
+        seatColors.push(shade.r,shade.g,shade.b);
+      }
+      const seats=new T.Color(),aisle=new T.Color('#849395');
+      for(let i=0;i<128;i++)for(let tier=0;tier<15;tier++){
+        const near=bowlEdge.getPointAt(i/128),next=bowlEdge.getPointAt((i+1)/128);
+        const far=inner.getPointAt(i/128),end=inner.getPointAt((i+1)/128),lo=tier/15,hi=(tier+1)/15;
+        seats.set(tier%2?'#487a72':'#609085');
+        const shade=i%9===0?aisle:seats;
+        seatVertex(near,far,lo,shade);seatVertex(next,end,lo,shade);seatVertex(near,far,hi,shade);
+        seatVertex(next,end,lo,shade);seatVertex(next,end,hi,shade);seatVertex(near,far,hi,shade);
+      }
+      const bank=new T.BufferGeometry();
+      bank.setAttribute('position',new T.Float32BufferAttribute(seatVertices,3));bank.setAttribute('color',new T.Float32BufferAttribute(seatColors,3));bank.computeVertexNormals();
+      const seating=new T.Mesh(bank,new T.MeshStandardMaterial({vertexColors:true,roughness:.88,side:T.DoubleSide}));seating.receiveShadow=true;b.group.add(seating);
       const vertices:number[]=[],indices:number[]=[];
       for(let i=0;i<=144;i++)for(let j=0;j<=6;j++){
         const t=i/144,u=j/6,a=inner.getPointAt(t),c=outer.getPointAt(t);
@@ -510,7 +522,7 @@ export function buildContext(data: ContextData) {
         if(i<144&&j<6){const n=i*7+j;indices.push(n,n+7,n+1,n+1,n+7,n+8);}
       }
       const roof=new T.BufferGeometry();roof.setAttribute('position',new T.Float32BufferAttribute(vertices,3));roof.setIndex(indices);roof.computeVertexNormals();
-      const canopy=new T.Mesh(roof,new T.MeshStandardMaterial({color:'#e0e4e1',side:T.DoubleSide,roughness:.75}));canopy.castShadow=true;canopy.receiveShadow=false;b.group.add(canopy);
+      const canopy=new T.Mesh(roof,new T.MeshStandardMaterial({color:'#e0e4e1',side:T.DoubleSide,roughness:.75}));canopy.name='ortho-aami';canopy.castShadow=true;canopy.receiveShadow=true;b.group.add(canopy);
       return;
     }
     if(building.id.startsWith('819103-')){
@@ -520,9 +532,31 @@ export function buildContext(data: ContextData) {
       const shell=ellipse(150,140);shell.holes.push(new T.Path(ellipse(116,108).getPoints(96).reverse()));
       const walls=new T.ExtrudeGeometry(shell,{depth:32,bevelEnabled:false,curveSegments:48});walls.rotateX(-Math.PI/2);b.add(walls,'#8f9da3');
       const roof=ellipse(153,143);roof.holes.push(new T.Path(ellipse(121,113).getPoints(96).reverse()));
-      const cap=new T.ShapeGeometry(roof);cap.rotateX(-Math.PI/2);cap.translate(0,34,0);b.add(cap,'#d3d7d3');
-      const grass=new T.ShapeGeometry(ellipse(111,103));grass.rotateX(-Math.PI/2);grass.translate(0,.1,0);b.add(grass,'#64864e');
+      const surface=(geometry:T.BufferGeometry,color:string)=>{
+        const mesh=new T.Mesh(geometry,new T.MeshStandardMaterial({color,roughness:.86,side:T.DoubleSide}));
+        mesh.name='ortho-mcg';mesh.receiveShadow=true;b.group.add(mesh);
+      };
+      const cap=new T.ShapeGeometry(roof);cap.rotateX(-Math.PI/2);cap.translate(0,34,0);surface(cap,'#d3d7d3');
+      const grass=new T.ShapeGeometry(ellipse(91,81),64);grass.rotateX(-Math.PI/2);grass.translate(0,.1,0);surface(grass,'#64864e');
+      const bank:number[]=[];
+      for(let i=0;i<128;i++){
+        const a=i*Math.PI/64,c=(i+1)*Math.PI/64;
+        const p=(t:number,outer:boolean)=>[546+Math.cos(t)*(outer?124:89),outer?31.5:.5,-173-Math.sin(t)*(outer?117:79)];
+        bank.push(...p(a,false),...p(c,false),...p(a,true),...p(c,false),...p(c,true),...p(a,true));
+      }
+      const stands=new T.BufferGeometry();stands.setAttribute('position',new T.Float32BufferAttribute(bank,3));stands.computeVertexNormals();surface(stands,'#85929a');
       for(let i=0;i<96;i++){const a=i*Math.PI/48,x=546+151*Math.cos(a),z=-173-141*Math.sin(a);b.rod([x,1,z],[x,33,z],.25,'#b7c2c6');}
+      // The six 75 m masts carry a further ten metres of head frame (MCC).
+      for(const degrees of [16,76,134,193,254,313]){
+        const a=degrees*Math.PI/180,x=546+155*Math.cos(a),z=-173-145*Math.sin(a);
+        const mast=new T.CylinderGeometry(1,2.1,75,12);mast.translate(x,37.5,z);b.add(mast,'#a9b1b1');
+        const yaw=Math.atan2(546-x,-173-z);
+        b.box(x,79.9,z,14.5,9.5,1.2,'#727d80',yaw);
+        for(let row=0;row<4;row++)for(let col=0;col<7;col++){
+          const u=(col-3)*1.92;
+          b.box(x+Math.cos(yaw)*u+Math.sin(yaw)*.7,76.7+row*2.16,z-Math.sin(yaw)*u+Math.cos(yaw)*.7,1.46,1.42,.18,'#ced2c8',yaw);
+        }
+      }
       return;
     }
     // This footprint is the elevated bridge, rebuilt as an open deck above.
@@ -536,7 +570,21 @@ export function buildContext(data: ContextData) {
       for(let x=Math.min(...xs)+2;x<Math.max(...xs);x+=12)for(let z=Math.min(...zs)+2;z<Math.max(...zs);z+=24){
         if(pointInRing([x,z],building.ring))b.box(x,(top-.65)/2,z,1.1,top-.65,1.1,'#929f98');
       }
-      building.ring.forEach((p,i)=>{if(i){const a=building.ring[i-1];b.rod([a[0],top+1.05,a[1]],[p[0],top+1.05,p[1]],.07,'#667b78');}});
+      let railDistance=0;
+      building.ring.forEach((p,i)=>{
+        if(!i)return;
+        const a=building.ring[i-1],dx=p[0]-a[0],dz=p[1]-a[1],span=Math.hypot(dx,dz);
+        if(span<.02)return;
+        b.rod([a[0],top+1.05,a[1]],[p[0],top+1.05,p[1]],.07,'#667b78');
+        if(building.id==='806910-1-0'){
+          b.box((a[0]+p[0])/2,top+.54,(a[1]+p[1])/2,.07,.43,span,'#97a6a5',Math.atan2(dx,dz));
+          b.box((a[0]+p[0])/2,top-.23,(a[1]+p[1])/2,.13,.21,span,'#536b74',Math.atan2(dx,dz));
+          for(let d=Math.ceil(railDistance/2.2)*2.2;d<railDistance+span;d+=2.2){
+            const t=(d-railDistance)/span;b.box(a[0]+dx*t,top+.52,a[1]+dz*t,.075,1.04,.075,'#62787e');
+          }
+          railDistance+=span;
+        }
+      });
       return;
     }
     if(building.name==='Margaret Court Arena')return;
@@ -687,7 +735,7 @@ export function disposeModel(group: T.Group) {
     geometries.add(obj.geometry);
     for(const material of Array.isArray(obj.material)?obj.material:[obj.material]){
       materials.add(material);
-      if('map' in material&&material.map instanceof T.Texture)textures.add(material.map);
+      if('map' in material&&material.map instanceof T.Texture&&!material.map.userData.sharedSpectatorAtlas)textures.add(material.map);
     }
   });
   geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());
