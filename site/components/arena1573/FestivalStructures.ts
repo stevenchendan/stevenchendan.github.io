@@ -219,8 +219,9 @@ function build(b:Batch,p:EventStructure,signs:ReturnType<typeof signSheet>,seats
   for(let r=0;r<3;r++)for(let v=-d*.35;v<=d*.35;v+=.92)seat(w*(-.24+r*.205),floor+.30+r*.46,v,Math.PI/2);
 }
 
-export function festivalStructures(venue:(id:string)=>Batch,spectators:(id:string)=>T.Group){
+export function festivalStructures(venue:(id:string)=>Batch,spectators:(id:string)=>T.Group,onlyZone?:string){
   for(const zone of new Set(eventStructures.map(p=>p.zone))){
+    if(onlyZone && zone!==onlyZone)continue;
     const b=venue(zone),sheet=signSheet(b),seats:SpectatorSeat[]=[];
     if(zone==='garden'){
       // Event-day lawn in the paved bowl of Garden Square. The paths at

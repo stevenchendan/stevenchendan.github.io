@@ -347,7 +347,11 @@ export function buildArena() {
   return {group:b.finish(),lamps,crowd,seats:seats.length};
 }
 
-export function buildContext(data: ContextData) {
+// Offline checks and sunlight baking request the whole model. The viewer builds
+// these same groups separately, in the order needed by its active camera.
+export function buildContext(data: ContextData, part?:string) {
+  const landscape=!part||part==='landscape';
+  const wants=(id:string)=>!part||part===id;
   const environment=new Builder();
   let b=environment;
   const venues=new Map<string,Builder>();
@@ -367,31 +371,35 @@ export function buildContext(data: ContextData) {
   const courtExclusions=mappedCourts.map(c=>c.frame);
   const ground=new GroundSurfaces();
   // Continuous terrain replaces the exposed sides of the old thick base slab.
-  ground.polygon([[-1500,-1500],[1500,-1500],[1500,1500],[-1500,1500]],-.15,'#758268');
-  ground.polygon(EVENT_CONCOURSE,GROUND.concourse,'#b8bcb8');
-  grandSlamOval(venue('oval'));
-  festivalStructures(venue,id=>spectatorsFor(venue(id)));
-  // Five hard courts are on the Eastern Plaza deck; clay courts remain at grade.
-  venue('east').box(653,2.85,219,111,5.7,46,'#9babae');
-  for(let x=600;x<708;x+=6)venue('east').box(x,2.4,242,.35,4.5,.3,'#c1c8c7');
-  // Both Yarra shorelines in the same metre grid as the city orthophoto.
-  const riverRing=[[-598,-153],[-527,-163],[-457,-168],[-398,-162],[-347,-152],[-290,-132],[-233,-107],[-175,-68],[-133,-18],[-97,37],[-60,82],[-8,132],[48,175],[93,222],[145,273],[202,328],[272,397],[335,470],[377,527],[272,535],[213,470],[167,417],[113,358],[60,305],[8,257],[-40,212],[-92,170],[-138,118],[-177,73],[-217,32],[-257,-3],[-303,-33],[-352,-55],[-403,-68],[-455,-73],[-507,-68],[-603,-47]];
-  const riverShape=new T.Shape(riverRing.map(([x,z])=>new T.Vector2(x,-z)));
-  const riverGeometry=new T.ShapeGeometry(riverShape);riverGeometry.rotateX(-Math.PI/2);riverGeometry.translate(0,-.06,0);
-  const river=new T.Mesh(riverGeometry,new T.MeshStandardMaterial({color:'#547d80',roughness:.55,metalness:.03}));river.name='ground-water';river.receiveShadow=true;b.group.add(river);
-  const apronRing=(w:number,d:number,r:number)=>roundedPath(w,d,r).getPoints(12).map(p=>[p.x,-p.y]);
-  ground.polygon(apronRing(33,41.5,13),GROUND.apron,'#cccac2');
-  ground.polygon(apronRing(25,34,14),GROUND.path-.013,'#a4adae',apronRing(24.2,33.2,13.2));
-  ground.polygon(apronRing(24.2,33.2,13.2),GROUND.path-.012,'#536066',apronRing(24.05,33.05,13.05));
+  if(wants('oval'))grandSlamOval(venue('oval'));
+  festivalStructures(venue,id=>spectatorsFor(venue(id)),part);
+  if(wants('east')){
+    venue('east').box(653,2.85,219,111,5.7,46,'#9babae');
+    for(let x=600;x<708;x+=6)venue('east').box(x,2.4,242,.35,4.5,.3,'#c1c8c7');
+  }
   const roadNodes=new Map<string,number>();
-  for(const feature of data.features){
-    if(feature.kind!=='path'||!routeFinish(feature)?.road)continue;
-    feature.points.forEach((p,i)=>{
-      const key=p.join(','),links=i===0||i===feature.points.length-1?1:2;
-      roadNodes.set(key,(roadNodes.get(key)??0)+links);
-    });
+  const riverRing=[[-598,-153],[-527,-163],[-457,-168],[-398,-162],[-347,-152],[-290,-132],[-233,-107],[-175,-68],[-133,-18],[-97,37],[-60,82],[-8,132],[48,175],[93,222],[145,273],[202,328],[272,397],[335,470],[377,527],[272,535],[213,470],[167,417],[113,358],[60,305],[8,257],[-40,212],[-92,170],[-138,118],[-177,73],[-217,32],[-257,-3],[-303,-33],[-352,-55],[-403,-68],[-455,-73],[-507,-68],[-603,-47]];
+  if(landscape){
+    ground.polygon([[-1500,-1500],[1500,-1500],[1500,1500],[-1500,1500]],-.15,'#758268');
+    ground.polygon(EVENT_CONCOURSE,GROUND.concourse,'#b8bcb8');
+    // Both Yarra shorelines in the same metre grid as the city orthophoto.
+    const riverShape=new T.Shape(riverRing.map(([x,z])=>new T.Vector2(x,-z)));
+    const riverGeometry=new T.ShapeGeometry(riverShape);riverGeometry.rotateX(-Math.PI/2);riverGeometry.translate(0,-.06,0);
+    const river=new T.Mesh(riverGeometry,new T.MeshStandardMaterial({color:'#547d80',roughness:.55,metalness:.03}));river.name='ground-water';river.receiveShadow=true;b.group.add(river);
+    const apronRing=(w:number,d:number,r:number)=>roundedPath(w,d,r).getPoints(12).map(p=>[p.x,-p.y]);
+    ground.polygon(apronRing(33,41.5,13),GROUND.apron,'#cccac2');
+    ground.polygon(apronRing(25,34,14),GROUND.path-.013,'#a4adae',apronRing(24.2,33.2,13.2));
+    ground.polygon(apronRing(24.2,33.2,13.2),GROUND.path-.012,'#536066',apronRing(24.05,33.05,13.05));
+    for(const feature of data.features){
+      if(feature.kind!=='path'||!routeFinish(feature)?.road)continue;
+      feature.points.forEach((p,i)=>{
+        const key=p.join(','),links=i===0||i===feature.points.length-1?1:2;
+        roadNodes.set(key,(roadNodes.get(key)??0)+links);
+      });
+    }
   }
   for(const f of data.features){
+    if(!landscape && f.kind!=='court')continue;
     b=environment;
     if(f.kind==='green'&&f.points.length>3){
       ground.polygon(f.points,GROUND.lawn,'#829078');
@@ -448,7 +456,9 @@ export function buildContext(data: ContextData) {
     if(f.kind==='court'&&f.id!=='way/126844352'){
       const {x,z,rotation,width,depth}=courtFrame(f.points);
       if(x < -260 || x > 910 || z < -310 || z > 330)continue;
-      b=venue(courtVenue(f.id,x));
+      const id=courtVenue(f.id,x);
+      if(!wants(id))continue;
+      b=venue(id);
       // Landmark interiors are constructed once, with their own floor and bowl.
       if(data.buildings.some(building=>building.name&&pointInRing([x,z],building.ring)))continue;
       if(f.id==='way/126844350'){
@@ -484,10 +494,14 @@ export function buildContext(data: ContextData) {
       for(const side of [-1,1]){const p=transform(side*(width/2+.7),0,0);b.rod(p,[p[0],p[1]+12,p[2]],.08,'#829198');b.box(p[0],p[1]+12,p[2],1.6,.3,.6,'#dae0dc');}
     }
   }
-  b=venue('kia');
-  arenaBowl(b,344.8375,78.58,30,40,true,22,false,spectatorsFor(b));
+  if(wants('kia')){
+    b=venue('kia');
+    arenaBowl(b,344.8375,78.58,30,40,true,22,false,spectatorsFor(b));
+  }
   data.buildings.forEach(building=>{
-    const id=buildingVenue(building);b=id?venue(id):environment;
+    const id=buildingVenue(building);
+    if(part && (id??'landscape')!==part)return;
+    b=id?venue(id):environment;
     if(building.id==='805343-2-0')return; // Duplicate Olympic Boulevard bridge tier.
     if(building.id.startsWith('806665-')){
       if(building.id!=='806665-1-0')return;
@@ -666,7 +680,7 @@ export function buildContext(data: ContextData) {
   // Clip each roof fold to the OSM footprint, so the copper roof's sawtooth
   // silhouette follows the irregular building without floating geometry.
   const mca=data.buildings.find(building=>building.name==='Margaret Court Arena');
-  if(mca){
+  if(mca&&wants('mca')){
     b=venue('mca');
     const pitch=data.features.find(f=>f.id==='way/1239949234');
     if(pitch){const frame=courtFrame(pitch.points);arenaBowl(b,frame.x,frame.z,32,36,false,22,false,spectatorsFor(b));court(b,frame.x,frame.z,frame.rotation,false,pitch.points);}
@@ -719,6 +733,7 @@ export function buildContext(data: ContextData) {
     const sign=label('MARGARET COURT ARENA',15,.8,'#d5dcda','#263c43');sign.rotation.y=-Math.PI/2;sign.position.set(25.1,3.6,-4);b.group.add(sign);
   }
 
+  if(part && !landscape)return venue(part).finish();
   b=environment;
   arenaEntryFacilities(b);
   eventFacilities(environment,ground,data);

@@ -9,6 +9,21 @@ const data=JSON.parse(fs.readFileSync('public/data/1573-context.json','utf8'));
 const context=buildContext(data);
 const ids=['mca','rla','kia','village','john','centrepiece','ntc','west','east','oval',
   'hilltop','ballpark','topcourt','garden','terrace','courtside'];
+// Each streamed region must contain exactly the meshes used by the complete model.
+function meshCounts(roots){
+  let meshes=0,vertices=0,instances=0;
+  for(const root of roots)root.traverse(o=>{
+    if(!o.isMesh)return;
+    meshes++;vertices+=o.geometry.attributes.position.count;instances+=o.isInstancedMesh?o.count:1;
+  });
+  return {meshes,vertices,instances};
+}
+for(const id of ['landscape',...ids]){
+  const part=buildContext(data,id);
+  const original=context.children.filter(o=>id==='landscape'?!o.userData.venue:o.userData.venue===id);
+  assert.deepEqual(meshCounts([part]),meshCounts(original),id+' can load independently');
+  disposeModel(part);
+}
 for(const id of ids){
   const groups=context.children.filter(child=>venueVisible(child.userData.venue,id,false));
   assert.equal(groups.length,1,`${id} retains exactly its own venue group`);

@@ -3,10 +3,10 @@ import type { Stand } from './solar';
 import {sectionPosition, type SectionId, type SeatingVenue} from './seating';
 import {rodLaverSeatEye} from './rodLaverProfile';
 
-export type View = 'hero' | 'plan' | 'seat' | 'court' | 'precinct' | 'ao';
+export type View = 'hero' | 'plan' | 'seat' | 'precinct' | 'ao';
 export type Light = 'day' | 'golden' | 'night' | 'rain' | 'solar';
 export type Theme = 'classic' | 'ink';
-export type Shot = {view:View;serial:number;stand?:Stand;destination?:string;section?:SectionId;court?:string;end?:1;follow?:boolean;home?:boolean};
+export type Shot = {view:View;serial:number;stand?:Stand;destination?:string;section?:SectionId;court?:string;home?:boolean};
 export const homeShot = {view:'ao',destination:'rla',home:true} as const;
 
 // The wide composition looks across Rod Laver towards the railway and the MCG.
@@ -60,7 +60,6 @@ export const views: {id:View;label:string}[] = [
   {id:'hero',label:'场馆全景'},
   {id:'plan',label:'垂直俯瞰'},
   {id:'seat',label:'看台视角'},
-  {id:'court',label:'走进球场'},
   {id:'precinct',label:'周边区域'},
   {id:'ao',label:'澳网全景'},
 ];
@@ -68,12 +67,11 @@ export const cameras: Record<View,{position:[number,number,number];target:[numbe
   hero:{position:[-40,39,50],target:[0,2,0]},
   plan:{position:[0,90,.05],target:[0,0,0]},
   seat:{position:[-16.2,5.4+SEATING_LIFT,9],target:[0,1,0]},
-  court:{position:[-5.4,2.05,17.8],target:[0,1,-4]},
   precinct:{position:[-170,230,255],target:[12,0,-28]},
   ao:{position:[160,670,570],target:[315,0,65]},
 };
 export const points = [
-  {id:'court',title:'蓝色中心球场',en:'THE PLAYING SURFACE',position:[0,.3,0] as [number,number,number],view:'court' as View,description:'23.77 × 10.97 米标准双打场地。单打边线、发球区、中心标记，以及中部下垂的球网，均以米为单位建模。'},
+  {id:'court',title:'蓝色中心球场',en:'THE PLAYING SURFACE',position:[0,.3,0] as [number,number,number],view:'plan' as View,description:'23.77 × 10.97 米标准双打场地。单打边线、发球区、中心标记，以及中部下垂的球网，均以米为单位建模。'},
   {id:'seat',title:'环抱式看台',en:'A SEAT IN THE ARENA',position:[-16,5+SEATING_LIFT,9] as [number,number,number],view:'seat' as View,description:'十二排逐级抬升的独立座椅，沿圆角矩形环绕球场。靠背、径向通道、扶手和后排遮阳棚均为实体几何；排数与细节为视觉近似。'},
   {id:'precinct',title:'Margaret Court Arena',en:'THE COPPER NEIGHBOUR',position:[59,19,20] as [number,number,number],view:'precinct' as View,description:'东侧紧邻的铜色屋顶是这片区域的视觉地标。周边建筑底图来自墨尔本开放数据，屋顶折线为参考卫星图的示意细化。'},
 ];

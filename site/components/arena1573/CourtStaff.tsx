@@ -87,7 +87,8 @@ function assemble(actors:T.Group,courts:Court[]){
 }
 export default function CourtStaff({courts,venue,surroundings}:{courts:Court[];venue:string;surroundings:boolean}){
   const {scene}=useGLTF('/models/tennis/court-crew.glb');
-  const crew=useMemo(()=>assemble(scene,courts),[scene,courts]);
+  const visibleCourts=useMemo(()=>surroundings?courts:courts.filter(c=>venueVisible(c.venue,venue,false)),[courts,venue,surroundings]);
+  const crew=useMemo(()=>assemble(scene,visibleCourts),[scene,visibleCourts]);
   useEffect(()=>()=>crew.dispose(),[crew]);
   for(const group of crew.group.children)group.visible=venueVisible(group.userData.venue,venue,surroundings);
   return <primitive object={crew.group} dispose={null}/>;
