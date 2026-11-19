@@ -35,7 +35,9 @@ export function eventLayout(data:ContextData):EventPocket[]{
     const width=f.kind==='rail'?4:routeFinish(f)?.width??f.width;
     return f.points.slice(1).map((b,i)=>({a:f.points[i],b,width}));
   });
-  const zones=[{name:'West walk',x:-73,z:-202,nx:30,nz:46},{name:'Arena walk',x:212,z:-25,nx:36,nz:37},{name:'East walk',x:590,z:158,nx:41,nz:15}];
+  // The central terrace has its own mapped tournament installations. The
+  // triangular area on its northern side is the railway yard and service apron.
+  const zones=[{name:'West walk',x:-73,z:-202,nx:30,nz:46},{name:'East walk',x:590,z:158,nx:41,nz:15}];
   const selected:EventPocket[]=[];
   for(const zone of zones){
     // Larger social pockets first, then smaller lawn islands in the remaining space.

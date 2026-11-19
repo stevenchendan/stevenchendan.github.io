@@ -71,6 +71,9 @@ ground=np.clip(ground*(1-water*.93)+water_tone*water*.93,0,255).astype(np.uint8)
 opacity = np.full((height,width), 255, dtype=np.uint8)
 works=np.zeros_like(opacity)
 polygon(works, [(209,-38),(316,-42),(361,-18),(420,14),(445,98),(393,148),(324,151),(270,130),(223,105),(219,30)], 255)
+rail_edge=np.array([(195,-145),(265,-91),(339,-35),(393,6),(436,32),(505,82)])
+rail_zone=[*rail_edge.tolist(),[505,-195],[195,-195]]
+polygon(works,rail_zone,0)
 for railway in (f for f in context["features"] if f["kind"]=="rail"):
     cv2.polylines(works,[np.asarray([pixel(*p) for p in railway["points"]],np.int32)],False,0,round(scale*8))
 
@@ -91,10 +94,12 @@ band=.5+.5*np.sin(wx*.095+wz*.16+.7*np.sin(wz*.12))
 paver=68+15*band+16*block+6*rng.random((h,w))
 paver+=np.where(block<.12+.13*band,49,0)+np.where(block<.035+.065*band,38,0)
 new_ground=np.stack([paver+5,paver+4,paver+2],axis=2)
+apron=wz<np.maximum(20,np.interp(wx,rail_edge[:,0],rail_edge[:,1])+10)
+asphalt=79+6*rng.random((h,w))+4*np.sin(wx*.12+wz*.017)
+new_ground[apron]=np.stack([asphalt+4,asphalt+3,asphalt],axis=2)[apron]
 beds=np.zeros_like(opacity)
 for outline in [
     [(259,23),(276,27),(277,41),(265,38)],[(282,23),(312,23),(307,39),(282,48)],
-    [(318,10),(355,10),(365,25),(330,24),(319,29)],
     [(260,58),(278,54),(276,96),(261,98)],[(288,65),(299,68),(298,85),(286,87)],
     [(314,126),(346,130),(377,113),(374,136),(358,145),(329,138)],
     [(385,55),(392,43),(396,94),(387,102)],[(270,110),(289,110),(316,133),(302,135)],

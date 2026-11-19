@@ -51,7 +51,24 @@ export function buildCentralTerrace(plan:TerracePlan) {
     const head=new T.BoxGeometry(.68,.12,.36);head.translate(x+.22,5.28,z);add('iron',head);
     const lens=new T.BoxGeometry(.48,.04,.27);lens.translate(x+.26,5.20,z);add('limestone',lens);
   }
-  const finishes:Record<string,string>={limestone:'#d5d4c6',edge:'#969988',grass:'#6e8850',iron:'#424d4b',metal:'#82908b',timber:'#a48968'};
+  // Two demountable white pavilions on the service apron appear in the
+  // tournament aerial. Retain an open lane between the buildings and the yard.
+  for(const [x,z,length,depth,bays] of [[348,11,51,14,10],[325,-12,15,8,3]]){
+    const width=length/bays,eave=3.65,peak=eave+depth*.14;
+    const body=new T.BoxGeometry(length-.3,eave,depth-.4);body.translate(x,eave/2,z);add('panels',body);
+    for(let k=0;k<bays;k++){
+      const u=x-length/2+(k+.5)*width;
+      for(const side of [-1,1]){
+        const g=new T.BoxGeometry(width-.028,.11,Math.hypot(depth/2,peak-eave));
+        g.rotateX(side*Math.atan2(peak-eave,depth/2));g.translate(u,(peak+eave)/2,z+side*depth/4);add('fabric',g);
+        const post=new T.BoxGeometry(.1,eave,.14);post.translate(u-width/2,eave/2,z+side*depth/2);add('metal',post);
+      }
+      if(k%3===1){
+        const doors=new T.BoxGeometry(width*.69,2.5,.08);doors.translate(u,1.27,z+depth/2-.13);add('iron',doors);
+      }
+    }
+  }
+  const finishes:Record<string,string>={limestone:'#d5d4c6',edge:'#969988',grass:'#6e8850',iron:'#424d4b',metal:'#82908b',timber:'#a48968',fabric:'#d9dfdd',panels:'#c0ceca'};
   for(const [finish,pieces] of parts){
     const geometry=mergeGeometries(pieces)!;pieces.forEach(piece=>piece.dispose());
     const material=finish==='grass'?pavingMaterial(finishes.grass,geometry,'lawn'):new T.MeshStandardMaterial({color:finishes[finish],roughness:.84});

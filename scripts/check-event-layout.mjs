@@ -16,6 +16,13 @@ assert.equal(route('secondary').arterial,true,'Through streets carry lane markin
 assert.equal(route('footway').road,false);
 assert.equal(route('corridor'),null,'Indoor corridors do not paint through arena floors');
 const pockets=modules.eventLayout.eventLayout(data);
+// The gaps between mapped track centrelines are still railway land. The AO
+// aerial shows this continuous yard along the northern edge of Kia Arena.
+const yard=[[265,-160],[470,-75],[470,56],[436,32],[393,6],[339,-35],[265,-91]];
+for(const pocket of pockets){
+  assert.ok(modules.eventLayout.pocketRing(pocket,1).every(p=>!modules.precinctGeometry.pointInRing(p,yard)),
+    'Visitor facilities must stay off the railway yard behind Kia Arena');
+}
 const crossings=modules.eventLayout.eventCrossings(data);
 assert.ok(crossings.length>0&&crossings.length<=8,'Crossings are bounded and use mapped intersections');
 for(const crossing of crossings)assert.ok(Number.isFinite(crossing.x+crossing.z+crossing.dx+crossing.dz));

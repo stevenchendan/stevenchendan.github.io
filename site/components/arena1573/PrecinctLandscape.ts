@@ -65,7 +65,23 @@ export function addGroundPhotography(root:T.Group, invalidate:()=>void) {
         vec2 centralEdge=min(orthoPosition-vec2(217.,17.),vec2(407.,147.)-orthoPosition);
         float terrace=smoothstep(-2.,7.,min(centralEdge.x,centralEdge.y));
         float coverage=mix(${contribution.toFixed(2)}*mix(${base?'.71':'.25'},1.,distanceBlend),.965,terrace);
-        diffuseColor.rgb=mix(diffuseColor.rgb,photo.rgb*mix(1.25,1.05,terrace),orthoReady*fade*photo.a*coverage);`);
+        diffuseColor.rgb=mix(diffuseColor.rgb,photo.rgb*mix(1.25,1.05,terrace),orthoReady*fade*photo.a*coverage);
+        ${['ground-#b8bcb8','ground-#c8cac4'].includes(o.name)?`
+        // Resolve individual stone setts at walking height, where the half-
+        // metre aerial texels can no longer describe the bond and joints.
+        vec2 stone=mat2(.915,-.404,.404,.915)*orthoPosition;
+        stone/=vec2(.72,.49);stone.x+=.5*mod(floor(stone.y),2.);
+        vec2 index=floor(stone);
+        float seed=fract(sin(dot(index,vec2(127.1,311.7)))*43758.55);
+        float drift=.5+.5*sin(orthoPosition.x*.095+orthoPosition.y*.16);
+        vec3 setts=mix(vec3(.058,.067,.072),vec3(.116,.126,.128),seed);
+        setts=mix(setts,vec3(.28,.30,.295),1.-step(.10+.09*drift,seed));
+        setts=mix(setts,vec3(.49,.50,.46),1.-step(.03+.038*drift,seed));
+        vec2 widths=max(fwidth(stone),vec2(.001)),joint=min(fract(stone),1.-fract(stone));
+        float grout=max(1.-smoothstep(.004,.012+widths.x*.5,joint.x),1.-smoothstep(.004,.012+widths.y*.5,joint.y));
+        setts*=1.-grout*.19;
+        float nearStone=1.-smoothstep(32.,105.,length(vec3(cameraPosition.x-orthoPosition.x,cameraPosition.y,cameraPosition.z-orthoPosition.y)));
+        diffuseColor.rgb=mix(diffuseColor.rgb,setts,terrace*photo.a*nearStone*orthoReady);`:''}`);
     };
     material.customProgramCacheKey=()=>key+'-melbourne-ground-'+contribution;
     material.needsUpdate=true;
