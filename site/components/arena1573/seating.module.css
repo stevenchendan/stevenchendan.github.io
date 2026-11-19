@@ -134,7 +134,7 @@
 .clockMode span { display: grid; }
 .clockMode b { font-size: 13px; line-height: 1.15; }
 .clockMode small { font-size: 10px; color: #435956; }
-.clockHeader input { width: 93px; min-width: 0; border: 1px solid #bdc9bd; background: #fff; border-radius: 5px; padding: 3px; color: #17333a; font-family: inherit; font-weight: 600; font-size: 13px; line-height: 1.3; font-variant-numeric: tabular-nums; }
+.clockHeader input { flex: none; min-inline-size: 8.75em; border: 1px solid #bdc9bd; background: #fff; border-radius: 5px; padding: 3px; color: #17333a; font-family: inherit; font-weight: 600; font-size: 13px; line-height: 1.3; font-variant-numeric: tabular-nums; }
 .daylight[data-compact] .transport { margin: 0; gap: 6px; }
 .daylight[data-compact] .transport button { flex-basis: 30px; height: 30px; }
 .daylight[data-compact] .transport input { height: 18px; background-size: 100% 5px; }
