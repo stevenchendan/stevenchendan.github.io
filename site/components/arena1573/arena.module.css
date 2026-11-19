@@ -119,7 +119,6 @@
 .cameraCard:hover { border-color: #abbdbe; background: #29424a; }
 .cameraCard[aria-pressed=true] { border-color: var(--accent); color: var(--accent); background: #263c3d; box-shadow: inset 0 0 0 1px var(--accent); }
 .thumb { position: relative; display: block; flex: none; width: 44px; height: 34px; border-radius: 3px; overflow: hidden; background: #557785; }
-.thumb img { width: 100%; height: 100%; object-fit: cover; }
 .thumb kbd {
   position: absolute; bottom: 1px; left: 1px; display: grid; place-items: center; min-width: 12px; height: 12px; border-radius: 2px;
   background: #10262cdd; color: #f2f7ef; font: 600 10px/1 ui-monospace,Consolas,monospace;

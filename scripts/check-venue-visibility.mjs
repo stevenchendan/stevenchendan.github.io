@@ -4,17 +4,35 @@ import * as THREE from 'three';
 import {loadArenaModule as load} from './arena-model-fixture.mjs';
 const {buildContext,buildArena,disposeModel}=load('model');
 const {venueVisible,courtVenue}=load('venueVisibility');
-const {rallyCourts,courtDirectory,cameraCourtAreas,courtInView}=load('courtPlacements');
+const {rallyCourts,courtDirectory}=load('courtPlacements');
+const {cameraFootprints,trackCameraFocus}=load('cameraFocus');
+const {presetCamera}=load('cameraFraming');
 const data=JSON.parse(fs.readFileSync('public/data/1573-context.json','utf8'));
-const courtsForFocus=courtDirectory(data),focusAreas=cameraCourtAreas(data,courtsForFocus);
-for(const key of ['1573','mca','rla','john','kia','16']){
-  const {x,z}=courtsForFocus.find(c=>c.key===key);
-  // An oblique approach should identify the footprint under the centre of the view.
-  const eye={x:x-12,y:80,z:z+18},target={x,y:0,z};
-  assert.equal(courtInView(focusAreas,eye,target,100,'all',true),key);
-  assert.equal(courtInView(focusAreas,eye,target,100,'oval',false),null);
+const courtsForFocus=courtDirectory(data),areas=cameraFootprints(data,courtsForFocus);
+const readFocus=trackCameraFocus(areas,'rla',true),isolated=trackCameraFocus(areas,'rla',false);
+const eyeCamera=new THREE.PerspectiveCamera(43,1.6,.1,4000);
+function look(x,y,z,dx,dy,dz,aspect){
+  eyeCamera.aspect=aspect;eyeCamera.updateProjectionMatrix();
+  eyeCamera.position.set(x+dx,y+dy,z+dz);eyeCamera.lookAt(x,y,z);
 }
-assert.equal(courtInView(focusAreas,{x:-900,y:100,z:-900},{x:-900,y:0,z:-900},100,'all',true),null);
+for(const aspect of [16/9,390/740]){
+  for(const court of courtsForFocus){
+    const {x,y,z,key,venue}=court;
+    look(x,y,z,-4,40,9,aspect);
+    assert.equal(readFocus(eyeCamera),key,'Camera should identify '+key+' at '+aspect);
+    assert.equal(isolated(eyeCamera),key==='rla'?'rla':null);
+    const [hero,plan,precinct,grounds]=['hero','plan','precinct','ao'].map(view=>presetCamera(view,venue,court,data,aspect));
+    assert.equal(plan.target.x,x);assert.equal(plan.target.z,z);
+    assert.ok(plan.offset.y>100*Math.hypot(plan.offset.x,plan.offset.z),'Overhead '+key);
+    assert.ok(precinct.offset.length()>hero.offset.length(),'District framing '+key);
+    assert.ok(grounds.offset.length()>precinct.offset.length()&&grounds.target.distanceTo(precinct.target)>0);
+  }
+}
+look(344.84,7,78.58,77,1,0,1.6);
+assert.equal(readFocus(eyeCamera),'kia','The foreground facade resolves at a low angle');
+look(154,7,72,-60,1800,50,1.6);
+assert.equal(readFocus(eyeCamera),null,'A distant stadium is part of the grounds panorama');
+look(-900,0,-900,0,100,10,1.6);assert.equal(readFocus(eyeCamera),null);
 const context=buildContext(data);
 const ids=['mca','rla','kia','village','john','centrepiece','ntc','west','east','oval',
   'hilltop','ballpark','topcourt','garden','terrace','courtside'];

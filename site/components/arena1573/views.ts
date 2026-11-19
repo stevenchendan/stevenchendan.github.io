@@ -6,7 +6,7 @@ import {rodLaverSeatEye} from './rodLaverProfile';
 export type View = 'hero' | 'plan' | 'seat' | 'precinct' | 'ao';
 export type Light = 'day' | 'golden' | 'night' | 'rain' | 'solar';
 export type Theme = 'classic' | 'ink';
-export type Shot = {view:View;serial:number;stand?:Stand;destination?:string;section?:SectionId;court?:string;home?:boolean};
+export type Shot = {view:View;serial:number;stand?:Stand;destination?:string;section?:SectionId;court?:string;home?:boolean;preset?:boolean};
 export const homeShot = {view:'ao',destination:'rla',home:true} as const;
 
 // The wide composition looks across Rod Laver towards the railway and the MCG.

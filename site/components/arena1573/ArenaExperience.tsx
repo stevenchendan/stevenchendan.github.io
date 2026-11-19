@@ -10,7 +10,7 @@ import {benchDescription,benchLayout} from './playerBenches';
 import SectionPicker from './SectionPicker';
 import GroundsPlan from './GroundsPlan';
 import Autographs from './Autographs';
-import {seatSections,type SectionId,type SeatingVenue} from './seating';
+import {baselineSection,seatSections,type SectionId,type SeatingVenue} from './seating';
 import type {RoofStatus} from './roofs';
 import {film} from './film';
 import {useCinemaSound} from './useCinemaSound';
@@ -20,6 +20,7 @@ import SeatDaylight, { firstMinute, lastMinute, openingDay, readSeatDate, sunlig
 import { clockTime } from './solar';
 import Icon from './Icon';
 import styles from './arena.module.css';
+import cameraPreviewKeys from './cameraPreviewKeys.json';
 
 const ArenaScene = lazy(() => import('./ArenaScene'));
 const moods = [
@@ -138,7 +139,12 @@ export default function ArenaExperience(){
   const directory=useMemo(()=>data?courtDirectory(data):[],[data]);
   const freeView=ready&&focusKey!==undefined;
   const focusedCourt=freeView?directory.find(c=>c.key===focusKey):undefined;
-  const captionVenueId=freeView?focusedCourt?.venue:shot.destination;
+  const captionVenueId=freeView?(focusedCourt?.venue??focusKey??undefined):shot.destination;
+  const lastSubject=useRef('rla');
+  const onFocus=useCallback((key:string|null|undefined)=>{
+    if(key)lastSubject.current=key;
+    setFocusKey(key);
+  },[]);
   const [light,setLight]=useState<Light>('golden');
   const [solarDate,setSolarDate]=useState<SolarDate>({...openingDay,minutes:17*60+10});
   const [studyClosed,setStudyClosed]=useState(false),[sunPlaying,setSunPlaying]=useState(false);
@@ -162,6 +168,7 @@ export default function ArenaExperience(){
   const presentable=ready&&(!cinema||(filmPrepared&&music.ready));
   const compassRef=useRef<HTMLElement>(null);
   const tr=getTranslator(language);
+  const shadowCourt=freeView?focusKey:shot.court;
   const sun=useMemo(()=>light==='solar'?summerSun(solarDate):null,[light,solarDate]);
   const seatedStudy=shot.section!==undefined&&isRoofed(shot.destination)&&light==='solar';
   const studyVisible=panel==='sections'||(seatedStudy&&!cinema&&!panel);
@@ -176,20 +183,20 @@ export default function ArenaExperience(){
   useEffect(()=>{
     if(!clockVisible||solarDate.minutes>=lastMinute){setSunPlaying(false);return;}
     if(!sunPlaying||(!ready&&panel!=='sections'))return;
-    // The original pace advances ten Melbourne minutes every 450 ms.
-    // Measure elapsed time so a busy court can catch up after a delayed frame.
-    const stepMs=450/sunlightPlaybackSpeed;
-    let lastStep=performance.now();
-    const resetClock=()=>{lastStep=performance.now();};
-    const timer=window.setInterval(()=>{
-      if(document.hidden)return;
-      const steps=Math.floor((performance.now()-lastStep)/stepMs);
-      if(!steps)return;
-      lastStep+=steps*stepMs;
-      setSolarDate(d=>({...d,minutes:Math.min(lastMinute,d.minutes+steps*10)}));
-    },Math.ceil(stepMs));
-    document.addEventListener('visibilitychange',resetClock);
-    return ()=>{window.clearInterval(timer);document.removeEventListener('visibilitychange',resetClock);};
+    let frame=0,previous=performance.now();
+    const tick=(now:number)=>{
+      // Bound catch-up on a busy GPU; hidden tabs should resume from the same time.
+      const elapsed=Math.min(100,Math.max(0,now-previous));
+      previous=now;
+      setSolarDate(d=>({...d,minutes:Math.min(lastMinute,d.minutes+elapsed*10*sunlightPlaybackSpeed/450)}));
+      frame=requestAnimationFrame(tick);
+    };
+    const sync=()=>{
+      cancelAnimationFrame(frame);previous=performance.now();
+      if(!document.hidden)frame=requestAnimationFrame(tick);
+    };
+    sync();document.addEventListener('visibilitychange',sync);
+    return ()=>{cancelAnimationFrame(frame);document.removeEventListener('visibilitychange',sync);};
   },[clockVisible,sunPlaying,ready,panel,solarDate.minutes>=lastMinute]);
   useEffect(()=>{
     const strip=cameraStrip.current, item=strip?.querySelector<HTMLElement>('[aria-pressed=true]');
@@ -199,13 +206,13 @@ export default function ArenaExperience(){
     else if(button.right>box.right)strip.scrollLeft+=button.right-box.right;
   },[shot.view,cinema,language]);
   useEffect(()=>{
-    if(!seatedStudy)return;
+    if(!seatedStudy||sunPlaying)return;
     const url=new URL(window.location.href);
     url.searchParams.set('date',[solarDate.year,String(solarDate.month).padStart(2,'0'),String(solarDate.day).padStart(2,'0')].join('-'));
     url.searchParams.set('time',clockTime(solarDate.minutes));
     if(studyClosed)url.searchParams.set('roof','closed');else url.searchParams.delete('roof');
     history.replaceState(history.state,'',url);
-  },[seatedStudy,solarDate,studyClosed,shot.serial]);
+  },[seatedStudy,sunPlaying,solarDate,studyClosed,shot.serial]);
 
   useEffect(()=>{
     const query=new URLSearchParams(window.location.search);
@@ -220,15 +227,16 @@ export default function ArenaExperience(){
       history.replaceState(history.state,'',url);
     }
     if(arena&&destinations.some(d=>d.id===arena))setRequested(true);
+    const preset=views.find(v=>v.id===query.get('view'))?.id;
     if(isRoofed(arena)){
-      const choice=seatSections[arena].find(s=>String(s.id)===sectionId);
+      const choice=seatSections[arena].find(s=>String(s.id)===sectionId)??(preset==='seat'?baselineSection(arena):undefined);
       if(choice){setLight('solar');setSolarDate(readSeatDate(query));setStudyClosed(query.get('roof')==='closed');}
       else {setLight('day');setSolarDate(openingDay);}
       setSeatVenue(arena);setSection(choice?.id??null);
-      setShot(choice?{view:'seat',serial:1,destination:arena,section:choice.id}:{view:'hero',destination:arena,court,serial:1});
+      setShot(choice?{view:'seat',serial:1,destination:arena,section:choice.id}:{view:preset??'hero',preset:!!preset,destination:arena,court,serial:1});
     }else if(arena&&destinations.some(d=>d.id===arena)){
       setLight('day');setSolarDate(openingDay);
-      setShot({view:court||arena==='1573'?'hero':'ao',destination:arena,court,serial:1});
+      setShot({view:preset??(court||arena==='1573'?'hero':'ao'),preset:!!preset,destination:arena,court,serial:1});
     }
     try{
       const savedTheme=localStorage.getItem('1573-arena-theme'), savedLanguage=localStorage.getItem('1573-arena-language');
@@ -265,10 +273,12 @@ export default function ArenaExperience(){
     for(const key of ['arena','section','view','date','time','roof'])url.searchParams.delete(key);
     url.searchParams.delete('court');url.searchParams.delete('end');
     if(next.court)url.searchParams.set('court',next.court);
+    if(next.preset)url.searchParams.set('view',next.view);
     if(next.destination&&!next.home)url.searchParams.set('arena',next.destination);
     if(next.section!==undefined)url.searchParams.set('section',String(next.section));
     history.replaceState(history.state,'',url);
     if(next.home)setContext(true);
+    lastSubject.current=next.court??next.destination??lastSubject.current;
     setFocusKey(undefined);
     setShot(previous=>({...next,serial:previous.serial+1}));
     setRotate(false);setPanel(null);setSelected(null);
@@ -278,17 +288,34 @@ export default function ArenaExperience(){
     if(light!=='solar')setStudyClosed(light==='rain');
     setPanel('sections');
   },[captionVenueId,seatVenue,light]);
+  const subjectKey=freeView?(focusKey??lastSubject.current):(shot.court??shot.destination??lastSubject.current);
+  const subjectCourt=directory.find(c=>c.key===subjectKey);
+  const subjectVenue=destinations.find(d=>d.id===(subjectCourt?.venue??subjectKey));
+  const cameraImage=cameraPreviewKeys.includes(subjectKey)?`/images/court-atlas/cameras/${subjectKey}.webp`:null;
+  const nearestSeatCourt=useMemo(()=>{
+    if(subjectCourt||!subjectVenue)return subjectCourt;
+    const [x,,z]=subjectVenue.target;
+    return directory.reduce<(typeof directory)[number]|undefined>((nearest,court)=>
+      !nearest||Math.hypot(court.x-x,court.z-z)<Math.hypot(nearest.x-x,nearest.z-z)?court:nearest,undefined);
+  },[subjectCourt,subjectVenue,directory]);
   const selectView=useCallback((view:View)=>{
-    if(view==='seat'&&isRoofed(captionVenueId)){openSeats();return;}
-    navigate({view});
-  },[captionVenueId,openSeats,navigate]);
+    const court=view==='seat'?nearestSeatCourt:subjectCourt;
+    const destination=court?.venue??subjectVenue?.id??'rla';
+    if(view==='seat'&&isRoofed(destination)){
+      const id=seatVenue===destination&&section!==null?section:baselineSection(destination).id;
+      setSeatVenue(destination);setSection(id);
+      navigate({view,destination,section:id,preset:true});return;
+    }
+    if(view==='precinct'||view==='ao')setContext(true);
+    navigate({view,destination,court:court?.key,preset:true});
+  },[subjectCourt,subjectVenue,nearestSeatCourt,seatVenue,section,navigate]);
   const onSelect=useCallback((id:string)=>{
     if(destinations.some(venue=>venue.id===id)){
-      navigate(id==='1573'?{view:'hero'}:{view:'ao',destination:id});
+      navigate({view:'hero',destination:id});
       return;
     }
     const point=points.find(p=>p.id===id);
-    if(point){navigate({view:point.view});setSelected(id);setMarkers(false);setPanel('detail');}
+    if(point){navigate({view:point.view,destination:point.id==='precinct'?'mca':'1573'});setSelected(id);setMarkers(false);setPanel('detail');}
   },[navigate]);
   const onProgress=useCallback((next:LoadProgress)=>{
     setReady(false);
@@ -348,7 +375,7 @@ export default function ArenaExperience(){
       a.href=canvas.current.toDataURL('image/png');a.click();setToast('已保存当前 3D 画面');
     }catch{setToast('画面暂时无法保存，请重试。');}
   }
-  function viewStand(stand:Stand){navigate({view:'seat',stand});}
+  function viewStand(stand:Stand){navigate({view:'seat',stand,destination:'1573'});}
   function activateClock(){
     startScene();
     setContext(true);setLight('solar');
@@ -362,7 +389,7 @@ export default function ArenaExperience(){
   const playable=venueCourts(directory,venue?.id??(!freeView&&shot.view==='hero'?'1573':undefined));
   const courtKey=freeView?focusedCourt?.key:shot.court;
   const chosen=playable.find(c=>c.key===courtKey)??playable[0];
-  const showStandComparison=venue?.id==='1573'||(!venue&&shot.view!=='ao'&&shot.view!=='precinct');
+  const showStandComparison=venue?.id==='1573'||(!freeView&&!venue&&shot.view!=='ao'&&shot.view!=='precinct');
   const wide=freeView?focusedCourt?.key!=='1573':!!venue||shot.view==='ao'||shot.view==='precinct';
   const title=chosen&&courtKey?chosen[language]:venue?tr(venue.name):wide?tr('墨尔本公园'):'1573 Arena';
   const detail=points.find(point=>point.id===selected);
@@ -376,7 +403,7 @@ export default function ArenaExperience(){
   }else if(venue&&venue.id!=='1573'){
     caption=tr('场馆建筑模型');
   }else if(freeView){
-    if(!focusedCourt)caption=tr('澳网全景');
+    if(!venue)caption=tr('澳网全景');
   }else if(shot.view==='ao')caption=tr('澳网全景');
   else if(shot.view==='precinct')caption=tr('西区场馆与练习场');
   else if(currentSeat)caption=currentSeat;
@@ -408,7 +435,7 @@ export default function ArenaExperience(){
         <img src={`/images/court-atlas/${staticView}.webp`} alt={tr(activeView.label)} fetchPriority="high"/>
       </picture>}
       {requested&&!failure&&data&&<div className={styles.viewport}>
-        <SceneBoundary onFailure={onFailure}><Suspense fallback={null}><ArenaScene onFilmPrepared={onFilmPrepared} onFocus={setFocusKey} {...{data,shot,light,rotate,crowd,ready,onProgress,onSelect,onReady,onInteract,language,theme,sun,onFailure,reducedMotion,compassRef,onCut}} rally={cinema?playing&&presentable:rally} compareStands={showStandComparison&&panel==='settings'} closedStudyRoof={light==='solar'&&seatedStudy&&studyClosed} chapter={cinema?chapter:null} playing={cinema&&playing&&presentable} context={cinema||context} onRoof={setRoof} markers={markers&&!cinema} onShade={setShade} canvasRef={canvas}/></Suspense></SceneBoundary>
+        <SceneBoundary onFailure={onFailure}><Suspense fallback={null}><ArenaScene onFilmPrepared={onFilmPrepared} shadowCourt={shadowCourt} movingSun={sunPlaying&&light==='solar'&&!cinema} onFocus={onFocus} {...{data,shot,light,rotate,crowd,ready,onProgress,onSelect,onReady,onInteract,language,theme,sun,onFailure,reducedMotion,compassRef,onCut}} rally={cinema?playing&&presentable:rally} compareStands={showStandComparison&&panel==='settings'} closedStudyRoof={light==='solar'&&seatedStudy&&studyClosed} chapter={cinema?chapter:null} playing={cinema&&playing&&presentable} context={cinema||context} onRoof={setRoof} markers={markers&&!cinema} onShade={setShade} canvasRef={canvas}/></Suspense></SceneBoundary>
       </div>}
       <div className={styles.shade}/>
       {!cinema&&<div className={styles.stageBar}>
@@ -465,8 +492,12 @@ export default function ArenaExperience(){
     </section>
     {!cinema&&<nav className={styles.cameraNav} aria-labelledby="camera-heading">
       <div className={styles.railHeading}><h2 id="camera-heading">{tr('相机视角')}</h2>{ready&&<p className={styles.gesture}><span className={styles.north} title={tr('地理北向参考 · 8°')}><i ref={compassRef}/>N</span><Icon name="mouse"/><span>{tr(shot.section===undefined?'拖动旋转 · 滚轮缩放':'拖动环顾 · 滚轮缩放')}</span><b>{tr(shot.section===undefined?'拖动旋转 · 双指缩放':'拖动环顾看台')}</b></p>}</div>
-      <div ref={cameraStrip} className={styles.filmstrip}>{views.map((view,index)=><button className={styles.cameraCard} key={view.id} aria-label={tr(view.label)} aria-pressed={shot.view===view.id} title={`${tr(view.label)} · ${index+1}`} onClick={()=>selectView(view.id)}>
-        <span className={styles.thumb}><img src={`/images/court-atlas/${view.id}-thumb.webp`} alt="" draggable="false"/><kbd>{index+1}</kbd></span>
+      <div ref={cameraStrip} className={styles.filmstrip}>{views.map((view,index)=><button className={styles.cameraCard} key={view.id} aria-label={tr(view.label)} aria-pressed={shot.view===view.id} title={`${tr(view.label)} · ${view.id==='seat'&&nearestSeatCourt?nearestSeatCourt[language]:subjectCourt?.[language]??tr(subjectVenue?.name??'墨尔本公园')} (${index+1})`} onClick={()=>selectView(view.id)}>
+        <span aria-hidden="true" className={styles.thumb} style={!cameraImage?undefined:{
+          backgroundImage:`url(${cameraImage})`,
+          backgroundSize:`${views.length*100}% 100%`,
+          backgroundPosition:`${index*100/(views.length-1)}% 0`,
+        }}><kbd>{index+1}</kbd></span>
         <span className={styles.cardLabel}>{tr(view.label)}{shot.view===view.id&&<Icon name="check"/>}</span>
       </button>)}</div>
     </nav>}
@@ -475,7 +506,7 @@ export default function ArenaExperience(){
       {(panel==='sections'||panel==='venues')&&<button className={styles.guideLink} onClick={()=>setPanel('autographs')}>{tr('签名攻略')}<Icon name="next"/></button>}
       {panel==='autographs'&&<Autographs language={language} visit={()=>{setContext(true);navigate({view:'ao',destination:'village'});}}/>}
       {panel==='venues'&&<>
-        {data&&<GroundsPlan data={data} selected={shot.destination??(shot.view==='hero'?'1573':undefined)} onSelect={onSelect} language={language}/>}
+        {data&&<GroundsPlan data={data} selected={venue?.id??(wide?undefined:'1573')} onSelect={onSelect} language={language}/>}
         <div className={styles.venueList}>{[{id:'all',name:'澳网全景'},...destinations].map(d=>{
           const active=d.id===(venue?.id??(wide?'all':'1573'));
           return <button key={d.id} aria-pressed={active} onClick={()=>d.id==='all'?navigate({view:'ao'}):onSelect(d.id)}>{tr(d.name)}<Icon name={active?'check':'next'}/></button>;
@@ -493,7 +524,7 @@ export default function ArenaExperience(){
           <label className={styles.switch}><span>{tr('球员回合')}</span><input type="checkbox" checked={rally} onChange={e=>setRally(e.target.checked)}/></label>
         </fieldset>
         <button className={styles.solarButton} disabled={!!failure} aria-pressed={light==='solar'} aria-expanded={light==='solar'} onClick={setSolar}><Icon name="solar"/>{tr('夏日日照')}<span aria-hidden="true">{light==='solar'?'−':'+'}</span></button>
-        {light==='solar'&&(isRoofed(shot.destination)?<button className={styles.guideLink} onClick={openSeats}>{tr('选择座区')}<Icon name="seat"/></button>:<SunControls date={solarDate} onChange={date=>{setShade(null);setSolarDate(date);}} language={language} shade={shade} onStand={showStandComparison?viewStand:undefined}/>)}
+        {light==='solar'&&(isRoofed(captionVenueId)?<button className={styles.guideLink} onClick={openSeats}>{tr('选择座区')}<Icon name="seat"/></button>:<SunControls date={solarDate} onChange={date=>{setShade(null);setSolarDate(date);}} language={language} shade={shade} onStand={showStandComparison?viewStand:undefined}/>)}
         <button className={styles.aboutButton} onClick={()=>setPanel('about')}><Icon name="info"/>{tr('关于模型')}<Icon name="next"/></button>
       </>}
       {panel==='detail'&&detail&&<div className={styles.prose}><p>{tr(detail.description)}</p><button className={styles.textLink} onClick={()=>{navigate({view:'hero'});setMarkers(true);}}>{tr('返回场馆全景 ↗')}</button></div>}

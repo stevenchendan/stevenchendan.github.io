@@ -122,7 +122,7 @@ export default function SeatDaylight(props: Props) {
     <div className={styles.transport}>
       <button type="button" onClick={study.toggle} aria-pressed={playing} aria-label={playing ? (zh ? '暂停日照演示' : 'Pause sunlight playback') : (zh ? '播放一日光影' : 'Play sunlight through the day')}
         title={(playing ? (zh ? '暂停' : 'Pause') : (zh ? '播放一日光影' : 'Play through the day'))+' · '+sunlightPlaybackSpeed+'×'}><Icon name={playing ? 'pause' : 'play'} /></button>
-      <div><input type="range" min={firstMinute} max={lastMinute} step={5} value={minutes}
+      <div><input type="range" min={firstMinute} max={lastMinute} step={playing?'any':1} value={minutes}
         aria-label={selected ? (zh ? '座区日照时间' : 'Section sunlight time') : (zh ? '日照时间' : 'Sunlight time')} aria-valuetext={clockTime(minutes) + ' AEDT'}
         style={{ backgroundImage: track }} onChange={e => study.setDate({ ...date, minutes: Number(e.target.value) })} />
         <div className={styles.tickRow}><span>05:00</span><span>12:00</span><span>17:00</span><span>22:00</span></div>

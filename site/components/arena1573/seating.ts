@@ -279,6 +279,12 @@ export const seatSections: Record<SeatingVenue, SeatSection[]> = {
   john: hydrateBays('john', johnCain),
 };
 
+export function baselineSection(venue:SeatingVenue){
+  const sections=seatSections[venue];
+  return sections.filter(s=>s.side==='south'&&s.tier==='lower')
+    .sort((a,b)=>Math.abs(a.x)-Math.abs(b.x))[0]??sections[0];
+}
+
 export function sectionPosition(venue: SeatingVenue, id: SectionId) {
   const section = seatSections[venue].find(section => section.id === id);
   if (!section) return undefined;

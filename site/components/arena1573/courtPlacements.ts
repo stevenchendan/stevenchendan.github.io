@@ -1,6 +1,6 @@
 import type { ContextData } from './model';
-import { courtFrame, pointInRing } from './precinctGeometry';
-import { buildingVenue, courtVenue, venueVisible } from './venueVisibility';
+import { courtFrame } from './precinctGeometry';
+import { courtVenue } from './venueVisibility';
 
 export function courtElevation(x:number,layer?:number){return x>590&&x<709&&layer===1?5.75:0;}
 
@@ -47,42 +47,4 @@ export function venueCourts(list:ReturnType<typeof courtDirectory>,venue:string|
     const numbered=Number(/^\d+$/.test(b.key))-Number(/^\d+$/.test(a.key));
     return numbered||a.en.localeCompare(b.en,'en',{numeric:true});
   });
-}
-
-/** Use the arena shell for stadiums and the fenced runoff for practice courts. */
-export function cameraCourtAreas(data:ContextData, courts:ReturnType<typeof courtDirectory>){
-  return courts.map(court=>{
-    const building=data.buildings.find(b=>buildingVenue(b)===court.key);
-    let ring=building?.ring??data.features.find(f=>f.id===court.id)?.points??[];
-    // These two bowls are built procedurally around a smaller mapped court.
-    if(court.key==='1573'||court.key==='kia'){
-      const [w,d]=court.key==='1573'?[22,31]:[30,40];
-      ring=Array.from({length:32},(_,i)=>{
-        const angle=i*Math.PI/16;
-        return [court.x+w*Math.sign(Math.cos(angle))*Math.sqrt(Math.abs(Math.cos(angle))),
-          court.z+d*Math.sign(Math.sin(angle))*Math.sqrt(Math.abs(Math.sin(angle)))];
-      });
-    }
-    const xs=ring.map(p=>p[0]),zs=ring.map(p=>p[1]);
-    return {key:court.key,venue:court.venue,ring,height:building?building.base+building.height*.6:court.y,
-      left:Math.min(...xs),right:Math.max(...xs),front:Math.min(...zs),back:Math.max(...zs)};
-  });
-}
-
-export function courtInView(areas:ReturnType<typeof cameraCourtAreas>,eye:{x:number;y:number;z:number},
-  target:{x:number;y:number;z:number},visibleSpan:number,selected:string,surroundings:boolean){
-  const drop=eye.y-target.y;
-  if(drop<=0.001)return null;
-  let nearest=Infinity, key:string|null=null;
-  for(const area of areas){
-    if(!venueVisible(area.venue,selected,surroundings))continue;
-    if(Math.max(area.right-area.left,area.back-area.front)<visibleSpan*.16)continue;
-    const surface=eye.y>area.height?area.height:0;
-    const t=(eye.y-surface)/drop;
-    if(t<0||t>=nearest)continue;
-    const x=eye.x+(target.x-eye.x)*t,z=eye.z+(target.z-eye.z)*t;
-    if(x<area.left||x>area.right||z<area.front||z>area.back||!pointInRing([x,z],area.ring))continue;
-    nearest=t;key=area.key;
-  }
-  return key;
 }
