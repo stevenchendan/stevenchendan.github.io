@@ -21,6 +21,12 @@ type Props = {
   study: Study;
 };
 
+const headerPhotos = {
+  rla: { image:'rod-laver-dusk-small', file:'Rod_Laver_Arena_Melbourne_Park_Australian_Open_2023_quarter_final_dusk.jpg', author:'Gracchus250' },
+  mca: { image:'margaret-court-seating', file:'Margaret_Court_Arena_(Australian_Open_2017).jpg', author:'DestinationAlan' },
+  john: { image:'john-cain-seating', file:'Hisense_Arena_January_2016.jpg', author:'DestinationAlan' },
+} satisfies Record<SeatingVenue,{image:string;file:string;author:string}>;
+
 const copy = {
   en: {
     arena: 'Arena', map: 'Choose a section', compass: 'N', section: 'Section',
@@ -153,7 +159,7 @@ export default function SectionPicker({ venue, section, language, onSelect, onVi
 
   return <div className={styles.picker}>
     <div className={styles.identity} data-venue={venue}>
-      {venue === 'rla' && <img src="/images/court-atlas/rod-laver-dusk-small.webp" alt="" width="360" height="170" />}
+      <img src={`/images/court-atlas/${headerPhotos[venue].image}.webp`} alt="" />
       <label htmlFor={venueId}>{labels.arena}</label>
       <div className={styles.venueControl}>
         <select id={venueId} value={venue} onChange={e => {
@@ -258,8 +264,8 @@ export default function SectionPicker({ venue, section, language, onSelect, onVi
         <a href={seatingVenues[venue].map} target="_blank" rel="noreferrer">{labels.source} ↗</a>
         <a href="https://www.ticketmaster.com.au/ausopen" target="_blank" rel="noreferrer">{labels.tickets} ↗</a>
       </div>
-      {venue === 'rla' && <p className={styles.credit}>{labels.photo} <a href="https://commons.wikimedia.org/wiki/File:Rod_Laver_Arena_Melbourne_Park_Australian_Open_2023_quarter_final_dusk.jpg"
-        target="_blank" rel="noreferrer">Gracchus250</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noreferrer">CC BY-SA 4.0</a></p>}
+      <p className={styles.credit}>{labels.photo} <a href={`https://commons.wikimedia.org/wiki/File:${headerPhotos[venue].file}`}
+        target="_blank" rel="noreferrer">{headerPhotos[venue].author}</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noreferrer">CC BY-SA 4.0</a></p>
     </footer>
   </div>;
 }
