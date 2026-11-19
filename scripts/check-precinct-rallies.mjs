@@ -1,11 +1,19 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {createHash} from 'node:crypto';
 import * as T from 'three';
 import {loadModule,loadAthlete} from './rally-fixture.mjs';
 
 const {rallyCourts,courtDirectory,venueCourts}=loadModule('courtPlacements');
 const {strokes,RALLY_SECONDS}=loadModule('rallyMotion');
 const {makePrecinctPlayers,readPoseAtlas,poseRow}=loadModule('precinctPlayers');
+const {matchPair,athleteModelUrl,athleteMotionUrl}=loadModule('athleteKits');
+for(const path of [athleteModelUrl,athleteMotionUrl]){
+  const [file,version]=path.split('?v=');
+  const bytes=fs.readFileSync(new URL('../public'+file,import.meta.url));
+  assert.equal(createHash('sha256').update(bytes).digest('hex').slice(0,8),version,'Refresh the asset revision for '+file);
+}
+const {footwork}=loadModule('footwork');
 const data=JSON.parse(fs.readFileSync(new URL('../public/data/1573-context.json',import.meta.url),'utf8'));
 const placements=rallyCourts(data).map((c,i)=>({...c,phase:i*.713}));
 assert.equal(placements.length,30);
@@ -58,7 +66,11 @@ for(const [index,c] of other.entries()){
   assert.ok(pair,'A close camera should show the full athletes on '+c.en);
   assert.equal(pair.children.length,2);
   for(let side=0;side<2;side++){
-    assert.ok(pair.children[side].getObjectByName('Human_Mesh').isSkinnedMesh);
+    const mesh=pair.children[side].getObjectByName('Human_Mesh');
+    assert.ok(mesh.isSkinnedMesh);
+    const build=matchPair(c.key)[side].build;
+    assert.equal(mesh.morphTargetInfluences[0],build,'Restore the fitted build on '+c.en);
+    assert.ok(Math.abs(person.geometry.attributes.playerPose.getY(index*2+side)-build)<1e-6,'Match the distant build on '+c.en);
     person.getMatrixAt(index*2+side,matrix);assert.ok(Math.abs(matrix.determinant())<.000001,'Avoid a duplicate athlete at '+c.en);
   }
 }
@@ -69,15 +81,21 @@ adaptive.dispose();
 // Check the actual court-specific matches at both rendering distances.
 const {courtMatch,tossTime}=loadModule('courtMatches');
 const {makeAthlete}=loadModule('athleteRig');
-const {matchPair}=loadModule('athleteKits');
 const matchPlayers=makePrecinctPlayers(scene,buffer,all);
 const [distant,matchBalls]=matchPlayers.group.children;
+const bodyScale=new T.Matrix3().setFromMatrix4(scene.getObjectByName('Human_Mesh').matrixWorld);
+const shape=distant.geometry.attributes.buildDelta;
+assert.ok(Array.from({length:shape.count},(_,i)=>near.fromBufferAttribute(shape,i).applyMatrix3(bodyScale).length()).some(m=>m>.02),'The distant mesh retains the shoulder and leg shape in metres');
 const closePlayer=makeAthlete(scene,animations,'#277b9a',true);
 const stringbed=closePlayer.group.getObjectByName('Stringbed');
 const matchDurations=new Set(),kinds=new Set();
 let shotCount=0;
 for(const [courtIndex,court] of all.entries()){
   const match=courtMatch(court.key),kits=matchPair(court.key);
+  if(court.key==='mca'||court.key==='19'){
+    const [left,right]=footwork(match.frame(court.phase-.16).players[0]).feet;
+    assert.ok(right.x-left.x>.25,'Separate both shoes during the lateral shuffle on '+court.en);
+  }
   matchDurations.add(match.duration);
   assert.notEqual(kits[0].portrait,kits[1].portrait);
   for(const point of match.points){
@@ -85,11 +103,12 @@ for(const [courtIndex,court] of all.entries()){
       const t=point.at+tossTime+stroke.at+.00000001,side=(i%2)^Number(point.flip);
       const frame=match.frame(t),actor=frame.players[side];
       assert.equal(actor.kind,stroke.kind);
+      closePlayer.setKit(kits[side].shirt,kits[side].portrait,kits[side].shorts,kits[side].build);
       closePlayer.pose(actor);
       assert.ok(stringbed.getWorldPosition(near).distanceTo(far.fromArray(frame.ball))<.002,'Close-up impact on '+court.en);
       matchPlayers.pose(t-court.phase);
       const slot=courtIndex*2+side,row=distant.geometry.attributes.playerPose.getX(slot);
-      assert.equal(distant.geometry.attributes.portrait.getX(slot),kits[side].portrait);
+      assert.equal(distant.geometry.attributes.playerPose.getZ(slot),kits[side].portrait);
       const start=4*(Math.round(row)*width+racketJoint*2+1);
       near.set(...Array.from(pixel.subarray(start,start+3),T.DataUtils.fromHalfFloat));
       distant.getMatrixAt(slot,matrix);near.applyMatrix4(matrix);

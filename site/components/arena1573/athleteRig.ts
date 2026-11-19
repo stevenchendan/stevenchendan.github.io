@@ -57,14 +57,18 @@ export function makeAthlete(source:T.Group,clips:T.AnimationClip[],shirt:string,
   const body=clone(source),group=new T.Group(), ownedGeometry:T.BufferGeometry[]=[];
   group.add(body);
   const heads=portraits.map(name=>body.getObjectByName(name)!);
-  const jerseySlots:{colors:T.BufferAttribute|T.InterleavedBufferAttribute;body:number[];panel:number[];skin:number[];shorts:number[]}[]=[];
-  function setKit(hex:string,portrait=cap?0:1,shorts='#213944'){
+  const figure=body.getObjectByName('Human_Mesh') as T.SkinnedMesh;
+  const jerseySlots:{colors:T.BufferAttribute|T.InterleavedBufferAttribute;body:number[];panel:number[];skin:number[];shorts:number[];shortsPanel:number[]}[]=[];
+  function setKit(hex:string,portrait=cap?0:1,shorts='#213944',build=0){
     heads.forEach((h,i)=>h.visible=i===portrait);
+    if(figure.morphTargetInfluences)figure.morphTargetInfluences[0]=build;
     const flesh=new T.Color(skinTones[portrait]),woven=new T.Color(shorts);
     const c=new T.Color(hex),p=c.clone().multiplyScalar(.74);
-    for(const {colors,body,panel,skin,shorts} of jerseySlots){
+    const stripe=woven.clone().lerp(c,.23);
+    for(const {colors,body,panel,skin,shorts,shortsPanel} of jerseySlots){
       for(const i of skin)colors.setXYZ(i,flesh.r,flesh.g,flesh.b);
       for(const i of shorts)colors.setXYZ(i,woven.r,woven.g,woven.b);
+      for(const i of shortsPanel)colors.setXYZ(i,stripe.r,stripe.g,stripe.b);
       for(const i of body)colors.setXYZ(i,c.r,c.g,c.b);
       for(const i of panel)colors.setXYZ(i,p.r,p.g,p.b);
       colors.needsUpdate=true;
@@ -80,8 +84,8 @@ export function makeAthlete(source:T.Group,clips:T.AnimationClip[],shirt:string,
     o.geometry=o.geometry.clone();ownedGeometry.push(o.geometry);
     const colors=o.geometry.getAttribute('color'),base=new T.Color('#277b9a'),bodySlots:number[]=[],panelSlots:number[]=[];
     const panel=new T.Color('#206980');
-    const skinSlots:number[]=[],shortSlots:number[]=[];
-    jerseySlots.push({colors,body:bodySlots,panel:panelSlots,skin:skinSlots,shorts:shortSlots});
+    const skinSlots:number[]=[],shortSlots:number[]=[],stripeSlots:number[]=[],stripe=new T.Color('#334954');
+    jerseySlots.push({colors,body:bodySlots,panel:panelSlots,skin:skinSlots,shorts:shortSlots,shortsPanel:stripeSlots});
     const skin=new T.Color('#c89779'),fabric=new T.Color('#213944');
     for(let i=0;i<colors.count;i++){
       const r=colors.getX(i),g=colors.getY(i);
@@ -89,6 +93,7 @@ export function makeAthlete(source:T.Group,clips:T.AnimationClip[],shirt:string,
       if(Math.abs(r-panel.r)<.001 && Math.abs(g-panel.g)<.001)panelSlots.push(i);
       if(Math.abs(r-skin.r)<.001 && Math.abs(g-skin.g)<.001)skinSlots.push(i);
       if(Math.abs(r-fabric.r)<.001 && Math.abs(g-fabric.g)<.001)shortSlots.push(i);
+      if(Math.abs(r-stripe.r)<.001 && Math.abs(g-stripe.g)<.001)stripeSlots.push(i);
     }
     colors.needsUpdate=true;
   });
@@ -111,6 +116,7 @@ export function makeAthlete(source:T.Group,clips:T.AnimationClip[],shirt:string,
   }));
   const left=recoveryLeg(body,group,'Left'),right=recoveryLeg(body,group,'Right');
   const head=body.getObjectByName('Head')!,neck=body.getObjectByName('Neck')!;
+  const spine=body.getObjectByName('Spine')!;
   const look=new T.Quaternion(),parentQ=new T.Quaternion(),around=new T.Vector3(),across=new T.Vector3();
   const pitchQ=new T.Quaternion();
   // Convert a metre along the actor's up axis to the imported armature units.
@@ -151,9 +157,18 @@ export function makeAthlete(source:T.Group,clips:T.AnimationClip[],shirt:string,
         }
       }
     }
-    const vertical=.047*actor.split-.035*moving*(1-actor.turn);
+    const waiting=(1-weight)*(1-moving*(.46+.54*actor.turn));
+    const vertical=.047*actor.split-.035*moving*(1-actor.turn)-.065*waiting;
     hips.position.addScaledVector(up,vertical*(1-grounded));
     group.updateWorldMatrix(true,true);
+    // Receive with the chest over the balls of the feet. The captured swing
+    // takes over as its preparation starts, including the service toss.
+    if(waiting>0){
+      across.set(1,0,0).applyQuaternion(group.getWorldQuaternion(q))
+        .applyQuaternion(spine.parent!.getWorldQuaternion(parentQ).invert());
+      spine.quaternion.premultiply(pitchQ.setFromAxisAngle(across,-.21*waiting));
+      spine.updateWorldMatrix(false,true);
+    }
     // Keep the ball in sight while recovering. At impact the capture supplies
     // the full head turn. Spread the smaller tracking motion over both joints.
     if(actor.court && weight<1){

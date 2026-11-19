@@ -33,14 +33,23 @@ export function poseRow(times:Float32Array,seconds:number){
 
 function playerGeometry(scene:T.Group,skinIndices:Uint16Array){
   const skin=scene.getObjectByName('Human_Mesh') as T.SkinnedMesh;
-  const position:number[]=[],normal:number[]=[],color:number[]=[],joints:number[]=[],weights:number[]=[],kitPart:number[]=[],indices:number[]=[];
+  const position:number[]=[],normal:number[]=[],color:number[]=[],joints:number[]=[],weights:number[]=[],kitPart:number[]=[],indices:number[]=[],buildDelta:number[]=[];
   const p=new T.Vector3(),n=new T.Vector3(),c=new T.Color(),shirt=new T.Color('#277b9a');
   const identity=new T.Matrix4(),skinColor=new T.Color('#c89779'),panel=new T.Color('#206980');
+  const shortsPanel=new T.Color('#334954');
   function append(g:T.BufferGeometry,transform:T.Matrix4,attachment:number,tint?:T.Color,part=0,selection?:readonly number[]){
-    const base=position.length/3,normalTransform=new T.Matrix3().getNormalMatrix(transform);
-    const attr=g.attributes;
-    for(let i=0;i<attr.position.count;i++){
+    const normalTransform=new T.Matrix3().getNormalMatrix(transform),linear=new T.Matrix3().setFromMatrix4(transform);
+    const attr=g.attributes,shape=g.morphAttributes.position?.[0];
+    // Only upload vertices referenced by the simplified body and portraits.
+    const order=selection??(attachment===-1?skinIndices:g.index?.array)??Array.from({length:attr.position.count},(_,i)=>i);
+    const used=new Map<number,number>();
+    for(const i of order){
+      const previous=used.get(i);
+      if(previous!==undefined){indices.push(previous);continue;}
+      const next=position.length/3;used.set(i,next);indices.push(next);
       p.fromBufferAttribute(attr.position,i).applyMatrix4(transform).toArray(position,position.length);
+      if(shape)p.fromBufferAttribute(shape,i).applyMatrix3(linear).toArray(buildDelta,buildDelta.length);
+      else buildDelta.push(0,0,0);
       n.fromBufferAttribute(attr.normal,i).applyNormalMatrix(normalTransform).toArray(normal,normal.length);
       if(tint)c.copy(tint);else c.fromBufferAttribute(attr.color as T.BufferAttribute,i);
       c.toArray(color,color.length);
@@ -48,14 +57,11 @@ function playerGeometry(scene:T.Group,skinIndices:Uint16Array){
       const skin=attachment===-1&&Math.abs(c.r-skinColor.r)<.001&&Math.abs(c.g-skinColor.g)<.001;
       const sidePanel=attachment===-1&&Math.abs(c.r-panel.r)<.001&&Math.abs(c.g-panel.g)<.001;
       const shorts=attachment===-1&&Math.abs(c.r-.01521)<.001&&Math.abs(c.g-.04092)<.001;
-      kitPart.push(jersey?1:skin?4:sidePanel?5:shorts?6:part);
+      const stripe=attachment===-1&&Math.abs(c.r-shortsPanel.r)<.001&&Math.abs(c.g-shortsPanel.g)<.001;
+      kitPart.push(jersey?1:skin?4:sidePanel?5:shorts?6:stripe?7:part);
       if(attachment!==-1){joints.push(attachment,0,0,0);weights.push(1,0,0,0);}
       else for(let k=0;k<4;k++){joints.push(attr.skinIndex.getComponent(i,k));weights.push(attr.skinWeight.getComponent(i,k));}
     }
-    if(selection)for(const i of selection)indices.push(base+i);
-    else if(attachment===-1)for(const i of skinIndices)indices.push(base+i);
-    else if(g.index)for(let i=0;i<g.index.count;i++)indices.push(base+g.index.getX(i));
-    else for(let i=0;i<attr.position.count;i++)indices.push(base+i);
   }
   append(skin.geometry,skin.bindMatrix,-1);
   const racketIndex=skin.skeleton.bones.length;
@@ -82,7 +88,7 @@ function playerGeometry(scene:T.Group,skinIndices:Uint16Array){
     append(head.geometry,identity,racketIndex+1,undefined,10+i,head.userData.distantIndices);
   }
   const result=new T.BufferGeometry();
-  for(const [name,data,size] of [['position',position,3],['normal',normal,3],['color',color,3],['kitPart',kitPart,1],['jointIndex',joints,4],['jointWeight',weights,4]] as const){
+  for(const [name,data,size] of [['position',position,3],['normal',normal,3],['color',color,3],['kitPart',kitPart,1],['jointIndex',joints,4],['jointWeight',weights,4],['buildDelta',buildDelta,3]] as const){
     result.setAttribute(name,new T.Float32BufferAttribute(data,size));
   }
   result.setIndex(indices);
@@ -95,9 +101,9 @@ function animateMaterial(material:T.Material,atlas:T.DataTexture){
     shader.vertexShader=shader.vertexShader.replace('#include <common>',`#include <common>
       uniform highp sampler2D poses;
       attribute vec4 jointIndex, jointWeight;
-      attribute vec2 playerPose;
+      attribute vec3 playerPose;
+      attribute vec3 buildDelta;
       attribute vec3 shirtColor, skinColor, shortsColor;
-      attribute float portrait;
       attribute float kitPart;
       vec3 rotateJoint(vec4 q,vec3 v){return v+2.0*cross(q.xyz,cross(q.xyz,v)+q.w*v);}
     `).replace('#include <color_vertex>',`#include <color_vertex>
@@ -105,8 +111,10 @@ function animateMaterial(material:T.Material,atlas:T.DataTexture){
       if(kitPart==5.0)vColor.rgb=shirtColor*.74;
       if(kitPart==4.0)vColor.rgb=skinColor;
       if(kitPart==6.0)vColor.rgb=shortsColor;
+      if(kitPart==7.0)vColor.rgb=mix(shortsColor,shirtColor,.23);
     `).replace('void main() {',`void main() {
       vec3 posedPosition=vec3(0.0),posedNormal=vec3(0.0);
+      vec3 fittedPosition=position+buildDelta*playerPose.y;
       vec2 pixel=1.0/vec2(textureSize(poses,0));
       for(int i=0;i<4;i++){
         float w=jointWeight[i];
@@ -114,10 +122,10 @@ function animateMaterial(material:T.Material,atlas:T.DataTexture){
         vec2 uv=vec2(jointIndex[i]*2.0+0.5,playerPose.x+0.5)*pixel;
         vec4 q=normalize(texture(poses,uv));
         vec4 tr=texture(poses,uv+vec2(pixel.x,0.0));
-        posedPosition+=(rotateJoint(q,position*tr.w)+tr.xyz)*w;
+        posedPosition+=(rotateJoint(q,fittedPosition*tr.w)+tr.xyz)*w;
         posedNormal+=rotateJoint(q,normal)*w;
       }
-    `).replace('#include <beginnormal_vertex>','vec3 objectNormal=normalize(posedNormal);').replace('#include <begin_vertex>','vec3 transformed=(kitPart>=10.0 && kitPart!=10.0+portrait)?vec3(0.0):posedPosition;');
+    `).replace('#include <beginnormal_vertex>','vec3 objectNormal=normalize(posedNormal);').replace('#include <begin_vertex>','vec3 transformed=(kitPart>=10.0 && kitPart!=10.0+playerPose.z)?vec3(0.0):posedPosition;');
   };
 }
 
@@ -127,7 +135,8 @@ export function makePrecinctPlayers(scene:T.Group,buffer:ArrayBuffer,courts:read
   const material=new T.MeshStandardMaterial({vertexColors:true,roughness:.86,side:T.DoubleSide});
   const depth=new T.MeshDepthMaterial({depthPacking:T.RGBADepthPacking});
   animateMaterial(material,texture);animateMaterial(depth,texture);
-  const uniforms=new T.InstancedBufferAttribute(new Float32Array(count*2),2).setUsage(T.DynamicDrawUsage);
+  // Pack the pose row, build and portrait into one attribute for mobile GPUs.
+  const uniforms=new T.InstancedBufferAttribute(new Float32Array(count*3),3).setUsage(T.DynamicDrawUsage);
   const shirts=new T.InstancedBufferAttribute(new Float32Array(count*3),3);
   geometry.setAttribute('playerPose',uniforms);geometry.setAttribute('shirtColor',shirts);
   const athletes=new T.InstancedMesh(geometry,material,count);
@@ -135,13 +144,14 @@ export function makePrecinctPlayers(scene:T.Group,buffer:ArrayBuffer,courts:read
   const balls=new T.InstancedMesh(new T.SphereGeometry(BALL_RADIUS,8,6),new T.MeshStandardMaterial({color:'#dbea43',roughness:.88}),courts.length);
   for(const mesh of [athletes,balls]){mesh.frustumCulled=false;mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);group.add(mesh);}
   const tint=new T.Color(),skin=new T.InstancedBufferAttribute(new Float32Array(count*3),3);
-  const bottoms=new T.InstancedBufferAttribute(new Float32Array(count*3),3),faces=new T.InstancedBufferAttribute(new Float32Array(count),1);
-  geometry.setAttribute('skinColor',skin);geometry.setAttribute('shortsColor',bottoms);geometry.setAttribute('portrait',faces);
+  const bottoms=new T.InstancedBufferAttribute(new Float32Array(count*3),3);
+  geometry.setAttribute('skinColor',skin);geometry.setAttribute('shortsColor',bottoms);
   courts.forEach((c,i)=>matchPair(c.key).forEach((kit,side)=>{
     const slot=i*2+side;
+    uniforms.setXYZ(slot,0,kit.build,kit.portrait);
     tint.set(kit.shirt);shirts.setXYZ(slot,tint.r,tint.g,tint.b);
     tint.set(skinTones[kit.portrait]);skin.setXYZ(slot,tint.r,tint.g,tint.b);
-    tint.set(kit.shorts);bottoms.setXYZ(slot,tint.r,tint.g,tint.b);faces.setX(slot,kit.portrait);
+    tint.set(kit.shorts);bottoms.setXYZ(slot,tint.r,tint.g,tint.b);
   }));
   const placements=courts.map(c=>({...c,cos:Math.cos(c.rotation),sin:Math.sin(c.rotation)}));
   const obj=new T.Object3D();
@@ -161,7 +171,7 @@ export function makePrecinctPlayers(scene:T.Group,buffer:ArrayBuffer,courts:read
       const t=seconds+c.phase,frame=frames[i],row=poseRow(times,t);
       for(let side=0;side<2;side++){
         const actor=frame.players[side],slot=i*2+side;
-        uniforms.setXY(slot,c.key?matchPoseRow(actor,2*times.length):row+side*times.length,side===0?1:0);
+        uniforms.setX(slot,c.key?matchPoseRow(actor,2*times.length):row+side*times.length);
         obj.position.set(c.x+actor.x*c.cos+actor.z*c.sin,c.y+COURT_FLOOR,c.z-actor.x*c.sin+actor.z*c.cos);
         obj.rotation.y=c.rotation+actor.yaw;obj.scale.setScalar(selected?.has(i)?0:1);obj.updateMatrix();athletes.setMatrixAt(slot,obj.matrix);
       }

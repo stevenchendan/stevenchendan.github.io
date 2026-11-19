@@ -46,7 +46,8 @@ const previous=Array.from({length:jointCount},()=>new T.Quaternion());
 function steps(phase,running){
   return {phase,speed:running?3:0,feet:[0,1].map((side)=>{
     const t=phase*2*Math.PI+side*Math.PI;
-    return {x:side===0?-.17:.17,y:.074+(running?.12*Math.max(0,Math.sin(t)):0),z:running?.32*Math.cos(t):0,swing:0,planted:true};
+    const lateral=running?.17:.235;
+    return {x:side===0?-lateral:lateral,y:.074+(running?.12*Math.max(0,Math.sin(t)):0),z:running?.32*Math.cos(t):side===0?.075:-.075,swing:0,planted:true};
   })};
 }
 for(const kind of strokeOrder)for(let i=0;i<samplesPerStroke;i++){

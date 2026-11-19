@@ -238,7 +238,9 @@ def portrait(near, canonical,style):
         return p+d*offset
     def hairline(t):
         f=(1+math.cos(t))/2
-        return 1.609+.106*f**1.65+.011*math.cos(2*t)*f
+        temple=.012*math.exp(-((abs(math.atan2(math.sin(t),math.cos(t)))-1.07)/.25)**2)
+        edge=.0026*math.sin(17*t+.8)*f+.002*math.sin(9*t)
+        return 1.609+.106*f**1.65+.011*math.cos(2*t)*f+temple+edge
     def hairpoint(i,j):
         t=TAU*j/64;f=i/12;z=hairline(t)+(crown-hairline(t)-.001)*math.sin(f*math.pi/2)
         p=scalp(t,z,.003 if near else .006+.0015*math.sin(19*t+2*f));p.z+=.002 if near else .005+f*.004
@@ -246,28 +248,55 @@ def portrait(near, canonical,style):
     hair={'cap':'3a302a','band':'2a2521','crop':'644331','tie':'292726'}[style]
     art.grid(13,64,hairpoint,hair)
     if style=='crop' or style=='tie':
-        # Angled locks run from the temple over the crown. The tied cut adds
-        # a gathered coil behind the occiput, visible from the follow camera.
-        for k in range(56):
-            t=TAU*k/56
-            path=[]
-            for j in range(12):
-                f=j/12; a=t+(.54 if style=='crop' else -.32)*f
-                z=hairline(a)+(crown-hairline(a)-.001)*math.sin(f*math.pi/2)
-                p=scalp(a,z,.005+.003*math.sin(math.pi*f));p.z+=.003+.006*f
-                path.append(p)
-            art.tube(path,[.001+.0027*math.sin(math.pi*j/12) for j in range(12)],'6c4e39' if style=='crop' else '35312e',5)
+        # Overlap tapered, swept sections. Vary their tips, widths and
+        # highlights so the forehead and crown retain an irregular contour.
+        cropped=style=='crop'
+        rng=random.Random(311 if cropped else 419)
+        count=43 if cropped else 36
+        shades=['604332','704e36','806046','6c4c35'] if cropped else ['34302e','39322f','423b36','302b29']
+        for k in range(count):
+            t=TAU*(k+rng.uniform(-.23,.23))/count
+            width=rng.uniform(.07,.13)
+            drift=rng.uniform(.40,.95) if cropped else math.sin(t)*rng.uniform(.52,.95)
+            length=rng.uniform(.76,.99)
+            lift=rng.uniform(.007,.019) if cropped else rng.uniform(.004,.010)
+            shade=colour(rng.choice(shades))
+            rows,cols=11,5
+            def lock(i,j):
+                f=i/(rows-1); u=2*j/(cols-1)-1
+                a=t+drift*f+u*width*(.12+.88*math.sin(math.pi*f)**.55)
+                z0=hairline(a)
+                z=z0+(crown-z0-.001)*math.sin(length*f*math.pi/2)
+                ridge=math.sin(math.pi*f)**.7*(1-u*u)
+                p=scalp(a,z,.004+lift*ridge)
+                p.z+=.004+lift*f*(1.3 if cropped else .8)+ridge*.005
+                if cropped:p.x+=.017*f*f
+                return p
+            pigment=[shade*(.77+.30*math.sin(math.pi*j/(cols-1))) for i in range(rows) for j in range(cols)]
+            art.grid(rows,cols,lock,pigment,False)
         if style=='tie':
             knot=scalp(math.pi,1.69,.016)
             art.ellipsoid(knot,(.041,.039,.035),'302b29',22,14)
             art.ellipsoid(knot+Vector((.001,.024,.01)),(.033,.027,.026),'332e2b',20,12)
+            for loop in range(6):
+                a=TAU*loop/6
+                coil=[knot+Vector((.038*math.cos(t)*math.cos(a),.037*math.sin(t),.033*math.cos(t)*math.sin(a))) for t in [i*math.pi/21 for i in range(22)]]
+                art.tube(coil,.0021,'473d36',5)
     elif near:
         def cap(t,h):
             bottom=1.695+.010*math.cos(t);a=h*math.pi/2
             z=bottom+(crown-bottom-.0004)*math.sin(a)
             p=scalp(t,z,.006+(.006*math.cos(a)));p.z+=.003+.008*math.sin(a)
             return p
-        art.grid(14,64,lambda i,j:cap(TAU*j/64,i/13),'efece2')
+        crown_points=[cap(TAU*j/64,i/13) for i in range(14) for j in range(64)]
+        panels=[]
+        for i in range(13):
+            for j in range(64):
+                if ((j+.5-32)/5.2)**2+((i+.5)/3.4)**2<1:continue
+                k=(j+1)%64
+                panels.append((i*64+j,i*64+k,(i+1)*64+k,(i+1)*64+j))
+        art.surface(crown_points,panels,'efece2')
+        art.grid(2,15,lambda i,j:cap(math.pi+(j-7)*.060,.035+i*.047),'adafa5',False)
         for k in range(6):
             t=(k+.5)*TAU/6
             stitch=[cap(t,.04+i*.915/18) for i in range(19)]
@@ -302,7 +331,8 @@ def portrait(near, canonical,style):
                 z=bottom+(crown-bottom)*math.sin(f*math.pi/2)
                 p=scalp(t,z,.003);p.z+=.003+.004*f
                 size=.009+rng.random()*.0022
-                art.ellipsoid(p,(size*(.88+.2*rng.random()),size*.87,size*(.73+.24*f)),rng.choice(['312820','392d23','413127','322922']),7,5)
+                p.z+=rng.uniform(-.002,.003)*f
+                art.ellipsoid(p,(size*(.88+.2*rng.random()),size*.87,size*(.73+.24*f)),rng.choice(['312820','48362a','544033','372b23']),7,5)
         def band(i,j):
             t=j*TAU/64;z=1.684+.012*math.cos(t)+i*.008
             p=scalp(t,z,.0105);return p

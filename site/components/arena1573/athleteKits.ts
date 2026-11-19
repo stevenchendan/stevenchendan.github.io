@@ -1,3 +1,7 @@
+// The baked motion contains indices into this exact body mesh.
+export const athleteModelUrl='/models/tennis/rally-athlete.glb?v=fc4120dd';
+export const athleteMotionUrl='/models/tennis/precinct-motion.bin?v=43c2991b';
+
 // Unbranded kits remain consistent between precinct, courtside and close-up.
 const combinations=[
   ['#286e82','#df8f38'],['#e1eadf','#31588b'],['#bf6049','#344d59'],['#344f82','#e4ce7e'],
@@ -14,6 +18,7 @@ export function matchPair(court?:string){
   const second=!court||court==='1573'?1:(first+1+Math.floor(seed/4)%3)%4;
   return [first,second].map((portrait,i)=>({
     portrait,shirt:shirts[i],shorts:bottoms[(Math.floor(seed/7)+i*3)%bottoms.length],
+    build:((Math.imul(seed+1,i?7919:3571)>>>0)%17-7)/9,
   }));
 }
 export function courtKit(court?:string){

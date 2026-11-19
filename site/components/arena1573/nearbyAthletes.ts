@@ -45,7 +45,7 @@ export function nearbyAthletes(source:T.Group,clips:T.AnimationClip[],courts:rea
       if(!pair){
         pair=pool.find(p=>p.court===-1);
         if(!pair){pair=makePair();pool.push(pair);}
-        const c=courts[index];const kits=matchPair(c.key);pair.athletes.forEach((a,i)=>a.setKit(kits[i].shirt,kits[i].portrait,kits[i].shorts));
+        const c=courts[index];const kits=matchPair(c.key);pair.athletes.forEach((a,i)=>a.setKit(kits[i].shirt,kits[i].portrait,kits[i].shorts,kits[i].build));
         pair.court=index;pair.parent.visible=true;pair.parent.position.set(c.x,c.y,c.z);pair.parent.rotation.y=c.rotation;
         pair.parent.updateWorldMatrix(true,false);
       }

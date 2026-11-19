@@ -60,9 +60,19 @@ export function footwork(actor:Actor){
     // At a standstill the next running footprint can be across the body.
     // Set both feet beneath their hips as the player brakes for a stroke.
     const moving=actor.court?smooth(clamp(speed/1.2)):1;
-    const localX=mix(index===0?-.175:.175,dx*c-dz*s,moving);
-    const localZ=mix(index===0?.055:-.055,dx*s+dz*c,moving);
+    const localX=mix(index===0?-.235:.235,dx*c-dz*s,moving);
+    const localZ=mix(index===0?.075:-.075,dx*s+dz*c,moving);
     return {x:localX,z:localZ,y:.074+lift+.035*actor.split,swing:t,planted:t===0||t===1};
   });
+  // Keep the receiving base open on a short lateral shuffle. Adjust the
+  // travelling shoe first. A full crossover or a long stride has room to pass.
+  if(actor.court){
+    const [left,right]=feet;
+    const shuffle=(1-smooth(clamp((speed-1.45)/.75)))*(1-smooth(clamp(actor.turn/.6)));
+    const adjacent=1-smooth(clamp((Math.abs(left.z-right.z)-.10)/.22));
+    const correction=Math.max(0,.29-(right.x-left.x))*shuffle*adjacent;
+    const leftShare=.5+.5*(Math.sin(Math.PI*left.swing)**2-Math.sin(Math.PI*right.swing)**2);
+    left.x-=correction*leftShare;right.x+=correction*(1-leftShare);
+  }
   return {feet,phase,speed};
 }

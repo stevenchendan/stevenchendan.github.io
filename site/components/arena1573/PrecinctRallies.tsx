@@ -8,6 +8,7 @@ import type {ContextData} from './model';
 import {courtDirectory} from './courtPlacements';
 import {venueVisible} from './venueVisibility';
 import {makePrecinctPlayers,type RallyCourt} from './precinctPlayers';
+import {athleteModelUrl,athleteMotionUrl} from './athleteKits';
 
 type Props={data:ContextData;time:RefObject<number>;surroundings:boolean;selectedVenue:string;excludeCourt?:string};
 
@@ -18,8 +19,8 @@ export default function PrecinctRallies({data,time,surroundings,selectedVenue,ex
 }
 
 function CourtPlayers({time,courts}:{time:RefObject<number>;courts:RallyCourt[]}){
-  const {scene,animations}=useGLTF('/models/tennis/rally-athlete.glb');
-  const atlas=useLoader(FileLoader,'/models/tennis/precinct-motion.bin',loader=>{loader.setResponseType('arraybuffer');}) as ArrayBuffer;
+  const {scene,animations}=useGLTF(athleteModelUrl);
+  const atlas=useLoader(FileLoader,athleteMotionUrl,loader=>{loader.setResponseType('arraybuffer');}) as ArrayBuffer;
   const players=useMemo(()=>makePrecinctPlayers(scene,atlas,courts,animations),[scene,atlas,courts,animations]);
   useEffect(()=>()=>players.dispose(),[players]);
   useFrame(({camera,size})=>players.pose(time.current,camera,size.height));

@@ -7,14 +7,14 @@ import * as T from 'three';
 import {courtFrameAt} from './courtMatches';
 import {BALL_RADIUS} from './rallyMotion';
 import {makeAthlete} from './athleteRig';
-import {matchPair} from './athleteKits';
+import {athleteModelUrl,matchPair} from './athleteKits';
 
 export default function TennisRally({active,time,phase=0,court}:{active:boolean;time?:RefObject<number>;phase?:number;court?:string}){
-  const {scene,animations}=useGLTF('/models/tennis/rally-athlete.glb');
+  const {scene,animations}=useGLTF(athleteModelUrl);
   const kits=useMemo(()=>matchPair(court),[court]);
   const players=useMemo(()=>kits.map((kit,i)=>{
     const player=makeAthlete(scene,animations,kit.shirt,i===0);
-    player.setKit(kit.shirt,kit.portrait,kit.shorts);return player;
+    player.setKit(kit.shirt,kit.portrait,kit.shorts,kit.build);return player;
   }),[scene,animations,kits]);
   useEffect(()=>()=>players.forEach(p=>p.dispose()),[players]);
   const ownClock=useRef(-.16),cache=useMemo(()=>({sample:Number.NaN}),[players,phase]),ball=useRef<T.Mesh>(null);
