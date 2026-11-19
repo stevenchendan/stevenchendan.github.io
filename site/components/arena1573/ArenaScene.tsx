@@ -10,6 +10,8 @@ import { getTranslator, type Language } from './i18n';
 import { InkLandscape, SceneEffects } from './InkWash';
 import CourtStaff from './CourtStaff';
 import TennisRally from './TennisRally';
+import CourtSounds from './CourtSounds';
+import type {MatchAudio} from './useMatchSound';
 import PrecinctRallies from './PrecinctRallies';
 import PrecinctAssets from './PrecinctAssets';
 import Rain from './Rain';
@@ -369,7 +371,7 @@ function Rig({areas,data,selectedVenue,context,onFocus,shot,rotate,rain,language
   return <OrbitControls ref={controls} enabled={chapter===null&&!seated} makeDefault zoomToCursor screenSpacePanning={false} enableDamping={!transitioning&&chapter===null} dampingFactor={.075} minDistance={1.5} maxDistance={2700} maxPolarAngle={Math.PI*.488} autoRotate={rotate&&!transitioning&&chapter===null&&!seated} autoRotateSpeed={.45} zoomSpeed={.7} target={cameras.hero.target} onStart={()=>{manual.current=true;setTransitioning(false);onInteract();}}/>;
 }
 
-function Scene({movingSun,shadowCourt,onFilmPrepared,onFocus,data,shot,light:atlasLight,compareStands,closedStudyRoof:atlasRoof,rotate,context,crowd,markers,rally,ready,onProgress,onFailure,onSelect,onReady,onInteract,canvasRef,compassRef,language,theme,sun:atlasSun,onShade,onRoof,reducedMotion,chapter,playing,onCut}:FocusProps&LoadingProps&{movingSun:boolean;shadowCourt?:string|null;onFilmPrepared:()=>void;ready:boolean;compareStands:boolean;closedStudyRoof:boolean;data:ContextData;shot:Shot;light:Light;rotate:boolean;context:boolean;crowd:boolean;markers:boolean;rally:boolean;onSelect:(id:string)=>void;onReady:(seats:number)=>void;onInteract:()=>void;compassRef:React.RefObject<HTMLElement|null>;canvasRef:React.RefObject<HTMLCanvasElement|null>;language:Language;theme:Theme;sun:Sun;onShade:(result:ShadeResult|null)=>void;reducedMotion:boolean;onRoof:(status:RoofStatus)=>void}&FilmProps){
+function Scene({matchAudio,movingSun,shadowCourt,onFilmPrepared,onFocus,data,shot,light:atlasLight,compareStands,closedStudyRoof:atlasRoof,rotate,context,crowd,markers,rally,ready,onProgress,onFailure,onSelect,onReady,onInteract,canvasRef,compassRef,language,theme,sun:atlasSun,onShade,onRoof,reducedMotion,chapter,playing,onCut}:FocusProps&LoadingProps&{matchAudio:MatchAudio|null;movingSun:boolean;shadowCourt?:string|null;onFilmPrepared:()=>void;ready:boolean;compareStands:boolean;closedStudyRoof:boolean;data:ContextData;shot:Shot;light:Light;rotate:boolean;context:boolean;crowd:boolean;markers:boolean;rally:boolean;onSelect:(id:string)=>void;onReady:(seats:number)=>void;onInteract:()=>void;compassRef:React.RefObject<HTMLElement|null>;canvasRef:React.RefObject<HTMLCanvasElement|null>;language:Language;theme:Theme;sun:Sun;onShade:(result:ShadeResult|null)=>void;reducedMotion:boolean;onRoof:(status:RoofStatus)=>void}&FilmProps){
   const tr=getTranslator(language);
   const compactViewport=useThree(s=>s.size.width<800);
   const filmTime=useRef(0),filmTick=useRef<number|null>(null);
@@ -402,6 +404,7 @@ function Scene({movingSun,shadowCourt,onFilmPrepared,onFocus,data,shot,light:atl
   const atVenue=useMemo(()=>venueCourts(courts,selectedVenue),[courts,selectedVenue]);
   const featured=atVenue.find(c=>c.key===shot.court)??(atVenue.length===1?atVenue[0]:undefined);
   const away=featured&&featured.venue!=='1573'?featured:undefined;
+  const audibleCourts=useMemo(()=>courts.filter(c=>take||venueVisible(c.venue,selectedVenue,showPrecinct)),[courts,take,selectedVenue,showPrecinct]);
   const time=useRef(-.16),previous=useRef<number|null>(null);
   useEffect(()=>{
     const reset=()=>{previous.current=null;};reset();
@@ -476,6 +479,10 @@ function Scene({movingSun,shadowCourt,onFilmPrepared,onFocus,data,shot,light:atl
     {ready&&!take&&away&&<group position={[away.x,away.y,away.z]} rotation={[0,away.rotation,0]}><Suspense fallback={null}><TennisRally active={rally} time={time} phase={away.phase} court={away.key}/></Suspense></group>}
     {ready&&(take||!inBowl)&&<Suspense fallback={null}><PrecinctRallies data={data} time={time} surroundings={context} selectedVenue={take?'all':selectedVenue} excludeCourt={take?undefined:away?.id}/></Suspense>}
     {markers&&shot.view!=='ao'&&points.filter(p=>context||selectedVenue==='all'||(p.id==='precinct'?selectedVenue==='mca':selectedVenue==='1573')).map((p,i)=><Html key={p.id} position={p.position} center zIndexRange={[10,0]}><button className={styles.pin} title={tr(p.title)} aria-label={`${tr('探索')}${tr(p.title)}`} onClick={()=>onSelect(p.id)}><span>{String(i+1).padStart(2,'0')}</span><b>{tr(p.title)}</b></button></Html>)}
+    {ready&&rally&&matchAudio&&audibleCourts.length>0&&<Suspense fallback={null}>
+      <CourtSounds audio={matchAudio} time={time} courts={audibleCourts}
+        focus={take?take.venue:shadowCourt===undefined?featured?.key:shadowCourt} crowd={crowd}/>
+    </Suspense>}
     <Rig context={showPrecinct} {...{data,areas,selectedVenue,onFocus,shot,rotate,rain,language,onInteract,canvasRef,compassRef,featured,chapter,playing,onCut,filmTime}}/>
   </>;
 }

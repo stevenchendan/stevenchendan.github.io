@@ -15,7 +15,10 @@ import '../styles/arena-preflight.css';
   </head>
   <body>
     <ArenaExperience client:load />
-    <noscript><p>Enable JavaScript to explore the interactive court views.</p></noscript>
+    <noscript>
+      <style is:inline>[data-atlas-loader] { display: none; }</style>
+      <p>Enable JavaScript to explore the interactive court views.</p>
+    </noscript>
   </body>
 </html>
 
@@ -30,5 +33,5 @@ import '../styles/arena-preflight.css';
   button, input, textarea { font-family: inherit; }
   button { letter-spacing: -0.01em; }
   ::selection { background: #deef88; color: #11252d; }
-  noscript p { position: fixed; inset: auto 0 0; text-align: center; background: #11252d; padding: 12px; }
+  noscript p { position: fixed; z-index: 20; inset: auto 0 0; text-align: center; background: #11252d; padding: 12px; }
 </style>

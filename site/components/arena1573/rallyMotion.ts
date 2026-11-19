@@ -120,7 +120,7 @@ export function compileRally(exchange:ShotSpec[]){
     const elapsed=time-strokes[index].at;
     return {ball:ballAt(index,elapsed),players:[playerAt(0,index,cycle,elapsed),playerAt(1,index,cycle,elapsed)]};
   }
-  return {strokes,duration:RALLY_SECONDS,frame};
+  return {strokes,duration:RALLY_SECONDS,frame,bounceAfter:flights.map(f=>f.bounces?f.before:null)};
 }
 
 const original=compileRally(exchange);

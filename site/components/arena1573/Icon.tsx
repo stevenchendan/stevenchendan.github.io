@@ -1,5 +1,7 @@
-type Name = 'ball'|'seat'|'venues'|'settings'|'chevron'|'day'|'golden'|'night'|'rain'|'solar'|'reset'|'capture'|'expand'|'cinema'|'close'|'pin'|'mouse'|'check'|'camera'|'play'|'pause'|'info'|'exit'|'language'|'next'|'previous';
+type Name = 'sound'|'muted'|'ball'|'seat'|'venues'|'settings'|'chevron'|'day'|'golden'|'night'|'rain'|'solar'|'reset'|'capture'|'expand'|'cinema'|'close'|'pin'|'mouse'|'check'|'camera'|'play'|'pause'|'info'|'exit'|'language'|'next'|'previous';
 const paths:Record<Name,React.ReactNode> = {
+  sound:<><path d="M3 9h4l5-4v14l-5-4H3zM15.5 8.5a5 5 0 0 1 0 7M18 5a9 9 0 0 1 0 14"/></>,
+  muted:<><path d="M3 9h4l5-4v14l-5-4H3zM16 9l5 6m0-6-5 6"/></>,
   seat:<><path d="m5 4 1.8 9.4a2 2 0 0 0 2 1.6H19v3H8.5a4 4 0 0 1-3.9-3.2L3 5zM8 18v3m10-3v3M9 12h7.5a2.5 2.5 0 0 1 2.5 2.5"/></>,
   ball:<><circle cx="12" cy="12" r="9.4"/><path d="M3.7 7.5a9 9 0 0 1 9.2 13.8M11 2.8a9 9 0 0 0 9.2 13.7"/></>,
   venues:<><path d="m2.5 6 6-2.5 7 2.5 6-2.5v14.7l-6 2.4-7-2.4-6 2.4zM8.5 3.5v14.8M15.5 6v14.6"/></>,

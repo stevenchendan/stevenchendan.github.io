@@ -88,16 +88,25 @@
 .status { gap: 9px; color: white; background: #1a3138ee; border-radius: 6px; padding: 8px 12px; font-size: 12px; }
 .start3d { pointer-events:auto; display:inline-flex; align-items:center; gap:7px; margin:9px 6px 0 0; padding:0 13px; min-height:39px; border-radius:6px; color:#142c32; background:var(--accent); font-size:12px; font-weight:700; }
 .start3d svg { width:15px; height:15px; }
-.loading { position:absolute; z-index:13; right:var(--gutter); bottom:25px; width:194px; padding:10px 13px 12px; border:1px solid #ffffff42; border-radius:7px; color:#fff; background:#142c34f2; pointer-events:none; }
-.loading div { display:flex; align-items:baseline; justify-content:space-between; gap:10px; font-size:12px; font-weight:600; }
-.loading small { font-size:11px; font-variant-numeric:tabular-nums; color:#d7e3d6; }
-.loading progress { display:block; width:100%; height:4px; margin-top:8px; border:0; border-radius:4px; color:var(--accent); background:#405860; accent-color:var(--accent); }
-.loading progress::-webkit-progress-bar { border-radius:4px; background:#405860; }
-.loading progress::-webkit-progress-value { border-radius:4px; background:var(--accent); }
-.loading progress::-moz-progress-bar { border-radius:4px; background:var(--accent); }
-.loading:has(progress:indeterminate) { overflow:hidden; }
-.loading:has(progress:indeterminate)::after { content:''; position:absolute; bottom:12px; left:13px; width:23%; height:4px; border-radius:4px; background:var(--accent); animation:loadingSweep 1.3s ease-in-out infinite alternate; }
-@keyframes loadingSweep { to { transform:translateX(275%); } }
+.experience[data-loading] .cameraNav, .experience[data-loading] .cinema[aria-pressed=false] { display:none; }
+.experience[data-loading] .cinema[aria-pressed=true] { z-index:16; }
+.loading {
+  position:absolute; inset:0; z-index:15; display:grid; place-items:center; padding:20px;
+  color:#f7f8ed; text-align:center;
+  background:linear-gradient(180deg,#0e242db5,#102b34eb);
+}
+.loadingContent { width:min(100%,34rem); }
+.loadingContent > svg { width:42px; height:42px; margin:0 auto 16px; color:var(--accent); transform:rotate(-18deg); }
+.loadingContent h1 { margin:0; font-size:clamp(28px,5vw,58px); line-height:1.06; font-weight:650; letter-spacing:-.045em; }
+.loadingContent p { margin:12px 0 22px; font-size:clamp(15px,2vw,18px); color:#e1e9e5; }
+.loadingContent small { display:block; margin-top:9px; color:#d6e0d8; font-size:13px; font-variant-numeric:tabular-nums; }
+.loadingTrack { position:relative; width:min(78%,300px); margin:auto; overflow:hidden; border-radius:5px; background:#f2f9ef40; }
+.loadingTrack progress { appearance:none; display:block; width:100%; height:7px; border:0; background:transparent; color:var(--accent); accent-color:var(--accent); }
+.loadingTrack progress::-webkit-progress-bar { background:transparent; }
+.loadingTrack progress::-webkit-progress-value { background:var(--accent); border-radius:5px; }
+.loadingTrack progress::-moz-progress-bar { background:var(--accent); border-radius:5px; }
+.loadingTrack:has(progress:indeterminate)::after { content:''; position:absolute; inset:0 auto 0 0; width:30%; border-radius:5px; background:var(--accent); animation:loadingSweep 1.4s ease-in-out infinite alternate; }
+@keyframes loadingSweep { to { transform:translateX(233%); } }
 .status button { text-decoration: underline; min-height: 30px; }
 .inkNote { position: absolute; right: var(--gutter); top: 70px; z-index: 12; padding: 4px 8px; border-radius: 4px; font-size: 10px; background: #faf8eced; color: #273735; }
 .experience[data-cinema] { grid-template-rows: minmax(0,1fr); }
@@ -302,21 +311,9 @@
   .lightingPanel .moods button span { display: inline; }
   .lightingPanel > section[data-compact] { width: 100%; padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
   .start3d, .seatLink { min-height: 44px; }
-  .stageFooter:has(.loading) {
-    position: absolute; z-index: 13; inset: auto var(--gutter) 12px;
-    display: grid; justify-items: start; gap: 10px; pointer-events: none;
-  }
-  .stageFooter:has(.loading) .caption { position: static; max-width: 100%; }
-  .loading {
-    position: relative; inset: auto; width: min(100%, 28rem); padding: 10px 13px 12px;
-  }
-  .loading div { font-size: 15px; }
-  .loading small { font-size: 13px; }
-  .loading progress, .loading:has(progress:indeterminate)::after { height: 6px; }
-  .experience[data-cinema] .stageFooter:has(.loading) { bottom: max(74px,env(safe-area-inset-bottom)); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .loading:has(progress:indeterminate)::after { animation:none; }
+  .loadingTrack:has(progress:indeterminate)::after { animation:none; }
   .cameraCard { transition: none; }
 }
 

@@ -14,6 +14,7 @@ import {baselineSection,seatSections,type SectionId,type SeatingVenue} from './s
 import type {RoofStatus} from './roofs';
 import {film} from './film';
 import {useCinemaSound} from './useCinemaSound';
+import {useMatchSound} from './useMatchSound';
 import { summerSun, type ShadeResult, type SolarDate, type Stand } from './solar';
 import SunControls, { standNames } from './SunControls';
 import SeatDaylight, { firstMinute, lastMinute, openingDay, readSeatDate, sunlightPlaybackSpeed, useSeatDaylight } from './SeatDaylight';
@@ -37,6 +38,7 @@ const sources = [
   ['球场与道路 · © OpenStreetMap contributors · ODbL ↗','https://www.openstreetmap.org/copyright'],
   ['罗德·拉沃尔球场内景 · 澳网 ↗','https://ausopen.com/articles/news/concert-tennis-mode-transformation-rod-laver-arena'],
   ['球员练习照片参考 · 澳网 ↗','https://ausopen.com/articles/news/stars-prepare-ahead-ao-2026'],
+  ['球场音效来源 ↗','/audio/match-sound-credits.txt'],
   ['运动捕捉与球员模型署名 ↗','/models/tennis/motion-credits.txt'],
   ['封面照片 · Gracchus250 ↗','https://commons.wikimedia.org/wiki/File:Rod_Laver_Arena_Melbourne_Park_Australian_Open_2023_quarter_final_dusk.jpg'],
   ['照片授权 · CC BY-SA 4.0（已缩放、转码和裁切）↗','https://creativecommons.org/licenses/by-sa/4.0/'],
@@ -132,7 +134,9 @@ export default function ArenaExperience(){
   const [requested,setRequested]=useState(false),[ready,setReady]=useState(false);
   const [progress,setProgress]=useState<LoadProgress|null>(null);
   const preview=!requested&&!failure;
-  const startScene=()=>setRequested(true);
+  const matchSound=useMatchSound();
+  const unlockSound=matchSound.unlock;
+  const startScene=()=>{unlockSound();setRequested(true);};
   const [seats,setSeats]=useState(0);
   const [shot,setShot]=useState<Shot>({...homeShot,serial:0});
   const [focusKey,setFocusKey]=useState<string|null|undefined>(undefined);
@@ -268,7 +272,7 @@ export default function ArenaExperience(){
     try{localStorage.setItem('1573-arena-'+key,value);}catch{/* Storage is optional. */}
   }
   const navigate=useCallback((next:Omit<Shot,'serial'>)=>{
-    setRequested(true);
+    unlockSound();setRequested(true);
     const url=new URL(window.location.href);
     for(const key of ['arena','section','view','date','time','roof'])url.searchParams.delete(key);
     url.searchParams.delete('court');url.searchParams.delete('end');
@@ -282,7 +286,7 @@ export default function ArenaExperience(){
     setFocusKey(undefined);
     setShot(previous=>({...next,serial:previous.serial+1}));
     setRotate(false);setPanel(null);setSelected(null);
-  },[]);
+  },[unlockSound]);
   const openSeats=useCallback(()=>{
     if(isRoofed(captionVenueId)&&captionVenueId!==seatVenue){setSeatVenue(captionVenueId);setSection(null);}
     if(light!=='solar')setStudyClosed(light==='rain');
@@ -415,7 +419,11 @@ export default function ArenaExperience(){
     !data?tr('正在读取场馆地图'):!progress?tr('正在打开三维视图'):
     progress.stage==='imagery'?tr('正在加载航拍影像'):progress.total>1?tr('正在构建园区'):tr('正在构建场馆');
 
-  return <main ref={container} className={styles.experience} data-interactive={interactive} data-cinema={cinema||undefined} data-roof={roof} lang={language==='zh'?'zh-CN':'en'}>
+  const loading=!failure&&(!interactive||requested&&!presentable);
+  const soundButton=<button type="button" data-match-sound="" aria-label={tr('球场音效')} title={tr('球场音效')} aria-pressed={matchSound.enabled}
+    onClick={()=>{matchSound.toggle();setRequested(true);}}><Icon name={matchSound.enabled?'sound':'muted'}/></button>;
+  const loadingTitle=cinema?tr('正在打开影院'):tr('正在打开球场地图');
+  return <main ref={container} className={styles.experience} data-loading={loading||undefined} data-interactive={interactive} data-cinema={cinema||undefined} data-roof={roof} lang={language==='zh'?'zh-CN':'en'}>
     <header className={styles.header}>
       <a href="/australian-open/" className={styles.brand} aria-label={language==='zh'?'Court Atlas · 返回澳网首页':'Court Atlas · Australian Open home'}><Icon name="ball"/><span>Court Atlas</span></a>
       <span className={styles.eventName}>{tr('澳大利亚网球公开赛')}</span>
@@ -427,6 +435,8 @@ export default function ArenaExperience(){
       </nav>
     </header>
     <section className={styles.stage} aria-label={tr('墨尔本公园场馆探索')}
+      onPointerUpCapture={event=>{if(requested&&!(event.target as Element).closest('[data-match-sound]'))unlockSound();}}
+      onKeyDownCapture={event=>{if(requested&&!(event.target as Element).closest('[data-match-sound]'))unlockSound();}}
       onPointerDown={event=>{if(preview&&event.target===event.currentTarget)startScene();}}
       onWheel={event=>{if(preview&&event.target===event.currentTarget)startScene();}}>
       {!cinema&&ready&&light==='rain'&&!isRoofed(venue?.id)&&<button className={styles.weatherLink} onClick={()=>navigate({view:'ao',destination:'mca'})}><Icon name="rain"/>{tr('查看玛格丽特球场屋顶')}<Icon name="next"/></button>}
@@ -435,10 +445,10 @@ export default function ArenaExperience(){
         <img src={`/images/court-atlas/${staticView}.webp`} alt={tr(activeView.label)} fetchPriority="high"/>
       </picture>}
       {requested&&!failure&&data&&<div className={styles.viewport}>
-        <SceneBoundary onFailure={onFailure}><Suspense fallback={null}><ArenaScene onFilmPrepared={onFilmPrepared} shadowCourt={shadowCourt} movingSun={sunPlaying&&light==='solar'&&!cinema} onFocus={onFocus} {...{data,shot,light,rotate,crowd,ready,onProgress,onSelect,onReady,onInteract,language,theme,sun,onFailure,reducedMotion,compassRef,onCut}} rally={cinema?playing&&presentable:rally} compareStands={showStandComparison&&panel==='settings'} closedStudyRoof={light==='solar'&&seatedStudy&&studyClosed} chapter={cinema?chapter:null} playing={cinema&&playing&&presentable} context={cinema||context} onRoof={setRoof} markers={markers&&!cinema} onShade={setShade} canvasRef={canvas}/></Suspense></SceneBoundary>
+        <SceneBoundary onFailure={onFailure}><Suspense fallback={null}><ArenaScene matchAudio={matchSound.audio} onFilmPrepared={onFilmPrepared} shadowCourt={shadowCourt} movingSun={sunPlaying&&light==='solar'&&!cinema} onFocus={onFocus} {...{data,shot,light,rotate,crowd,ready,onProgress,onSelect,onReady,onInteract,language,theme,sun,onFailure,reducedMotion,compassRef,onCut}} rally={cinema?playing&&presentable:rally} compareStands={showStandComparison&&panel==='settings'} closedStudyRoof={light==='solar'&&seatedStudy&&studyClosed} chapter={cinema?chapter:null} playing={cinema&&playing&&presentable} context={cinema||context} onRoof={setRoof} markers={markers&&!cinema} onShade={setShade} canvasRef={canvas}/></Suspense></SceneBoundary>
       </div>}
       <div className={styles.shade}/>
-      {!cinema&&<div className={styles.stageBar}>
+      {!cinema&&!loading&&<div className={styles.stageBar}>
         {!failure&&<StageLighting light={light} minutes={solarDate.minutes} language={language} interactive={interactive}
           onPreset={preset=>{startScene();setSunPlaying(false);setLight(preset);}}>
           <SeatDaylight compact language={language} active={light==='solar'} activate={activateClock}
@@ -447,13 +457,14 @@ export default function ArenaExperience(){
             transitioning={roof==='closing'||roof==='opening'}/>
         </StageLighting>}
         <div className={styles.tools}>
+          {soundButton}
           <button disabled={!ready} onClick={()=>navigate(homeShot)} aria-label={tr('重置视角')} title={tr('重置视角 · R')}><Icon name="reset"/></button>
           <button disabled={!ready} onClick={capture} aria-label={tr('保存画面')} title={tr('保存画面')}><Icon name="capture"/></button>
           <button onClick={fullscreen} aria-label={tr('切换全屏')} title={tr('全屏')}><Icon name="expand"/></button>
         </div>
       </div>}
       <div className={styles.stageFooter}>
-        {!cinema&&<div className={styles.caption} aria-live="polite">
+        {!cinema&&!loading&&<div className={styles.caption} aria-live="polite">
           <p className={styles.location}><Icon name="pin"/>{tr(wide?'澳大利亚墨尔本':'澳大利亚 · 墨尔本公园')}</p>
           <h1>{title}</h1>
           <p className={styles.facts}>{caption}{!wide&&<><i/>{shot.view==='plan'?'23.77 × 10.97 m':seats?`${seats.toLocaleString(language)} ${tr('模型座椅').toLowerCase()}`:'23.77 × 10.97 m'}</>}{isRoofed(venue?.id)&&<><i/>{tr(roofNames[roof])}</>}</p>
@@ -472,17 +483,25 @@ export default function ArenaExperience(){
           </>}
           {venue?.id==='village'&&<button className={styles.seatLink} onClick={()=>setPanel('autographs')}>{tr('签名攻略')}<Icon name="next"/></button>}
         </div>}
-        {failure?<div className={styles.status} role="status"><span>{tr('静态场馆视图')}</span><button onClick={()=>{
+        {failure&&<div className={styles.status} role="status"><span>{tr('静态场馆视图')}</span><button onClick={()=>{
           if(failure==='data')setDataAttempt(n=>n+1);
           setProgress(null);setFailure(null);startScene();
-        }}>{tr('重试 3D')}</button></div>:
-          requested&&!presentable&&<div className={styles.loading}>
-            <div><span role="status">{progressLabel}</span>{!ready&&progress?.stage==='geometry'&&progress.total>1&&<small aria-hidden="true">{progress.done} / {progress.total}</small>}</div>
-            <progress aria-label={progressLabel} value={!ready&&progress?.stage==='geometry'?progress.done:undefined} max={progress?.total||1}/>
-          </div>}
+        }}>{tr('重试 3D')}</button></div>}
       </div>
+      {loading&&<div className={styles.loading} data-atlas-loader="">
+        <div className={styles.loadingContent}>
+          <Icon name="ball"/>
+          <h1>{loadingTitle}</h1>
+          <p role="status">{progressLabel}</p>
+          <div className={styles.loadingTrack}>
+            <progress aria-label={progressLabel} value={!ready&&progress?.stage==='geometry'?progress.done:undefined} max={progress?.total||1}/>
+          </div>
+          {!ready&&progress?.stage==='geometry'&&progress.total>1&&<small>{language==='zh'?`已完成 ${progress.done} / ${progress.total} 个区域`:`${progress.done} of ${progress.total} areas ready`}</small>}
+        </div>
+      </div>}
       {cinema&&presentable&&<div className={styles.filmBar}>
         <div aria-live="polite" aria-atomic="true"><small>{String(chapter+1).padStart(2,'0')} / {String(film.length).padStart(2,'0')}</small><strong>{tr(film[chapter].title)}</strong></div>
+        {soundButton}
         <button aria-label={tr('上一镜头')} title={tr('上一镜头')} onClick={()=>setChapter(i=>(i+film.length-1)%film.length)}><Icon name="previous"/></button>
         <button aria-label={tr(playing?'暂停短片':'播放短片')} title={tr(playing?'暂停短片':'播放短片')} onClick={togglePlayback}><Icon name={playing?'pause':'play'}/></button>
         <button aria-label={tr('下一镜头')} title={tr('下一镜头')} onClick={()=>setChapter(i=>(i+1)%film.length)}><Icon name="next"/></button>

@@ -11,6 +11,8 @@ const english: Record<string, string> = {
   '查看玛格丽特球场屋顶':'See Margaret Court’s roof','拖动环顾 · 滚轮缩放':'Drag to look around · Scroll to zoom','拖动环顾看台':'Drag to look around',
   '选择球场':'Choose a court',
   '探索三维球场':'Explore in 3D','正在读取场馆地图':'Loading venue map','正在打开三维视图':'Opening 3D view',
+  '正在打开球场地图':'Opening Court Atlas','正在打开影院':'Opening cinema',
+  '球场音效':'Match sounds','球场音效来源 ↗':'Match sound credits ↗',
   '正在准备影片':'Preparing cinema',
   '正在构建场馆':'Building venue','正在构建园区':'Building grounds','正在加载航拍影像':'Loading aerial imagery',
   '签名攻略':'Autograph guide','训练村':'Practice Village',
