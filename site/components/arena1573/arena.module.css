@@ -126,8 +126,6 @@
 .groundsMap {overflow:hidden;background:#e9ece1;border:1px solid #ced9cd;border-radius:9px;margin-bottom:14px;}
 .groundsMap svg {width:100%;display:block;}
 .groundsMap small {display:block;padding:0 8px 4px;text-align:right;color:#45605b;font-size:9px;}
-.coverGuide {margin-top:12px;min-height:38px;padding:0 2px;font-size:13px;font-weight:600;color:#fff;text-decoration:underline;text-underline-offset:4px;}
-.fanLinks {display:flex;gap:22px;}
 .fanGuide section {margin-bottom:24px;}
 .fanGuide h3 {font-size:17px;font-weight:660;line-height:1.28;}
 .fanGuide p {font-size:14px;line-height:1.6;margin:7px 0;color:#38514f;}
@@ -147,24 +145,7 @@
 @media(max-width:1100px) { .railHeading { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); } }
 .weatherLink {position:absolute;z-index:13;top:73px;left:var(--gutter);display:flex;align-items:center;gap:6px;min-height:35px;padding:0 10px;color:#fff;background:#213c46e8;border-radius:5px;font-size:12px;}
 .weatherLink svg {width:14px;height:14px;}
-.experience[data-cover] {grid-template-rows:auto minmax(0,1fr);}
-.experience[data-cover] .shade { display:none; }
-.cover {position:absolute;inset:0;isolation:isolate;background:#182e39;}
-.coverPhoto {position:absolute;width:100%;height:100%;object-fit:cover;object-position:50% 57%;z-index:-2;}
-.cover::after {content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,#061820c7 0%,#06182060 41%,transparent 76%),linear-gradient(0deg,#071a24d1 0%,transparent 51%);}
-.coverCopy {position:absolute;left:clamp(22px,6vw,110px);bottom:clamp(78px,11vh,150px);}
-.coverLocation {display:flex;align-items:center;gap:11px;font-size:clamp(11px,1vw,15px);font-weight:650;text-transform:uppercase;letter-spacing:.16em;color:#f0f5de;}
-.coverLocation span {width:33px;height:2px;background:var(--accent);}
-.coverCopy h1 {font-family:Inter,"Segoe UI",sans-serif;letter-spacing:-.075em;line-height:.94;font-size:clamp(66px,7.8vw,140px);font-weight:540;margin:20px 0 33px;}
-.coverCopy h1 em {font-family:Georgia,"Times New Roman",serif;letter-spacing:-.068em;font-weight:400;}
-.coverLinks,.coverLinks button,.filmBar,.filmBar button {display:flex;align-items:center;}
-.coverLinks {gap:12px;flex-wrap:wrap;}
-.coverLinks button {gap:11px;min-height:48px;padding:0 20px;border:1px solid #ffffff80;border-radius:6px;color:#fff;background:#172932c9;font-size:14px;font-weight:650;}
-.coverLinks button:first-child {background:var(--accent);color:#172e31;border-color:var(--accent);}
-.coverLinks button svg {width:16px;height:16px;}
-.coverLinks button:hover {filter:brightness(1.12);}
-.coverCredit {position:absolute;right:var(--gutter);bottom:22px;display:block;color:#f2f5ec;font-size:11px;text-align:right;line-height:1.5;}
-.coverCredit span {display:block;font-size:10px;color:#d1dbd8;}
+.filmBar,.filmBar button {display:flex;align-items:center;}
 .filmBar {position:absolute;z-index:14;bottom:24px;left:var(--gutter);gap:4px;padding:5px 7px 5px 14px;background:#122831ef;color:#f4f6ee;border:1px solid #ffffff55;border-radius:7px;}
 .filmBar div {display:grid;gap:3px;margin-right:7px;}
 .filmBar small {color:var(--accent);font:10px/1.2 ui-monospace,monospace;letter-spacing:.1em;}
@@ -172,15 +153,9 @@
 .filmBar button {justify-content:center;width:40px;height:40px;}
 .filmBar button:hover {background:#ffffff14;}
 @media (max-width:720px) {
-  .coverCopy {left:20px;right:14px;bottom:12%;}
-  .coverCopy h1 {font-size:clamp(52px,12.8vw,85px);}
-  .coverCopy h1 em {letter-spacing:-.075em;}
-  .coverLinks button {min-height:45px;padding:0 13px;font-size:13px;}
-  .coverCredit {bottom:14px;}
   .filmBar {left:10px;bottom:18px;}
 }
 @media (max-width:500px){.experience .eventName {display:none;}}
-@media (max-height:500px) and (orientation:landscape){.coverCopy {bottom:24px;}.coverCopy h1 {font-size:56px;margin:8px 0 14px;}}
 .drawerBody { min-height: 100%; padding: 20px 24px max(24px,env(safe-area-inset-bottom)); }
 .drawer :focus-visible, .moods :focus-visible, .tools :focus-visible { outline-color: #267866; outline-offset: -3px; }
 .drawerHeading { justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); padding-bottom: 14px; margin-bottom: 18px; }

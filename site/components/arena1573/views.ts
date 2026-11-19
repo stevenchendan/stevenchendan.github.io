@@ -6,7 +6,18 @@ import {rodLaverSeatEye} from './rodLaverProfile';
 export type View = 'hero' | 'plan' | 'seat' | 'court' | 'precinct' | 'ao';
 export type Light = 'day' | 'golden' | 'night' | 'rain' | 'solar';
 export type Theme = 'classic' | 'ink';
-export type Shot = {view:View;serial:number;stand?:Stand;destination?:string;section?:SectionId;court?:string;end?:1;follow?:boolean};
+export type Shot = {view:View;serial:number;stand?:Stand;destination?:string;section?:SectionId;court?:string;end?:1;follow?:boolean;home?:boolean};
+export const homeShot = {view:'ao',destination:'rla',home:true} as const;
+
+// The wide composition looks across Rod Laver towards the railway and the MCG.
+// On narrow screens shift the focus back towards the bowl and give it more room.
+export function homeCamera(aspect:number){
+  const portrait=Math.max(0,Math.min(1,(1.5-aspect)/.9));
+  const target:[number,number,number]=[195-38*portrait,0,5+32*portrait];
+  const distance=Math.max(1,Math.min(1.9,2.12/aspect));
+  const offset:[number,number,number]=[-33*distance,251*distance,260*distance];
+  return {target,offset};
+}
 export function isRoofed(id?:string):id is SeatingVenue {return id==='rla'||id==='mca'||id==='john';}
 
 export function sectionEye(venue:SeatingVenue,id:SectionId){

@@ -22,7 +22,7 @@ import { courtDirectory,venueCourts } from './courtPlacements';
 import {courtFrameAt} from './courtMatches';
 import { RoofMotion,type RoofStatus } from './roofs';
 import { film } from './film';
-import { cameras, standCameras, destinations, points, isRoofed,sectionEye,type Shot, type Light, type Theme } from './views';
+import { cameras, homeCamera, standCameras, destinations, points, isRoofed,sectionEye,type Shot, type Light, type Theme } from './views';
 import { ARENA_LOCATION, summerSun, type ShadeResult, standSamples, STANDS } from './solar';
 
 type Sun = ReturnType<typeof summerSun> | null;
@@ -51,6 +51,7 @@ function World({data,light,context,crowd,crowdMoving,closedStudyRoof,compareStan
   const root=useRef<T.Group>(null);
   const invalidate=useThree(state=>state.invalidate);
   const models=useRef<{arena:ReturnType<typeof buildArena>;context:T.Group}|null>(null);
+  const startsWithSurroundings=useRef(context);
   const lastRoof=useRef<RoofStatus>('open');
   const audienceTick=useRef<ReturnType<typeof bindSpectators>|null>(null);
   useFrame((state,delta)=>{
@@ -61,8 +62,11 @@ function World({data,light,context,crowd,crowdMoving,closedStudyRoof,compareStan
   },-1);
   useEffect(()=>{
     const arena=buildArena(), surroundings=buildContext(data), parent=root.current!;
-    const releaseGround=addGroundPhotography(surroundings,invalidate), releaseTrees=addParkTrees(surroundings,invalidate);
-    models.current={arena,context:surroundings};parent.add(arena.group,surroundings);roofs.bind(surroundings);audienceTick.current=bindSpectators(parent,invalidate);onReady(arena.seats);
+    const ready=()=>onReady(arena.seats);
+    const releaseGround=addGroundPhotography(surroundings,invalidate,startsWithSurroundings.current?ready:undefined);
+    const releaseTrees=addParkTrees(surroundings,invalidate);
+    models.current={arena,context:surroundings};parent.add(arena.group,surroundings);roofs.bind(surroundings);audienceTick.current=bindSpectators(parent,invalidate);
+    if(!startsWithSurroundings.current)ready();
     return ()=>{audienceTick.current=null;parent.remove(arena.group,surroundings);releaseGround();releaseTrees();disposeModel(arena.group);disposeModel(surroundings);models.current=null;};
   },[data,onReady,roofs]);
   useEffect(()=>{
@@ -152,6 +156,10 @@ function Rig({shot,rotate,rain,language,onInteract,canvasRef,compassRef,chapter,
     return ()=>{element.removeEventListener('keydown',keyboard);element.removeEventListener('pointerdown',down);element.removeEventListener('pointermove',move);element.removeEventListener('pointerup',release);element.removeEventListener('pointercancel',release);element.removeEventListener('wheel',wheel);};
   },[camera,gl,language,onInteract,invalidate,seated]);
   const destination=useMemo(()=>{
+    if(shot.home){
+      const {target,offset}=homeCamera(size.width/size.height);
+      return {target:new T.Vector3(...target),offset:new T.Spherical().setFromVector3(new T.Vector3(...offset))};
+    }
     const venue=destinations.find(d=>d.id===shot.destination);
     if(shot.section!==undefined&&isRoofed(shot.destination)&&featured){
       const eye=sectionEye(shot.destination,shot.section);

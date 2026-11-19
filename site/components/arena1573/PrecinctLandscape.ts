@@ -6,16 +6,17 @@ import { buildCentralTerrace, terraceHeight, type TerracePlan } from './CentralT
 // The orthophoto is pre-warped into the local court grid at 50 cm per pixel.
 // Pixel alpha masks the post-2020 works, roofs and independently modelled courts.
 // Each road, path and lawn receives the same world-space image coordinates.
-export function addGroundPhotography(root:T.Group, invalidate:()=>void) {
+export function addGroundPhotography(root:T.Group, invalidate:()=>void, onSettled?:()=>void) {
   let disposed=false;
+  const loader=new T.TextureLoader(new T.LoadingManager(()=>{if(!disposed)onSettled?.();}));
   const ready={value:0};
-  const texture=new T.TextureLoader().load('/images/court-atlas/melbourne-ground.webp',()=>{
+  const texture=loader.load('/images/court-atlas/melbourne-ground.webp',()=>{
     if(disposed)return;
     ready.value=1;invalidate();
   });
   texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=8;
   const farReady={value:0};
-  const parkland=new T.TextureLoader().load('/images/court-atlas/melbourne-parkland.webp',()=>{
+  const parkland=loader.load('/images/court-atlas/melbourne-parkland.webp',()=>{
     if(!disposed){farReady.value=1;invalidate();}
   });
   parkland.colorSpace=T.SRGBColorSpace;parkland.anisotropy=4;
@@ -26,7 +27,7 @@ export function addGroundPhotography(root:T.Group, invalidate:()=>void) {
       const box=mcg?[380,-326,334,306]:[548,280,210,215];
       let map=stadiumTextures.get(id);
       if(!map){
-        map=new T.TextureLoader().load('/images/court-atlas/'+id+'-aerial.webp',()=>{if(!disposed)invalidate();});
+        map=loader.load('/images/court-atlas/'+id+'-aerial.webp',()=>{if(!disposed)invalidate();});
         map.colorSpace=T.SRGBColorSpace;map.anisotropy=8;stadiumTextures.set(id,map);
       }
       const p=o.geometry.attributes.position,uv=new Float32Array(p.count*2);
