@@ -202,6 +202,7 @@ export default function SectionPicker({ venue, section, language, onSelect, onVi
       <div className={styles.legend}>
         {(sun.aboveHorizon ? ['shade','mixed','sun'] as const : ['dark'] as const).map(state =>
           <span key={state} data-exposure={state}><i />{exposureLabels[state]}</span>)}
+        <span><b className={styles.benchKey} aria-hidden="true"/>{language==='zh'?'球员休息席':'Player benches'}</span>
         {venue !== 'john' && <span className={styles.entryKey}><b>▲</b>{labels.entry}</span>}
       </div>
       <div className={styles.pan} ref={scroller} data-zoomed={zoomed}>
@@ -249,7 +250,7 @@ export default function SectionPicker({ venue, section, language, onSelect, onVi
     </div>
 
     <footer className={styles.sources}>
-      <p><span className={styles.benchKey} aria-hidden="true"/> <strong>{language==='zh'?'球员休息席':'Player benches'}</strong> · {benchDescription(venue,language)}</p>
+      <p>{benchDescription(venue,language)}</p>
       <a href={benchLayout(venue).source} target="_blank" rel="noreferrer">{language==='zh'?'澳网场地布置图（2025）':'AO court layout (2025)'} ↗</a>
       <p>{language === 'zh' ? '颜色根据所选时刻、太阳位置和场馆模型计算。屋顶开合与天气以比赛现场为准。' : 'Colours estimate direct sun from the arena model at your chosen time. Actual roof operation and weather vary.'}</p>
       <p>{labels.note}</p>

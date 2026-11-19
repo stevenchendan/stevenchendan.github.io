@@ -19,7 +19,7 @@ import { bindSpectators, spectatorImagesSettled } from './seatedCrowd';
 import { addGroundPhotography, addParkTrees } from './PrecinctLandscape';
 import Visitors from './Visitors';
 import { venueVisible } from './venueVisibility';
-import { courtDirectory,venueCourts } from './courtPlacements';
+import { cameraCourtAreas, courtInView, courtDirectory,venueCourts } from './courtPlacements';
 import { RoofMotion,type RoofStatus } from './roofs';
 import { film,filmDusk,filmRoof,filmFieldOfView } from './film';
 import { cameras, homeCamera, standCameras, destinations, points, isRoofed,sectionEye,type Shot, type Light, type Theme } from './views';
@@ -194,7 +194,8 @@ function PrepareFilm({onPrepared}:{onPrepared:()=>void}){
 
 type FilmProps={chapter:number|null;playing:boolean;onCut:()=>void};
 type Court=ReturnType<typeof courtDirectory>[number];
-function Rig({shot,rotate,rain,language,onInteract,canvasRef,compassRef,chapter,playing,onCut,featured,filmTime}:{filmTime:React.RefObject<number>;shot:Shot;rotate:boolean;rain:boolean;language:Language;onInteract:()=>void;compassRef:React.RefObject<HTMLElement|null>;canvasRef:React.RefObject<HTMLCanvasElement|null>;featured?:Court}&FilmProps) {
+type FocusProps={onFocus:(court:string|null|undefined)=>void};
+function Rig({areas,selectedVenue,context,onFocus,shot,rotate,rain,language,onInteract,canvasRef,compassRef,chapter,playing,onCut,featured,filmTime}:FocusProps&{areas:ReturnType<typeof cameraCourtAreas>;selectedVenue:string;context:boolean;filmTime:React.RefObject<number>;shot:Shot;rotate:boolean;rain:boolean;language:Language;onInteract:()=>void;compassRef:React.RefObject<HTMLElement|null>;canvasRef:React.RefObject<HTMLCanvasElement|null>;featured?:Court}&FilmProps) {
   const {camera,gl,scene,invalidate,size}=useThree();
   const controls=useRef<ComponentRef<typeof OrbitControls>>(null);
   const seated=chapter===null&&shot.section!==undefined;
@@ -202,6 +203,8 @@ function Rig({shot,rotate,rain,language,onInteract,canvasRef,compassRef,chapter,
   useEffect(()=>{gaze.current={yaw:0,pitch:0,fov:shot.destination==='rla'?56:51};invalidate();},[shot,invalidate]);
   const [transitioning,setTransitioning]=useState(true);
   const manual=useRef(false);
+  const lastFocus=useRef<string|null|undefined>(undefined);
+  useEffect(()=>{lastFocus.current=undefined;onFocus(undefined);},[shot,chapter,onFocus]);
   useEffect(()=>{manual.current=false;setTransitioning(true);invalidate();},[shot,invalidate]);
   useEffect(()=>{if(!manual.current)setTransitioning(true);},[size.width,size.height]);
   useEffect(()=>{canvasRef.current=gl.domElement;return()=>{canvasRef.current=null;};},[gl,canvasRef]);
@@ -247,7 +250,7 @@ function Rig({shot,rotate,rain,language,onInteract,canvasRef,compassRef,chapter,
   },[camera,gl,language,onInteract,invalidate,seated,chapter]);
   const destination=useMemo(()=>{
     if(shot.home){
-      const {target,offset}=homeCamera(size.width/size.height);
+      const {target,offset}=homeCamera(size.width/size.height,window.matchMedia('(orientation: portrait)').matches);
       return {target:new T.Vector3(...target),offset:new T.Spherical().setFromVector3(new T.Vector3(...offset))};
     }
     const venue=destinations.find(d=>d.id===shot.destination);
@@ -328,6 +331,12 @@ function Rig({shot,rotate,rain,language,onInteract,canvasRef,compassRef,chapter,
     }
     if(camera instanceof T.PerspectiveCamera){
       const distance=camera.position.distanceTo(orbit.target);
+      if(manual.current&&!seated&&chapter===null){
+        const span=2*distance*Math.tan(T.MathUtils.degToRad(camera.fov/2))*Math.min(1,camera.aspect);
+        const court=courtInView(areas,camera.position,orbit.target,span,selectedVenue,context);
+        const focus=court??(orbit.target.distanceToSquared(destination.target)<1?undefined:null);
+        if(focus!==lastFocus.current){lastFocus.current=focus;onFocus(focus);}
+      }
       const near=T.MathUtils.clamp(distance*.01,.1,12);
       if(Math.abs(camera.near-near)>.01){camera.near=near;camera.updateProjectionMatrix();}
       if(scene.fog instanceof T.Fog){
@@ -341,7 +350,7 @@ function Rig({shot,rotate,rain,language,onInteract,canvasRef,compassRef,chapter,
   return <OrbitControls ref={controls} enabled={chapter===null&&!seated} makeDefault enableDamping={!transitioning&&chapter===null} dampingFactor={.075} minDistance={1.5} maxDistance={2700} maxPolarAngle={Math.PI*.488} autoRotate={rotate&&!transitioning&&chapter===null&&!seated} autoRotateSpeed={.45} zoomSpeed={.7} target={cameras.hero.target} onStart={()=>{manual.current=true;setTransitioning(false);onInteract();}}/>;
 }
 
-function Scene({onFilmPrepared,data,shot,light:atlasLight,compareStands,closedStudyRoof:atlasRoof,rotate,context,crowd,markers,rally,ready,onProgress,onFailure,onSelect,onReady,onInteract,canvasRef,compassRef,language,theme,sun:atlasSun,onShade,onRoof,reducedMotion,chapter,playing,onCut}:LoadingProps&{onFilmPrepared:()=>void;ready:boolean;compareStands:boolean;closedStudyRoof:boolean;data:ContextData;shot:Shot;light:Light;rotate:boolean;context:boolean;crowd:boolean;markers:boolean;rally:boolean;onSelect:(id:string)=>void;onReady:(seats:number)=>void;onInteract:()=>void;compassRef:React.RefObject<HTMLElement|null>;canvasRef:React.RefObject<HTMLCanvasElement|null>;language:Language;theme:Theme;sun:Sun;onShade:(result:ShadeResult|null)=>void;reducedMotion:boolean;onRoof:(status:RoofStatus)=>void}&FilmProps){
+function Scene({onFilmPrepared,onFocus,data,shot,light:atlasLight,compareStands,closedStudyRoof:atlasRoof,rotate,context,crowd,markers,rally,ready,onProgress,onFailure,onSelect,onReady,onInteract,canvasRef,compassRef,language,theme,sun:atlasSun,onShade,onRoof,reducedMotion,chapter,playing,onCut}:FocusProps&LoadingProps&{onFilmPrepared:()=>void;ready:boolean;compareStands:boolean;closedStudyRoof:boolean;data:ContextData;shot:Shot;light:Light;rotate:boolean;context:boolean;crowd:boolean;markers:boolean;rally:boolean;onSelect:(id:string)=>void;onReady:(seats:number)=>void;onInteract:()=>void;compassRef:React.RefObject<HTMLElement|null>;canvasRef:React.RefObject<HTMLCanvasElement|null>;language:Language;theme:Theme;sun:Sun;onShade:(result:ShadeResult|null)=>void;reducedMotion:boolean;onRoof:(status:RoofStatus)=>void}&FilmProps){
   const tr=getTranslator(language);
   const filmTime=useRef(0),filmTick=useRef<number|null>(null);
   const take=chapter!==null?film[chapter]:undefined;
@@ -370,6 +379,7 @@ function Scene({onFilmPrepared,data,shot,light:atlasLight,compareStands,closedSt
   const roofs=take?filmRoofs:atlasRoofs;
   const courts=useMemo(()=>courtDirectory(data),[data]);
   const [kiaSettled,setKiaSettled]=useState(false);
+  const areas=useMemo(()=>cameraCourtAreas(data,courts),[data,courts]);
   const atVenue=useMemo(()=>venueCourts(courts,selectedVenue),[courts,selectedVenue]);
   const featured=atVenue.find(c=>c.key===shot.court)??(atVenue.length===1?atVenue[0]:undefined);
   const away=featured&&featured.venue!=='1573'?featured:undefined;
@@ -426,7 +436,7 @@ function Scene({onFilmPrepared,data,shot,light:atlasLight,compareStands,closedSt
     {ready&&!take&&away&&<group position={[away.x,away.y,away.z]} rotation={[0,away.rotation,0]}><Suspense fallback={null}><TennisRally active={rally} time={time} phase={away.phase} court={away.key}/></Suspense></group>}
     {ready&&(take||!inBowl)&&<Suspense fallback={null}><PrecinctRallies data={data} time={time} surroundings={context} selectedVenue={take?'all':selectedVenue} excludeCourt={take?undefined:away?.id}/></Suspense>}
     {markers&&shot.view!=='ao'&&points.filter(p=>context||selectedVenue==='all'||(p.id==='precinct'?selectedVenue==='mca':selectedVenue==='1573')).map((p,i)=><Html key={p.id} position={p.position} center zIndexRange={[10,0]}><button className={styles.pin} title={tr(p.title)} aria-label={`${tr('探索')}${tr(p.title)}`} onClick={()=>onSelect(p.id)}><span>{String(i+1).padStart(2,'0')}</span><b>{tr(p.title)}</b></button></Html>)}
-    <Rig {...{shot,rotate,rain,language,onInteract,canvasRef,compassRef,featured,chapter,playing,onCut,filmTime}}/>
+    <Rig context={showPrecinct} {...{areas,selectedVenue,onFocus,shot,rotate,rain,language,onInteract,canvasRef,compassRef,featured,chapter,playing,onCut,filmTime}}/>
   </>;
 }
 

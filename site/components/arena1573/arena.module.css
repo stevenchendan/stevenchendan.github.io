@@ -10,6 +10,7 @@
   height: 100dvh;
   min-height: 400px;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
   position: relative;
@@ -51,8 +52,9 @@
 .viewport canvas:focus-visible { outline-offset: -4px; }
 .shade { pointer-events: none; z-index: 11; background: linear-gradient(0deg,rgba(8,23,30,.78),rgba(8,23,30,.35) 12%,rgba(8,23,30,0) 35%); }
 .stageBar { position: absolute; z-index: 12; top: 20px; left: var(--gutter); right: var(--gutter); align-items: flex-start; pointer-events: none; }
-.lightingStack { display: grid; justify-items: start; gap: 5px; }
-.lightingStack > section { width: 245px; max-width: 100%; pointer-events: auto; }
+.lightingToggle { display: none; }
+.lightingPanel { display: grid; justify-items: start; gap: 5px; }
+.lightingPanel > section { width: 245px; max-width: 100%; pointer-events: auto; }
 .moods, .tools {
   pointer-events: auto; background: #f8faf4f2; color: #20363d; border: 1px solid #ffffffa6;
   box-shadow: 0 2px 9px #10232a20; border-radius: 9px; padding: 3px; gap: 1px;
@@ -69,6 +71,7 @@
 .tools { position: absolute; right: 0; top: 0; }
 .tools button+button { position: relative; }
 .tools button+button:before { content: ''; position: absolute; left: -1px; top: 11px; bottom: 11px; border-left: 1px solid #21383d24; }
+.stageFooter { display: contents; }
 .caption { position: absolute; z-index: 12; bottom: clamp(19px,3.2vh,36px); left: var(--gutter); max-width: calc(100% - 220px); pointer-events: none; text-shadow: 0 1px 8px #0b1e2633; }
 .location { gap: 6px; font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #eff7e6; }
 .location svg { width: 13px; height: 13px; }
@@ -92,7 +95,7 @@
 .loading progress::-webkit-progress-bar { border-radius:4px; background:#405860; }
 .loading progress::-webkit-progress-value { border-radius:4px; background:var(--accent); }
 .loading progress::-moz-progress-bar { border-radius:4px; background:var(--accent); }
-.loading:has(progress:indeterminate) { position:absolute; overflow:hidden; }
+.loading:has(progress:indeterminate) { overflow:hidden; }
 .loading:has(progress:indeterminate)::after { content:''; position:absolute; bottom:12px; left:13px; width:23%; height:4px; border-radius:4px; background:var(--accent); animation:loadingSweep 1.3s ease-in-out infinite alternate; }
 @keyframes loadingSweep { to { transform:translateX(275%); } }
 .status button { text-decoration: underline; min-height: 30px; }
@@ -233,7 +236,6 @@
   .stageBar { top: 10px; left: 10px; right: 10px; }
   .moods, .tools { padding: 1px; gap: 0; border-radius: 7px; }
   .moods button,.tools button { min-width: 44px; min-height: 44px; padding: 0 6px; }
-  .moods button[aria-pressed=true] span { display: none; }
   .moods button[aria-pressed=true] { color: #fff; }
   .caption { left: 16px; bottom: 17px; max-width: calc(100% - 80px); }
   .caption h1 { font-size: clamp(30px,6.4vw,42px); margin: 4px 0; }
@@ -243,7 +245,6 @@
   .cinema span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .experience[data-cinema] .cinema { width: auto; padding: 0 12px; }
   .experience[data-cinema] .cinema span { position: static; clip-path: none; width: auto; height: auto; }
-  .loading { top:150px; bottom:auto; left:10px; right:auto; }
   .status { top: 68px; bottom: auto; right: 12px; }
   .cameraNav { padding: 4px 8px max(4px,env(safe-area-inset-bottom)); }
   .filmstrip { gap: 5px; }
@@ -258,8 +259,9 @@
   .eventName { font-size: 10px; line-height: 1.2; max-width: 68px; padding-left: 10px; }
 }
 @media (max-width: 345px) {
+  .header { gap: 4px; padding-inline: 8px; }
+  .brand { gap: 5px; font-size: 19px; }
   .eventName { display: none; }
-  .moods button,.tools button { min-width: 40px; }
 }
 @media (max-height: 540px) and (orientation:landscape) {
   .experience { min-height: 275px; }
@@ -272,6 +274,47 @@
   .caption h1 { font-size: 26px; }
   .cinema { bottom: 10px; }
   .stageBar { top: 8px; }
+}
+@media (max-width: 760px), (max-height: 540px) and (orientation: landscape) {
+  .stageBar { z-index: 14; }
+  .lightingToggle {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 12px;
+    pointer-events: auto; background: #f8faf4f5; color: #20363d; border: 1px solid #ffffffa6;
+    border-radius: 7px; box-shadow: 0 2px 9px #10232a20; font-size: 14px; font-weight: 650;
+    font-variant-numeric: tabular-nums;
+  }
+  .lightingToggle svg { width: 18px; height: 18px; }
+  .lightingToggle svg:last-child { width: 14px; }
+  .lightingToggle[aria-expanded=true] svg:last-child { transform: rotate(180deg); }
+  .lightingToggle:focus-visible { outline-color: #267866; outline-offset: -3px; }
+  .lightingPanel { display: none; }
+  .lightingPanel[data-open] {
+    display: grid; position: absolute; top: calc(100% + 5px); left: 0; z-index: 1;
+    width: min(300px,100%); max-height: calc(100dvh - 170px); overflow-y: auto;
+    pointer-events: auto; overscroll-behavior: contain; padding: 6px 9px;
+    border: 1px solid #afc0b6; border-radius: 9px; background: #f7f9f1;
+    box-shadow: 0 5px 15px #10232a30;
+  }
+  .lightingPanel .moods {
+    width: 100%; gap: 2px; padding: 0 0 6px; border: 0; border-bottom: 1px solid #cbd6cc;
+    border-radius: 0; background: transparent; box-shadow: none;
+  }
+  .lightingPanel .moods button { flex: 1; flex-direction: column; gap: 2px; min-height: 48px; padding: 2px; }
+  .lightingPanel .moods button span { display: inline; }
+  .lightingPanel > section[data-compact] { width: 100%; padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+  .start3d, .seatLink { min-height: 44px; }
+  .stageFooter:has(.loading) {
+    position: absolute; z-index: 13; inset: auto var(--gutter) 12px;
+    display: grid; justify-items: start; gap: 10px; pointer-events: none;
+  }
+  .stageFooter:has(.loading) .caption { position: static; max-width: 100%; }
+  .loading {
+    position: relative; inset: auto; width: min(100%, 28rem); padding: 10px 13px 12px;
+  }
+  .loading div { font-size: 15px; }
+  .loading small { font-size: 13px; }
+  .loading progress, .loading:has(progress:indeterminate)::after { height: 6px; }
+  .experience[data-cinema] .stageFooter:has(.loading) { bottom: max(74px,env(safe-area-inset-bottom)); }
 }
 @media (prefers-reduced-motion: reduce) {
   .loading:has(progress:indeterminate)::after { animation:none; }

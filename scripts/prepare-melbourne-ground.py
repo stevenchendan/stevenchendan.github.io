@@ -112,7 +112,12 @@ for outline in [
 # podium during the tournament. Their decks need a clear, level approach.
 polygon(beds,[(263,59),(282,59),(282,97),(263,97)],0)
 for feature in context["features"]:
-    if feature["kind"] in ("path","rail"):
+    if feature["kind"] == "court":
+        # Reserve the whole fenced runoff, with clearance for the raised stone edge.
+        points = np.asarray([pixel(*point) for point in feature["points"]], np.int32)
+        cv2.fillPoly(beds, [points], 0)
+        cv2.polylines(beds, [points], True, 0, 2 * scale)
+    elif feature["kind"] in ("path","rail"):
         pts=np.asarray([pixel(*point) for point in feature["points"]],np.int32)
         cv2.polylines(beds,[pts],False,0,int(scale*((feature.get("width") or 3)+2.5)))
 beds=cv2.morphologyEx(beds,cv2.MORPH_OPEN,cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7)))

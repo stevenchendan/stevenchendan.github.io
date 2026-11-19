@@ -4,8 +4,17 @@ import * as THREE from 'three';
 import {loadArenaModule as load} from './arena-model-fixture.mjs';
 const {buildContext,buildArena,disposeModel}=load('model');
 const {venueVisible,courtVenue}=load('venueVisibility');
-const {rallyCourts,courtDirectory}=load('courtPlacements');
+const {rallyCourts,courtDirectory,cameraCourtAreas,courtInView}=load('courtPlacements');
 const data=JSON.parse(fs.readFileSync('public/data/1573-context.json','utf8'));
+const courtsForFocus=courtDirectory(data),focusAreas=cameraCourtAreas(data,courtsForFocus);
+for(const key of ['1573','mca','rla','john','kia','16']){
+  const {x,z}=courtsForFocus.find(c=>c.key===key);
+  // An oblique approach should identify the footprint under the centre of the view.
+  const eye={x:x-12,y:80,z:z+18},target={x,y:0,z};
+  assert.equal(courtInView(focusAreas,eye,target,100,'all',true),key);
+  assert.equal(courtInView(focusAreas,eye,target,100,'oval',false),null);
+}
+assert.equal(courtInView(focusAreas,{x:-900,y:100,z:-900},{x:-900,y:0,z:-900},100,'all',true),null);
 const context=buildContext(data);
 const ids=['mca','rla','kia','village','john','centrepiece','ntc','west','east','oval',
   'hilltop','ballpark','topcourt','garden','terrace','courtside'];

@@ -2,7 +2,7 @@ export type StrokeKind = 'forehand' | 'volley' | 'backhand-volley' | 'backhand' 
 export const impactTime = (kind:StrokeKind) => kind==='serve'?1.26:kind==='backhand'?.72:.60;
 
 // Centre of the strung face, in metres from the actor's root on the court.
-// These are measured on the deployed skinned rig at frame 30 of each clip.
+// These are measured on the deployed skinned rig at each clip’s impact time.
 export const STROKE_CONTACT: Record<StrokeKind, readonly [number, number, number]> = {
   forehand: [1.003895, .864854, -.227508],
   backhand: [-.693112, .966457, -.463416],

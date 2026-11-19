@@ -67,6 +67,60 @@ function Drawer({title,closeLabel,onClose,children,wide}:{title:string;closeLabe
   </dialog>;
 }
 
+function StageLighting({light, minutes, language, interactive, onPreset, children}: {
+  light: Light; minutes: number; language: Language; interactive: boolean;
+  onPreset: (preset: typeof moods[number]['id']) => void; children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
+  const tr = getTranslator(language);
+  const preset = moods.find(mood => mood.id === light);
+  const label = preset ? tr(preset.label) : clockTime(minutes) + ' AEDT';
+  const closeAndFocus = useCallback(() => {
+    setOpen(false);
+    toggle.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const dismiss = (event: PointerEvent) => {
+      if (!root.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !event.defaultPrevented) {
+        event.preventDefault();
+        closeAndFocus();
+      }
+    };
+    document.addEventListener('pointerdown', dismiss, true);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('pointerdown', dismiss, true);
+      document.removeEventListener('keydown', escape);
+    };
+  }, [open, closeAndFocus]);
+
+  return <div className={styles.lightingStack} ref={root}
+    onBlur={event => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}>
+    <button ref={toggle} className={styles.lightingToggle} disabled={!interactive}
+      aria-label={tr('光线氛围') + ' · ' + label} aria-expanded={open} aria-controls="stage-lighting"
+      onClick={() => setOpen(value => !value)}>
+      <Icon name={light}/><span>{label}</span><Icon name="chevron"/>
+    </button>
+    <div id="stage-lighting" className={styles.lightingPanel} data-open={open || undefined}>
+      <div className={styles.moods} role="group" aria-label={tr('光线氛围')}>
+        {moods.map(mood => <button key={mood.id} disabled={!interactive}
+          aria-pressed={light === mood.id} aria-label={tr(mood.label)} title={tr(mood.label)}
+          onClick={() => { onPreset(mood.id); if (open) closeAndFocus(); }}>
+          <Icon name={mood.id}/><span>{tr(mood.label)}</span>
+        </button>)}
+      </div>
+      {children}
+    </div>
+  </div>;
+}
+
 export default function ArenaExperience(){
   const [theme,setTheme]=useState<Theme>('classic');
   const [language,setLanguage]=useState<Language>('en');
@@ -80,6 +134,11 @@ export default function ArenaExperience(){
   const startScene=()=>setRequested(true);
   const [seats,setSeats]=useState(0);
   const [shot,setShot]=useState<Shot>({...homeShot,serial:0});
+  const [focusKey,setFocusKey]=useState<string|null|undefined>(undefined);
+  const directory=useMemo(()=>data?courtDirectory(data):[],[data]);
+  const freeView=ready&&focusKey!==undefined;
+  const focusedCourt=freeView?directory.find(c=>c.key===focusKey):undefined;
+  const captionVenueId=freeView?focusedCourt?.venue:shot.destination;
   const [light,setLight]=useState<Light>('golden');
   const [solarDate,setSolarDate]=useState<SolarDate>({...openingDay,minutes:17*60+10});
   const [studyClosed,setStudyClosed]=useState(false),[sunPlaying,setSunPlaying]=useState(false);
@@ -210,18 +269,19 @@ export default function ArenaExperience(){
     if(next.section!==undefined)url.searchParams.set('section',String(next.section));
     history.replaceState(history.state,'',url);
     if(next.home)setContext(true);
+    setFocusKey(undefined);
     setShot(previous=>({...next,serial:previous.serial+1}));
     setRotate(false);setPanel(null);setSelected(null);
   },[]);
   const openSeats=useCallback(()=>{
-    if(isRoofed(shot.destination)&&shot.destination!==seatVenue){setSeatVenue(shot.destination);setSection(null);}
+    if(isRoofed(captionVenueId)&&captionVenueId!==seatVenue){setSeatVenue(captionVenueId);setSection(null);}
     if(light!=='solar')setStudyClosed(light==='rain');
     setPanel('sections');
-  },[shot.destination,seatVenue,light]);
+  },[captionVenueId,seatVenue,light]);
   const selectView=useCallback((view:View)=>{
-    if(view==='seat'&&isRoofed(shot.destination)){openSeats();return;}
+    if(view==='seat'&&isRoofed(captionVenueId)){openSeats();return;}
     navigate({view});
-  },[shot.destination,openSeats,navigate]);
+  },[captionVenueId,openSeats,navigate]);
   const onSelect=useCallback((id:string)=>{
     if(destinations.some(venue=>venue.id===id)){
       navigate(id==='1573'?{view:'hero'}:{view:'ao',destination:id});
@@ -298,17 +358,28 @@ export default function ArenaExperience(){
     if(light==='solar')setLight('day');
     else {setContext(true);setLight('solar');}
   }
-  const venue=destinations.find(d=>d.id===shot.destination);
-  const directory=useMemo(()=>data?courtDirectory(data):[],[data]);
-  const playable=venueCourts(directory,venue?.id??(shot.view==='hero'?'1573':undefined));
-  const chosen=playable.find(c=>c.key===shot.court)??playable[0];
+  const venue=destinations.find(d=>d.id===captionVenueId);
+  const playable=venueCourts(directory,venue?.id??(!freeView&&shot.view==='hero'?'1573':undefined));
+  const courtKey=freeView?focusedCourt?.key:shot.court;
+  const chosen=playable.find(c=>c.key===courtKey)??playable[0];
   const showStandComparison=venue?.id==='1573'||(!venue&&shot.view!=='ao'&&shot.view!=='precinct');
-  const wide=!!venue||shot.view==='ao'||shot.view==='precinct';
-  const title=chosen&&shot.court?chosen[language]:venue?tr(venue.name):wide?tr('墨尔本公园'):'1573 Arena';
+  const wide=freeView?focusedCourt?.key!=='1573':!!venue||shot.view==='ao'||shot.view==='precinct';
+  const title=chosen&&courtKey?chosen[language]:venue?tr(venue.name):wide?tr('墨尔本公园'):'1573 Arena';
   const detail=points.find(point=>point.id===selected);
   const activeView=views.find(view=>view.id===shot.view)!;
   const currentSeat=shot.view==='seat'?tr(standNames[shot.stand??'west']):null;
-  const caption=shot.section!==undefined?(language==='en'?`Section ${shot.section} · Approximate view`:`${shot.section} 区 · 模拟视角`):venue?tr('场馆建筑模型'):shot.view==='ao'?tr('澳网全景'):shot.view==='precinct'?tr('西区场馆与练习场'):currentSeat??tr('室外硬地球场');
+  let caption=tr('室外硬地球场');
+  if(!freeView&&shot.section!==undefined){
+    caption=language==='en'?`Section ${shot.section} · Approximate view`:`${shot.section} 区 · 模拟视角`;
+  }else if(venue&&courtKey&&chosen&&chosen.key!==venue.id){
+    caption=tr(venue.name);
+  }else if(venue&&venue.id!=='1573'){
+    caption=tr('场馆建筑模型');
+  }else if(freeView){
+    if(!focusedCourt)caption=tr('澳网全景');
+  }else if(shot.view==='ao')caption=tr('澳网全景');
+  else if(shot.view==='precinct')caption=tr('西区场馆与练习场');
+  else if(currentSeat)caption=currentSeat;
   const close=()=>setPanel(null);
   const heading=panel==='autographs'?tr('签名攻略'):panel==='sections'?tr('座区指南'):panel==='settings'?tr('场景设置'):panel==='venues'?tr('选择场馆'):panel==='detail'&&detail?tr(detail.title):tr('关于模型');
   const staticView=shot.home?'home-aerial':shot.view;
@@ -337,42 +408,52 @@ export default function ArenaExperience(){
         <img src={`/images/court-atlas/${staticView}.webp`} alt={tr(activeView.label)} fetchPriority="high"/>
       </picture>}
       {requested&&!failure&&data&&<div className={styles.viewport}>
-        <SceneBoundary onFailure={onFailure}><Suspense fallback={null}><ArenaScene onFilmPrepared={onFilmPrepared} {...{data,shot,light,rotate,crowd,ready,onProgress,onSelect,onReady,onInteract,language,theme,sun,onFailure,reducedMotion,compassRef,onCut}} rally={cinema?playing&&presentable:rally} compareStands={showStandComparison&&panel==='settings'} closedStudyRoof={light==='solar'&&seatedStudy&&studyClosed} chapter={cinema?chapter:null} playing={cinema&&playing&&presentable} context={cinema||context} onRoof={setRoof} markers={markers&&!cinema} onShade={setShade} canvasRef={canvas}/></Suspense></SceneBoundary>
+        <SceneBoundary onFailure={onFailure}><Suspense fallback={null}><ArenaScene onFilmPrepared={onFilmPrepared} onFocus={setFocusKey} {...{data,shot,light,rotate,crowd,ready,onProgress,onSelect,onReady,onInteract,language,theme,sun,onFailure,reducedMotion,compassRef,onCut}} rally={cinema?playing&&presentable:rally} compareStands={showStandComparison&&panel==='settings'} closedStudyRoof={light==='solar'&&seatedStudy&&studyClosed} chapter={cinema?chapter:null} playing={cinema&&playing&&presentable} context={cinema||context} onRoof={setRoof} markers={markers&&!cinema} onShade={setShade} canvasRef={canvas}/></Suspense></SceneBoundary>
       </div>}
       <div className={styles.shade}/>
       {!cinema&&<div className={styles.stageBar}>
-        {!failure&&<div className={styles.lightingStack}>
-          <div className={styles.moods} role="group" aria-label={tr('光线氛围')}>{moods.map(mood=><button key={mood.id} disabled={!interactive} aria-pressed={light===mood.id} aria-label={tr(mood.label)} title={tr(mood.label)} onClick={()=>{startScene();setSunPlaying(false);setLight(mood.id);}}><Icon name={mood.id}/><span>{tr(mood.label)}</span></button>)}</div>
+        {!failure&&<StageLighting light={light} minutes={solarDate.minutes} language={language} interactive={interactive}
+          onPreset={preset=>{startScene();setSunPlaying(false);setLight(preset);}}>
           <SeatDaylight compact language={language} active={light==='solar'} activate={activateClock}
             venue={seatedStudy&&isRoofed(shot.destination)?shot.destination:undefined} id={seatedStudy?shot.section:undefined}
             study={{...study,setDate:date=>{activateClock();setShade(null);study.setDate(date);},toggle:()=>{activateClock();study.toggle();}}}
             transitioning={roof==='closing'||roof==='opening'}/>
-        </div>}
+        </StageLighting>}
         <div className={styles.tools}>
           <button disabled={!ready} onClick={()=>navigate(homeShot)} aria-label={tr('重置视角')} title={tr('重置视角 · R')}><Icon name="reset"/></button>
           <button disabled={!ready} onClick={capture} aria-label={tr('保存画面')} title={tr('保存画面')}><Icon name="capture"/></button>
           <button onClick={fullscreen} aria-label={tr('切换全屏')} title={tr('全屏')}><Icon name="expand"/></button>
         </div>
       </div>}
-      {!cinema&&<div className={styles.caption} aria-live="polite">
-        <p className={styles.location}><Icon name="pin"/>{tr(wide?'澳大利亚墨尔本':'澳大利亚 · 墨尔本公园')}</p>
-        <h1>{title}</h1>
-        <p className={styles.facts}>{caption}{!wide&&<><i/>{shot.view==='plan'?'23.77 × 10.97 m':seats?`${seats.toLocaleString(language)} ${tr('模型座椅').toLowerCase()}`:'23.77 × 10.97 m'}</>}{isRoofed(venue?.id)&&<><i/>{tr(roofNames[roof])}</>}</p>
-        {preview&&<button className={styles.start3d} onClick={startScene}><Icon name="play"/>{tr('探索三维球场')}</button>}
-        {isRoofed(venue?.id)&&<button className={styles.seatLink} onClick={openSeats}><Icon name="seat"/>{tr('查看座区')}<Icon name="next"/></button>}
-        {chosen&&ready&&<>
-          {playable.length>1&&<select className={styles.courtChoice} aria-label={tr('选择球场')} value={shot.court?chosen.key:''} onChange={e=>navigate({view:'hero',destination:venue?.id,court:e.target.value})}>
-            <option value="" disabled>{tr('选择球场')}</option>
-            {playable.map(c=><option key={c.key} value={c.key}>{c[language]}</option>)}
-          </select>}
-          {(shot.court||playable.length===1)&&<details className={styles.benchGuide} key={chosen.key}>
-            <summary>{language==='zh'?'球员休息席':'Player benches'}</summary>
-            <p>{benchDescription(chosen.key,language)}</p>
-            {benchLayout(chosen.key).source&&<a href={benchLayout(chosen.key).source} target="_blank" rel="noreferrer">{language==='zh'?'澳网场地布置图（2025）':'AO court layout (2025)'} ↗</a>}
-          </details>}
-        </>}
-        {venue?.id==='village'&&<button className={styles.seatLink} onClick={()=>setPanel('autographs')}>{tr('签名攻略')}<Icon name="next"/></button>}
-      </div>}
+      <div className={styles.stageFooter}>
+        {!cinema&&<div className={styles.caption} aria-live="polite">
+          <p className={styles.location}><Icon name="pin"/>{tr(wide?'澳大利亚墨尔本':'澳大利亚 · 墨尔本公园')}</p>
+          <h1>{title}</h1>
+          <p className={styles.facts}>{caption}{!wide&&<><i/>{shot.view==='plan'?'23.77 × 10.97 m':seats?`${seats.toLocaleString(language)} ${tr('模型座椅').toLowerCase()}`:'23.77 × 10.97 m'}</>}{isRoofed(venue?.id)&&<><i/>{tr(roofNames[roof])}</>}</p>
+          {preview&&<button className={styles.start3d} onClick={startScene}><Icon name="play"/>{tr('探索三维球场')}</button>}
+          {isRoofed(venue?.id)&&<button className={styles.seatLink} onClick={openSeats}><Icon name="seat"/>{tr('选择座区')}<Icon name="next"/></button>}
+          {chosen&&ready&&<>
+            {playable.length>1&&<select className={styles.courtChoice} aria-label={tr('选择球场')} value={courtKey?chosen.key:''} onChange={e=>navigate({view:'hero',destination:venue?.id,court:e.target.value})}>
+              <option value="" disabled>{tr('选择球场')}</option>
+              {playable.map(c=><option key={c.key} value={c.key}>{c[language]}</option>)}
+            </select>}
+            {(courtKey||playable.length===1)&&<details className={styles.benchGuide} key={chosen.key}>
+              <summary>{language==='zh'?'球员休息席':'Player benches'}</summary>
+              <p>{benchDescription(chosen.key,language)}</p>
+              {benchLayout(chosen.key).source&&<a href={benchLayout(chosen.key).source} target="_blank" rel="noreferrer">{language==='zh'?'澳网场地布置图（2025）':'AO court layout (2025)'} ↗</a>}
+            </details>}
+          </>}
+          {venue?.id==='village'&&<button className={styles.seatLink} onClick={()=>setPanel('autographs')}>{tr('签名攻略')}<Icon name="next"/></button>}
+        </div>}
+        {failure?<div className={styles.status} role="status"><span>{tr('静态场馆视图')}</span><button onClick={()=>{
+          if(failure==='data')setDataAttempt(n=>n+1);
+          setProgress(null);setFailure(null);startScene();
+        }}>{tr('重试 3D')}</button></div>:
+          requested&&!presentable&&<div className={styles.loading}>
+            <div><span role="status">{progressLabel}</span>{!ready&&progress?.stage==='geometry'&&progress.total>1&&<small aria-hidden="true">{progress.done} / {progress.total}</small>}</div>
+            <progress aria-label={progressLabel} value={!ready&&progress?.stage==='geometry'?progress.done:undefined} max={progress?.total||1}/>
+          </div>}
+      </div>
       {cinema&&presentable&&<div className={styles.filmBar}>
         <div aria-live="polite" aria-atomic="true"><small>{String(chapter+1).padStart(2,'0')} / {String(film.length).padStart(2,'0')}</small><strong>{tr(film[chapter].title)}</strong></div>
         <button aria-label={tr('上一镜头')} title={tr('上一镜头')} onClick={()=>setChapter(i=>(i+film.length-1)%film.length)}><Icon name="previous"/></button>
@@ -380,14 +461,6 @@ export default function ArenaExperience(){
         <button aria-label={tr('下一镜头')} title={tr('下一镜头')} onClick={()=>setChapter(i=>(i+1)%film.length)}><Icon name="next"/></button>
       </div>}
       {(ready||cinema||preview)&&<button className={styles.cinema} disabled={!interactive} aria-pressed={cinema} onClick={toggleCinema}><Icon name={cinema?'exit':'cinema'}/><span>{tr(cinema?'退出影院模式':'影院模式')}</span></button>}
-      {failure?<div className={styles.status} role="status"><span>{tr('静态场馆视图')}</span><button onClick={()=>{
-        if(failure==='data')setDataAttempt(n=>n+1);
-        setProgress(null);setFailure(null);startScene();
-      }}>{tr('重试 3D')}</button></div>:
-        requested&&!presentable&&<div className={styles.loading}>
-          <div><span role="status">{progressLabel}</span>{!ready&&progress?.stage==='geometry'&&progress.total>1&&<small aria-hidden="true">{progress.done} / {progress.total}</small>}</div>
-          <progress aria-label={progressLabel} value={!ready&&progress?.stage==='geometry'?progress.done:undefined} max={progress?.total||1}/>
-        </div>}
       {theme==='ink'&&ready&&!cinema&&<span className={styles.inkNote}>{tr('远山为艺术化背景，并非当地地貌。')}</span>}
     </section>
     {!cinema&&<nav className={styles.cameraNav} aria-labelledby="camera-heading">
@@ -420,7 +493,7 @@ export default function ArenaExperience(){
           <label className={styles.switch}><span>{tr('球员回合')}</span><input type="checkbox" checked={rally} onChange={e=>setRally(e.target.checked)}/></label>
         </fieldset>
         <button className={styles.solarButton} disabled={!!failure} aria-pressed={light==='solar'} aria-expanded={light==='solar'} onClick={setSolar}><Icon name="solar"/>{tr('夏日日照')}<span aria-hidden="true">{light==='solar'?'−':'+'}</span></button>
-        {light==='solar'&&(isRoofed(shot.destination)?<button className={styles.guideLink} onClick={openSeats}>{tr('查看座区')}<Icon name="seat"/></button>:<SunControls date={solarDate} onChange={date=>{setShade(null);setSolarDate(date);}} language={language} shade={shade} onStand={showStandComparison?viewStand:undefined}/>)}
+        {light==='solar'&&(isRoofed(shot.destination)?<button className={styles.guideLink} onClick={openSeats}>{tr('选择座区')}<Icon name="seat"/></button>:<SunControls date={solarDate} onChange={date=>{setShade(null);setSolarDate(date);}} language={language} shade={shade} onStand={showStandComparison?viewStand:undefined}/>)}
         <button className={styles.aboutButton} onClick={()=>setPanel('about')}><Icon name="info"/>{tr('关于模型')}<Icon name="next"/></button>
       </>}
       {panel==='detail'&&detail&&<div className={styles.prose}><p>{tr(detail.description)}</p><button className={styles.textLink} onClick={()=>{navigate({view:'hero'});setMarkers(true);}}>{tr('返回场馆全景 ↗')}</button></div>}

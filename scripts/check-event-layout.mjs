@@ -30,6 +30,15 @@ console.log(pockets.map(p=>`${p.zone}: ${p.kind} (${p.x}, ${p.z})`).join('\n'));
 assert.ok(pockets.length>=8,'Several event pockets fit without blocking existing routes');
 for(const kind of ['food','lounge','lawn'])assert.ok(pockets.some(p=>p.kind===kind),`${kind} areas exist`);
 const {pathIntervals,pointInRing}=modules.precinctGeometry;
+const terrace=JSON.parse(fs.readFileSync('public/data/central-terrace.json','utf8'));
+for(const court of data.features.filter(f=>f.kind==='court')){
+  const frame=modules.precinctGeometry.courtFrame(court.points);
+  for(const ring of [...terrace.beds,...terrace.turf]){
+    assert.ok(!pointInRing([frame.x,frame.z],ring)&&ring.every((a,i)=>
+      pathIntervals(a,ring[(i+1)%ring.length],[frame]).reduce((sum,[lo,hi])=>sum+hi-lo,0)>.99999),
+      `Terrace landscaping must clear the full enclosure of ${court.name||court.id}`);
+  }
+}
 for(const p of pockets){
   assert.ok(modules.eventLayout.pocketRing(p,2).every(point=>pointInRing(point,modules.eventLayout.PLAZA_OUTLINE)),'Facilities remain on paved ground');
   for(const f of data.features.filter(f=>['path','rail'].includes(f.kind)))for(let i=1;i<f.points.length;i++){

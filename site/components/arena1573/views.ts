@@ -10,11 +10,12 @@ export type Shot = {view:View;serial:number;stand?:Stand;destination?:string;sec
 export const homeShot = {view:'ao',destination:'rla',home:true} as const;
 
 // The wide composition looks across Rod Laver towards the railway and the MCG.
-// On narrow screens shift the focus back towards the bowl and give it more room.
-export function homeCamera(aspect:number){
+// The portrait poster is composed on a 390 × 737 stage. Match its cover crop
+// as the available width changes, keeping the bowl in frame on short phones.
+export function homeCamera(aspect:number, portraitScreen:boolean){
   const portrait=Math.max(0,Math.min(1,(1.5-aspect)/.9));
-  const target:[number,number,number]=[195-38*portrait,0,5+32*portrait];
-  const distance=Math.max(1,Math.min(1.9,2.12/aspect));
+  const target:[number,number,number]=portraitScreen?[154,5,60]:[195-38*portrait,0,5+32*portrait];
+  const distance=portraitScreen?1.25*Math.min(1,(390/737)/aspect):Math.max(1,Math.min(1.9,2.12/aspect));
   const offset:[number,number,number]=[-33*distance,251*distance,260*distance];
   return {target,offset};
 }

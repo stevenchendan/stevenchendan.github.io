@@ -16,7 +16,7 @@ const english: Record<string, string> = {
   '签名攻略':'Autograph guide','训练村':'Practice Village',
   '园区平面图':'Melbourne Park grounds map',
   '封面照片 · Gracchus250 ↗':'Cover photograph · Gracchus250 ↗','照片授权 · CC BY-SA 4.0（已缩放、转码和裁切）↗':'Photograph licence · CC BY-SA 4.0 (resized, re-encoded and cropped) ↗',
-  '座区指南':'Seating guide','查看座区':'Explore sections','屋顶已打开':'Roof open','屋顶正在关闭':'Roof closing','屋顶正在打开':'Roof opening','屋顶已关闭':'Roof closed',
+  '座区指南':'Seating guide','选择座区':'Choose sections','屋顶已打开':'Roof open','屋顶正在关闭':'Roof closing','屋顶正在打开':'Roof opening','屋顶已关闭':'Roof closed',
   '2023 年澳网，罗德·拉沃尔球场暮色中的四分之一决赛':'A quarterfinal at dusk inside Rod Laver Arena, Australian Open 2023',
   '墨尔本公园场馆探索':'Melbourne Park venue explorer','探索球场':'Explore the courts','播放场馆短片':'Watch the film',
   '铜色屋顶':'The copper roof','罗德·拉沃尔球场':'Rod Laver Arena','约翰·凯因球场':'John Cain Arena','底线回合':'Behind the baseline',
