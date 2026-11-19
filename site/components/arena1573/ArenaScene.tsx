@@ -95,7 +95,7 @@ function World({data,light,context,crowd,crowdMoving,closedStudyRoof,compareStan
   useFrame((state,delta)=>{
     if(crowd)for(const [group,tick] of model.audiences)if(group.visible)tick(state.camera,delta,crowdMoving&&!document.hidden);
     const status=track
-      ?roofs.setFilmClosure(track.cue==='rain'?filmRoof(track.seconds.current):track.cue==='nightfall'?1:0)
+      ?roofs.setFilmClosure(filmRoof(track.cue,track.seconds.current),track.cue==='nightfall'?'opening':'closing')
       :roofs.advance(light==='rain'||closedStudyRoof,reducedMotion,delta);
     if(status!==lastRoof.current){lastRoof.current=status;onRoof(status);}
     if(!track&&roofs.moving)invalidate();

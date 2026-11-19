@@ -25,6 +25,10 @@ function ramp(seconds:number,from:number,to:number){
   return t*t*(3-2*t);
 }
 export const filmRain=(seconds:number)=>ramp(seconds,.15,1.6);
-export const filmRoof=(seconds:number)=>ramp(seconds,1.6,9.4);
+export function filmRoof(cue:Chapter['cue'],seconds:number){
+  if(cue==='rain')return ramp(seconds,1.6,9.4);
+  if(cue==='nightfall')return 1-ramp(seconds,0,8);
+  return 0;
+}
 export const filmDusk=(seconds:number)=>ramp(seconds,.4,8.9);
 export const filmLights=(seconds:number)=>ramp(seconds,3.2,7.5);

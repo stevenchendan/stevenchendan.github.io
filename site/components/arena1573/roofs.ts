@@ -181,8 +181,8 @@ export class RoofMotion {
   }
 
   // A film cut can seek straight to an authored point in the closure.
-  setFilmClosure(progress:number):RoofStatus {
-    this.target=progress>0?1:0;
+  setFilmClosure(progress:number,direction:'opening'|'closing'):RoofStatus {
+    this.target=progress===0||progress===1 ? progress : direction==='opening' ? 0 : 1;
     if(this.progress!==progress){
       this.progress=progress;
       for(const assembly of this.assemblies)assembly.setClosure(progress);

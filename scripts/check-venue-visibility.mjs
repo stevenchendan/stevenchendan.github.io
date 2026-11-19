@@ -248,12 +248,23 @@ hidden.parent.visible=true;
 const filmedRoof=new RoofMotion();
 filmedRoof.bind(context);
 const rainShot=film.find(t=>t.cue==='rain'),nightShot=film.find(t=>t.cue==='nightfall');
-assert.ok(filmRain(1)>0&&filmRoof(1)===0,'Rain arrives before closure starts');
+assert.ok(filmRain(1)>0&&filmRoof('rain',1)===0,'Rain arrives before closure starts');
 for(const [seconds,status] of [[0,'open'],[5,'closing'],[5,'closing'],[rainShot.seconds-1,'closed'],[0,'open']]){
-  assert.equal(filmedRoof.setFilmClosure(filmRoof(seconds)),status);
+  assert.equal(filmedRoof.setFilmClosure(filmRoof('rain',seconds),'closing'),status);
   for(const roof of assemblies){
     const {x,z}=roof.position;
     assert.equal(actualRoofHeight(roof,x+.3,z+.3)>10,status==='closed','Roof geometry follows playback and replay on '+roof.venue);
+  }
+}
+assert.equal(filmRoof('rain',rainShot.seconds),filmRoof('nightfall',0),'Roof positions match across the cut');
+for(const [seconds,status] of [[0,'closed'],[1,'opening'],[4,'opening'],[4,'opening'],[8,'open'],[nightShot.seconds,'open'],[0,'closed']]){
+  const closure=filmRoof('nightfall',seconds);
+  assert.equal(filmedRoof.setFilmClosure(closure,'opening'),status);
+  for(const roof of assemblies){
+    const depth=depths[roof.venue],{x,z}=roof.position;
+    assert.equal(roof.positiveLeaf.position.z,depth/2+depth*(1-closure));
+    assert.equal(roof.negativeLeaf.position.z,-roof.positiveLeaf.position.z);
+    assert.equal(actualRoofHeight(roof,x+.3,z+.3)>10,status==='closed','Reopening reveals the court at '+roof.venue);
   }
 }
 assert.ok(filmDusk(2)>0&&filmLights(2)===0);
