@@ -22,6 +22,7 @@ class CrowdAtlas {
   surface = new T.Texture();
   references = 0;
   ready = false;
+  settled: Promise<void> = Promise.resolve();
   listeners = new Set<() => void>();
 
   constructor() {
@@ -37,7 +38,7 @@ class CrowdAtlas {
       image.onerror = () => reject(new Error('Spectator atlas failed to load'));
       image.src = '/images/court-atlas/' + name;
     });
-    Promise.all([load('seated-spectators.webp'), load('seated-spectators-surface.webp')]).then(([colour, surface]) => {
+    this.settled = Promise.all([load('seated-spectators.webp'), load('seated-spectators-surface.webp')]).then(([colour, surface]) => {
       this.colour.image = colour;
       this.surface.image = surface;
       this.colour.needsUpdate = this.surface.needsUpdate = true;
@@ -55,6 +56,7 @@ class CrowdAtlas {
   }
 }
 let atlas: CrowdAtlas | undefined;
+export const spectatorImagesSettled = () => atlas?.settled;
 
 // Four measured views of each seated person share one hip anchor. Opposite
 // three-quarter and profile views mirror the capture about its sagittal plane.

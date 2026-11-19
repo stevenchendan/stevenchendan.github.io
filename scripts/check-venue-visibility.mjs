@@ -51,6 +51,35 @@ const interior=context.getObjectByName('rod-laver-interior');
 const chairs=interior.getObjectByName('rod-laver-seats');
 assert.ok(chairs.count>12000&&chairs.count<18000,'Rod Laver retains its full two-tier seating bowl');
 interior.updateWorldMatrix(true,true);
+// Trace the four doubles corners from the whole cinema move. Expand each
+// physical chair to include its seated spectator, even when the crowd is off.
+const {film,filmFieldOfView,filmRain,filmRoof,filmDusk,filmLights}=load('film');
+const take=film.find(t=>t.venue==='rla'),camera=new THREE.PerspectiveCamera();
+const occupied=[],seatMatrix=new THREE.Matrix4(),seatCentre=new THREE.Vector3();
+for(let i=0;i<chairs.count;i++){
+  chairs.getMatrixAt(i,seatMatrix);seatCentre.setFromMatrixPosition(seatMatrix).applyMatrix4(chairs.matrixWorld);
+  if(seatCentre.z<72||Math.abs(seatCentre.x-154)>24)continue;
+  const box=new THREE.Box3().setFromCenterAndSize(seatCentre,new THREE.Vector3(.68,2.5,.8));
+  box.translate(new THREE.Vector3(0,.45,0));occupied.push(box);
+}
+const sight=new THREE.Ray(),hit=new THREE.Vector3(),end=new THREE.Vector3();
+for(let sample=0;sample<=32;sample++){
+  const u=sample/32;
+  camera.position.fromArray(take.from).lerp(end.fromArray(take.to),u);
+  camera.lookAt(end.fromArray(take.look).lerp(new THREE.Vector3(...take.lookTo),u));
+  camera.updateMatrixWorld();
+  for(const x of [-5.485,5.485])for(const z of [-11.885,11.885]){
+    end.set(154+x,.12,72+z);
+    sight.set(camera.position,end.clone().sub(camera.position).normalize());
+    const distance=camera.position.distanceTo(end);
+    assert.ok(!occupied.some(box=>sight.intersectBox(box,hit)&&hit.distanceTo(camera.position)<distance),'Occupied Rod Laver row blocks the cinema view at '+u);
+    for(const aspect of [320/844,390/844,16/9,21/9]){
+      camera.aspect=aspect;camera.fov=filmFieldOfView(take,aspect);camera.updateProjectionMatrix();
+      const ndc=end.clone().project(camera);
+      assert.ok(Math.max(Math.abs(ndc.x),Math.abs(ndc.y))<.96,'Keep both doubles baselines in frame at '+aspect);
+    }
+  }
+}
 const audience=interior.getObjectByName('precinct-spectators'),aerialEye=new THREE.PerspectiveCamera();
 aerialEye.position.set(154,150,207);aerialEye.updateMatrixWorld(true);audience.visible=true;
 let distantCalls=0,distantTriangles=0;
@@ -189,5 +218,20 @@ const hidden=assemblies[0];
 hidden.parent.visible=false;
 assert.equal(roofs.rainFloor(hidden.position.x,hidden.position.z),.15,'Hidden venues cannot shelter visible rain');
 hidden.parent.visible=true;
+const filmedRoof=new RoofMotion();
+filmedRoof.bind(context);
+const rainShot=film.find(t=>t.cue==='rain'),nightShot=film.find(t=>t.cue==='nightfall');
+assert.ok(filmRain(1)>0&&filmRoof(1)===0,'Rain arrives before closure starts');
+for(const [seconds,status] of [[0,'open'],[5,'closing'],[5,'closing'],[rainShot.seconds-1,'closed'],[0,'open']]){
+  assert.equal(filmedRoof.setFilmClosure(filmRoof(seconds)),status);
+  for(const roof of assemblies){
+    const {x,z}=roof.position;
+    assert.equal(actualRoofHeight(roof,x+.3,z+.3)>10,status==='closed','Roof geometry follows playback and replay on '+roof.venue);
+  }
+}
+assert.ok(filmDusk(2)>0&&filmLights(2)===0);
+assert.ok(filmLights(5)>0&&filmLights(5)<1);
+assert.equal(filmLights(nightShot.seconds-2),1);
+assert.equal(filmDusk(nightShot.seconds-2),1);
 disposeModel(context);
 console.log('Venue visibility and retractable roofs passed, including roof geometry, rain cover, reversal, speed and reduced motion.');

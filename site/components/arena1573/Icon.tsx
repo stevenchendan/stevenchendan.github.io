@@ -1,10 +1,10 @@
-type Name = 'ball'|'seat'|'venues'|'settings'|'chevron'|'day'|'golden'|'night'|'rain'|'solar'|'reset'|'capture'|'expand'|'cinema'|'close'|'pin'|'mouse'|'check'|'camera'|'play'|'pause'|'info'|'exit'|'language'|'next';
+type Name = 'ball'|'seat'|'venues'|'settings'|'chevron'|'day'|'golden'|'night'|'rain'|'solar'|'reset'|'capture'|'expand'|'cinema'|'close'|'pin'|'mouse'|'check'|'camera'|'play'|'pause'|'info'|'exit'|'language'|'next'|'previous';
 const paths:Record<Name,React.ReactNode> = {
   seat:<><path d="m5 4 1.8 9.4a2 2 0 0 0 2 1.6H19v3H8.5a4 4 0 0 1-3.9-3.2L3 5zM8 18v3m10-3v3M9 12h7.5a2.5 2.5 0 0 1 2.5 2.5"/></>,
   ball:<><circle cx="12" cy="12" r="9.4"/><path d="M3.7 7.5a9 9 0 0 1 9.2 13.8M11 2.8a9 9 0 0 0 9.2 13.7"/></>,
   venues:<><path d="m2.5 6 6-2.5 7 2.5 6-2.5v14.7l-6 2.4-7-2.4-6 2.4zM8.5 3.5v14.8M15.5 6v14.6"/></>,
   settings:<><path d="M3 7h6m5 0h7M3 17h11m5 0h2"/><circle cx="11.5" cy="7" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/></>,
-  chevron:<path d="m8 10 4 4 4-4"/>,next:<path d="m9 6 6 6-6 6"/>,
+  chevron:<path d="m8 10 4 4 4-4"/>,next:<path d="m9 6 6 6-6 6"/>,previous:<path d="m15 6-6 6 6 6"/>,
   day:<><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></>,
   golden:<><path d="M3 16h18M5 20h14M7 16a5 5 0 1 1 10 0M12 3v3M3.5 7.5l2 2m15-2-2 2"/></>,
   night:<path d="M20.3 14.7A8.8 8.8 0 0 1 9.3 3.6a8.9 8.9 0 1 0 11 11.1Z"/>,

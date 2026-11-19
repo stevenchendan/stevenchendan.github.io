@@ -34,7 +34,7 @@ function finishKia(material:T.MeshStandardMaterial){
 }
 
 // Optional architectural detail: a failed asset never takes down the arena.
-export default function PrecinctAssets({visible}:{visible:boolean}) {
+export default function PrecinctAssets({visible,onSettled}:{visible:boolean;onSettled:(ready:boolean)=>void}) {
   const [model,setModel]=useState<T.Group|null>(null);
   useEffect(()=>{
     let disposed=false,loaded:T.Group|undefined;
@@ -45,9 +45,9 @@ export default function PrecinctAssets({visible}:{visible:boolean}) {
         o.castShadow=true;o.receiveShadow=true;
         for(const material of Array.isArray(o.material)?o.material:[o.material])if(material instanceof T.MeshStandardMaterial)finishKia(material);
       }});
-      setModel(loaded);
-    },undefined,()=>{/* The mapped courts remain available without the detail. */});
-    return()=>{disposed=true;if(loaded)disposeModel(loaded);};
-  },[]);
+      setModel(loaded);onSettled(true);
+    },undefined,()=>{if(!disposed)onSettled(true);});
+    return()=>{disposed=true;onSettled(false);if(loaded)disposeModel(loaded);};
+  },[onSettled]);
   return model?<primitive object={model} visible={visible}/>:null;
 }

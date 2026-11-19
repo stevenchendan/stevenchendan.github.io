@@ -1,9 +1,9 @@
 'use client';
 
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Html, OrbitControls } from '@react-three/drei';
+import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
+import { Html, OrbitControls, useGLTF } from '@react-three/drei';
 import * as T from 'three';
-import { type ComponentRef, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ComponentRef, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { buildArena, buildContext, type ContextData, disposeModel } from './model';
 import styles from './arena.module.css';
 import { getTranslator, type Language } from './i18n';
@@ -14,20 +14,28 @@ import PrecinctRallies from './PrecinctRallies';
 import PrecinctAssets from './PrecinctAssets';
 import Rain from './Rain';
 import CourtFloodlights from './CourtFloodlights';
-import { bindSpectators } from './seatedCrowd';
+import { athleteModelUrl, athleteMotionUrl } from './athleteKits';
+import { bindSpectators, spectatorImagesSettled } from './seatedCrowd';
 import { addGroundPhotography, addParkTrees } from './PrecinctLandscape';
 import Visitors from './Visitors';
 import { venueVisible } from './venueVisibility';
 import { courtDirectory,venueCourts } from './courtPlacements';
 import { RoofMotion,type RoofStatus } from './roofs';
-import { film } from './film';
+import { film,filmDusk,filmRoof,filmFieldOfView } from './film';
 import { cameras, homeCamera, standCameras, destinations, points, isRoofed,sectionEye,type Shot, type Light, type Theme } from './views';
 import { ARENA_LOCATION, summerSun, type ShadeResult, standSamples, STANDS } from './solar';
 
 type Sun = ReturnType<typeof summerSun> | null;
 
-function Sky({horizon,zenith}:{horizon:string;zenith:string}){
+type FilmTrack={seconds:React.RefObject<number>;cue:(typeof film)[number]['cue']};
+function Sky({horizon,zenith,dusk}:{horizon:string;zenith:string;dusk?:React.RefObject<number>}){
   const uniforms=useMemo(()=>({horizon:{value:new T.Color(horizon)},zenith:{value:new T.Color(zenith)}}),[horizon,zenith]);
+  const sky=useMemo(()=>[new T.Color(horizon),new T.Color('#172b38'),new T.Color(zenith),new T.Color('#101c38')],[horizon,zenith]);
+  useFrame(()=>{
+    if(!dusk)return;
+    const t=filmDusk(dusk.current);
+    uniforms.horizon.value.lerpColors(sky[0],sky[1],t);uniforms.zenith.value.lerpColors(sky[2],sky[3],t);
+  });
   return <mesh frustumCulled={false} renderOrder={-1000}>
     <sphereGeometry args={[1,24,12]}/>
     <shaderMaterial side={T.BackSide} depthWrite={false} uniforms={uniforms}
@@ -49,33 +57,38 @@ function Sky({horizon,zenith}:{horizon:string;zenith:string}){
 export type LoadProgress = {done:number;total:number;stage:'geometry'|'imagery'};
 type LoadingProps = {onProgress:(progress:LoadProgress)=>void;onFailure:()=>void};
 
-function World({data,light,context,crowd,crowdMoving,closedStudyRoof,compareStands,onReady,onProgress,onFailure,panorama,sun,onShade,selectedVenue,roofs,reducedMotion,onRoof}:LoadingProps&{panorama:boolean;crowdMoving:boolean;closedStudyRoof:boolean;compareStands:boolean;selectedVenue:string;data:ContextData;light:Light;context:boolean;crowd:boolean;onReady:(seats:number)=>void;sun:Sun;onShade:(result:ShadeResult|null)=>void;roofs:RoofMotion;reducedMotion:boolean;onRoof:(status:RoofStatus)=>void}) {
+function World({data,light,context,crowd,crowdMoving,closedStudyRoof,compareStands,onReady,onProgress,onFailure,panorama,sun,onShade,selectedVenue,roofs,reducedMotion,onRoof,track}:LoadingProps&{track?:FilmTrack;panorama:boolean;crowdMoving:boolean;closedStudyRoof:boolean;compareStands:boolean;selectedVenue:string;data:ContextData;light:Light;context:boolean;crowd:boolean;onReady:(seats:number)=>void;sun:Sun;onShade:(result:ShadeResult|null)=>void;roofs:RoofMotion;reducedMotion:boolean;onRoof:(status:RoofStatus)=>void}) {
   const root=useRef<T.Group>(null);
   const invalidate=useThree(state=>state.invalidate);
   const model=useMemo(()=>({
     groups:new Map<string,T.Group>(),arena:null as ReturnType<typeof buildArena>|null,
     audiences:new Map<T.Group,ReturnType<typeof bindSpectators>>(),
-    groundReady:false,releaseGround:()=>{},releaseTrees:()=>{},
+    treesReady:false,groundReady:false,releaseGround:()=>{},releaseTrees:()=>{},
   }),[data]);
   const [revision,refresh]=useState(0);
+  useLayoutEffect(()=>{if(root.current)roofs.bind(root.current);},[roofs]);
   const lastRoof=useRef<RoofStatus>('open');
   const selected=selectedVenue==='all'?'rla':selectedVenue;
+  const preparingFilm=!!track;
   const plan=useMemo(()=>{
+    if(preparingFilm)return ['landscape',...destinations.map(d=>d.id)];
     if(!context && selectedVenue!=='all')return [selected];
     return [...new Set([selected,...(context?['landscape']:[]),'mca','1573','kia','west',...destinations.map(d=>d.id)])];
-  },[context,selected,selectedVenue]);
+  },[context,selected,selectedVenue,preparingFilm]);
   useFrame((state,delta)=>{
     if(crowd)for(const [group,tick] of model.audiences)if(group.visible)tick(state.camera,delta,crowdMoving&&!document.hidden);
-    const status=roofs.advance(light==='rain'||closedStudyRoof,reducedMotion,delta);
+    const status=track
+      ?roofs.setFilmClosure(track.cue==='rain'?filmRoof(track.seconds.current):track.cue==='nightfall'?1:0)
+      :roofs.advance(light==='rain'||closedStudyRoof,reducedMotion,delta);
     if(status!==lastRoof.current){lastRoof.current=status;onRoof(status);}
-    if(roofs.moving)invalidate();
+    if(!track&&roofs.moving)invalidate();
   },-1);
   useEffect(()=>{
     const parent=root.current!;
     return ()=>{
       model.releaseGround();model.releaseTrees();
       for(const group of model.groups.values()){parent.remove(group);disposeModel(group);}
-      model.groups.clear();model.audiences.clear();model.arena=null;model.groundReady=false;
+      model.groups.clear();model.audiences.clear();model.arena=null;model.groundReady=false;model.treesReady=false;
     };
   },[model]);
 
@@ -93,7 +106,7 @@ function World({data,light,context,crowd,crowdMoving,closedStudyRoof,compareStan
         const done=required.filter(id=>model.groups.has(id)).length;
         if(!presented){
           if(done<required.length)onProgress({stage:'geometry',done,total:required.length});
-          else if(required.includes('landscape')&&!model.groundReady)onProgress({stage:'imagery',done,total:done});
+          else if(required.includes('landscape')&&(!model.groundReady||(preparingFilm&&!model.treesReady)))onProgress({stage:'imagery',done,total:done});
           else {
             presented=true;
             onReady(model.arena?.seats??0);
@@ -107,7 +120,7 @@ function World({data,light,context,crowd,crowdMoving,closedStudyRoof,compareStan
           model.groups.set(pending,group);
           if(pending==='landscape'){
             model.releaseGround=addGroundPhotography(group,invalidate,()=>{model.groundReady=true;invalidate();});
-            model.releaseTrees=addParkTrees(group,invalidate);
+            model.releaseTrees=addParkTrees(group,invalidate,()=>{model.treesReady=true;invalidate();});
           }
           parent.add(group);
           model.audiences.set(group,bindSpectators(group,invalidate));
@@ -118,7 +131,7 @@ function World({data,light,context,crowd,crowdMoving,closedStudyRoof,compareStan
     }
     nextFrame();
     return ()=>{cancelled=true;cancelAnimationFrame(frame);clearTimeout(timer);};
-  },[model,plan,selected,panorama,data,roofs,onReady,onProgress,onFailure,invalidate]);
+  },[model,plan,selected,panorama,data,roofs,onReady,onProgress,onFailure,invalidate,preparingFilm]);
   useEffect(()=>{
     for(const [id,group] of model.groups){
       if(id==='landscape'){
@@ -156,9 +169,32 @@ function World({data,light,context,crowd,crowdMoving,closedStudyRoof,compareStan
   return <group ref={root}/>;
 }
 
+function PrepareFilm({onPrepared}:{onPrepared:()=>void}){
+  // Read the same decoded resources used by the actors. Suspense waits for all
+  // of them even when an individual court is outside the opening camera shot.
+  useGLTF(athleteModelUrl);
+  useGLTF('/models/tennis/court-crew.glb');
+  useLoader(T.FileLoader,athleteMotionUrl,loader=>loader.setResponseType('arraybuffer'));
+  const {gl,scene,camera,invalidate}=useThree();
+  useEffect(()=>{
+    let current=true,frame=0;
+    async function prepare(){
+      await spectatorImagesSettled();
+      if(!current)return;
+      // The renderer falls back to ordinary program compilation if needed.
+      try{await gl.compileAsync(scene,camera);}catch{/* The next render compiles on drivers without async support. */}
+      if(!current)return;
+      invalidate();frame=requestAnimationFrame(()=>{if(current)onPrepared();});
+    }
+    void prepare();
+    return ()=>{current=false;cancelAnimationFrame(frame);};
+  },[gl,scene,camera,invalidate,onPrepared]);
+  return null;
+}
+
 type FilmProps={chapter:number|null;playing:boolean;onCut:()=>void};
 type Court=ReturnType<typeof courtDirectory>[number];
-function Rig({shot,rotate,rain,language,onInteract,canvasRef,compassRef,chapter,playing,onCut,featured}:{shot:Shot;rotate:boolean;rain:boolean;language:Language;onInteract:()=>void;compassRef:React.RefObject<HTMLElement|null>;canvasRef:React.RefObject<HTMLCanvasElement|null>;featured?:Court}&FilmProps) {
+function Rig({shot,rotate,rain,language,onInteract,canvasRef,compassRef,chapter,playing,onCut,featured,filmTime}:{filmTime:React.RefObject<number>;shot:Shot;rotate:boolean;rain:boolean;language:Language;onInteract:()=>void;compassRef:React.RefObject<HTMLElement|null>;canvasRef:React.RefObject<HTMLCanvasElement|null>;featured?:Court}&FilmProps) {
   const {camera,gl,scene,invalidate,size}=useThree();
   const controls=useRef<ComponentRef<typeof OrbitControls>>(null);
   const seated=chapter===null&&shot.section!==undefined;
@@ -186,7 +222,7 @@ function Rig({shot,rotate,rain,language,onInteract,canvasRef,compassRef,chapter,
     const wheel=(e:WheelEvent)=>{if(seated){e.preventDefault();gaze.current.fov=T.MathUtils.clamp(gaze.current.fov+e.deltaY*.033,30,78);invalidate();}};
     function keyboard(event:KeyboardEvent){
       const orbit=controls.current;
-      if(event.ctrlKey || event.metaKey || event.altKey || !orbit || !['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-'].includes(event.key))return;
+      if(chapter!==null || event.ctrlKey || event.metaKey || event.altKey || !orbit || !['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-'].includes(event.key))return;
       event.preventDefault();manual.current=true;setTransitioning(false);onInteract();
       if(seated){
         if(event.key==='ArrowLeft')gaze.current.yaw+=.12;
@@ -208,7 +244,7 @@ function Rig({shot,rotate,rain,language,onInteract,canvasRef,compassRef,chapter,
     element.addEventListener('pointerup',release);element.addEventListener('pointercancel',release);
     element.addEventListener('wheel',wheel,{passive:false});
     return ()=>{element.removeEventListener('keydown',keyboard);element.removeEventListener('pointerdown',down);element.removeEventListener('pointermove',move);element.removeEventListener('pointerup',release);element.removeEventListener('pointercancel',release);element.removeEventListener('wheel',wheel);};
-  },[camera,gl,language,onInteract,invalidate,seated]);
+  },[camera,gl,language,onInteract,invalidate,seated,chapter]);
   const destination=useMemo(()=>{
     if(shot.home){
       const {target,offset}=homeCamera(size.width/size.height);
@@ -238,13 +274,8 @@ function Rig({shot,rotate,rain,language,onInteract,canvasRef,compassRef,chapter,
   },[shot,featured,size.width,size.height]);
   const scratch=useMemo(()=>({offset:new T.Vector3(),sphere:new T.Spherical()}),[]);
   const firstFrame=useRef(true);
-  const filmTime=useRef(0),cut=useRef(false);
-  const filmTick=useRef<number|null>(null);
-  useEffect(()=>{filmTime.current=0;cut.current=false;invalidate();},[chapter,invalidate]);
-  useEffect(()=>{
-    const reset=()=>{filmTick.current=null;};reset();document.addEventListener('visibilitychange',reset);
-    return()=>document.removeEventListener('visibilitychange',reset);
-  },[playing,chapter]);
+  const cut=useRef(false);
+  useLayoutEffect(()=>{cut.current=false;invalidate();},[chapter,invalidate]);
   useEffect(()=>{firstFrame.current=true;setTransitioning(true);invalidate();},[shot.section,chapter,invalidate]);
   useEffect(()=>{if(chapter===null&&camera instanceof T.PerspectiveCamera){camera.fov=43;camera.updateProjectionMatrix();}},[camera,chapter,seated]);
   useFrame((_,delta)=>{
@@ -252,18 +283,14 @@ function Rig({shot,rotate,rain,language,onInteract,canvasRef,compassRef,chapter,
     if(!orbit)return;
     if(chapter!==null){
       const take=film[chapter];
-      if(playing&&!document.hidden){
-        const now=performance.now();
-        if(filmTick.current!==null)filmTime.current+=(now-filmTick.current)/1000;
-        filmTick.current=now;
-      }
       const u=T.MathUtils.clamp(filmTime.current/take.seconds,0,1);
       const ease=u*u*(3-2*u);
       const {offset}=scratch;
       orbit.target.fromArray(take.look).lerp(offset.fromArray(take.lookTo),ease);
       camera.position.fromArray(take.from).lerp(offset.fromArray(take.to),ease);
       if(camera instanceof T.PerspectiveCamera){
-        camera.fov=take.fov+(size.width<size.height?16:0);camera.updateProjectionMatrix();
+        const fov=filmFieldOfView(take,size.width/Math.max(1,size.height));
+        if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
       }
       orbit.update();
       if(playing&&u>=1&&!cut.current){cut.current=true;onCut();}
@@ -314,15 +341,35 @@ function Rig({shot,rotate,rain,language,onInteract,canvasRef,compassRef,chapter,
   return <OrbitControls ref={controls} enabled={chapter===null&&!seated} makeDefault enableDamping={!transitioning&&chapter===null} dampingFactor={.075} minDistance={1.5} maxDistance={2700} maxPolarAngle={Math.PI*.488} autoRotate={rotate&&!transitioning&&chapter===null&&!seated} autoRotateSpeed={.45} zoomSpeed={.7} target={cameras.hero.target} onStart={()=>{manual.current=true;setTransitioning(false);onInteract();}}/>;
 }
 
-function Scene({data,shot,light,compareStands,closedStudyRoof,rotate,context,crowd,markers,rally,ready,onProgress,onFailure,onSelect,onReady,onInteract,canvasRef,compassRef,language,theme,sun,onShade,onRoof,reducedMotion,chapter,playing,onCut}:LoadingProps&{ready:boolean;compareStands:boolean;closedStudyRoof:boolean;data:ContextData;shot:Shot;light:Light;rotate:boolean;context:boolean;crowd:boolean;markers:boolean;rally:boolean;onSelect:(id:string)=>void;onReady:(seats:number)=>void;onInteract:()=>void;compassRef:React.RefObject<HTMLElement|null>;canvasRef:React.RefObject<HTMLCanvasElement|null>;language:Language;theme:Theme;sun:Sun;onShade:(result:ShadeResult|null)=>void;reducedMotion:boolean;onRoof:(status:RoofStatus)=>void}&FilmProps){
+function Scene({onFilmPrepared,data,shot,light:atlasLight,compareStands,closedStudyRoof:atlasRoof,rotate,context,crowd,markers,rally,ready,onProgress,onFailure,onSelect,onReady,onInteract,canvasRef,compassRef,language,theme,sun:atlasSun,onShade,onRoof,reducedMotion,chapter,playing,onCut}:LoadingProps&{onFilmPrepared:()=>void;ready:boolean;compareStands:boolean;closedStudyRoof:boolean;data:ContextData;shot:Shot;light:Light;rotate:boolean;context:boolean;crowd:boolean;markers:boolean;rally:boolean;onSelect:(id:string)=>void;onReady:(seats:number)=>void;onInteract:()=>void;compassRef:React.RefObject<HTMLElement|null>;canvasRef:React.RefObject<HTMLCanvasElement|null>;language:Language;theme:Theme;sun:Sun;onShade:(result:ShadeResult|null)=>void;reducedMotion:boolean;onRoof:(status:RoofStatus)=>void}&FilmProps){
   const tr=getTranslator(language);
+  const filmTime=useRef(0),filmTick=useRef<number|null>(null);
+  const take=chapter!==null?film[chapter]:undefined;
+  const track=useMemo(()=>take?{seconds:filmTime,cue:take.cue}:undefined,[take]);
+  const dusk=track?.cue==='nightfall'?filmTime:undefined;
+  const light=take?(take.cue==='rain'?'rain':'golden'):atlasLight;
+  const sun=take?null:atlasSun,closedStudyRoof=!take&&atlasRoof;
+  useLayoutEffect(()=>{filmTime.current=0;},[chapter]);
+  useLayoutEffect(()=>{
+    const reset=()=>{filmTick.current=null;};
+    reset();document.addEventListener('visibilitychange',reset);
+    return ()=>document.removeEventListener('visibilitychange',reset);
+  },[playing,chapter]);
+  useFrame(()=>{
+    if(!take||!playing||document.hidden)return;
+    const now=performance.now();
+    if(filmTick.current!==null)filmTime.current=Math.min(take.seconds,filmTime.current+(now-filmTick.current)/1000);
+    filmTick.current=now;
+  },-4);
   const night=light==='night'||!!sun&&!sun.aboveHorizon,golden=light==='golden'||!!sun&&sun.aboveHorizon&&sun.elevation<15;
   const selectedVenue=chapter!==null?film[chapter].venue:shot.destination??(shot.view==='ao'?'all':shot.view==='precinct'?'mca':'1573');
   const inBowl=chapter===2||(chapter===null&&shot.section!==undefined);
   const showPrecinct=context&&!inBowl;
   const focus=destinations.find(d=>d.id===selectedVenue)?.target;
-  const roofs=useMemo(()=>new RoofMotion(),[]);
+  const atlasRoofs=useMemo(()=>new RoofMotion(),[]),filmRoofs=useMemo(()=>new RoofMotion(),[]);
+  const roofs=take?filmRoofs:atlasRoofs;
   const courts=useMemo(()=>courtDirectory(data),[data]);
+  const [kiaSettled,setKiaSettled]=useState(false);
   const atVenue=useMemo(()=>venueCourts(courts,selectedVenue),[courts,selectedVenue]);
   const featured=atVenue.find(c=>c.key===shot.court)??(atVenue.length===1?atVenue[0]:undefined);
   const away=featured&&featured.venue!=='1573'?featured:undefined;
@@ -342,30 +389,44 @@ function Scene({data,shot,light,compareStands,closedStudyRoof,rotate,context,cro
     const target=new T.Object3D();if(focus)target.position.set(focus[0],0,focus[2]);return target;
   },[focus]);
   const sunPosition:[number,number,number]=sun?[lightTarget.position.x+sun.direction[0]*300,sun.direction[1]*300,lightTarget.position.z+sun.direction[2]*300]:[lightTarget.position.x+(golden?-65:-40),golden?24:80,lightTarget.position.z+(golden?38:-30)];
-  const ink=theme==='ink', rain=light==='rain';
+  const ink=!take&&theme==='ink', rain=light==='rain';
   const floodPower=light==='night'?1:sun?1-T.MathUtils.smoothstep(sun.elevation,-1,7):0;
   const bg=rain?(ink?'#dde3df':'#aebcc3'):ink?'#f3f0e6':night?'#172b38':golden?'#d6c5ab':'#cbdde9';
+  const fill=useRef<T.HemisphereLight>(null),keyLight=useRef<T.DirectionalLight>(null);
+  const palette=useMemo(()=>['#e4eff8','#8299c3','#b1a788','#26362e','#ffd4a0','#acbfdf','#d6c5ab','#172b38'].map(c=>new T.Color(c)),[]);
+  useFrame(({scene})=>{
+    if(!dusk||!fill.current||!keyLight.current)return;
+    const t=filmDusk(dusk.current);
+    fill.current.color.lerpColors(palette[0],palette[1],t);
+    fill.current.groundColor.lerpColors(palette[2],palette[3],t);
+    fill.current.intensity=T.MathUtils.lerp(1.35,.68,t);
+    keyLight.current.color.lerpColors(palette[4],palette[5],t);
+    keyLight.current.intensity=T.MathUtils.lerp(2.6,.09,t);
+    if(scene.background instanceof T.Color)scene.background.lerpColors(palette[6],palette[7],t);
+    if(scene.fog instanceof T.Fog)scene.fog.color.lerpColors(palette[6],palette[7],t);
+  });
   return <>
-    <color attach="background" args={[bg]}/><fog attach="fog" args={[bg,120,650]}/>
+    <color key={dusk?'dusk-bg':'bg'} attach="background" args={[bg]}/><fog key={dusk?'dusk-fog':'fog'} attach="fog" args={[bg,120,650]}/>
     {ink&&<InkLandscape/>}
-    {ink ? <SceneEffects/> : <Sky horizon={bg} zenith={night?'#101c38':rain?'#8297ac':golden?'#8daabd':'#70abd7'}/>}
-    <hemisphereLight args={[night?'#8299c3':'#e4eff8',night?'#26362e':rain?'#81959b':'#b1a788',night?.85:rain?1.8:sun?1.0:golden?1.35:1.75]}/>
-    <directionalLight target={lightTarget} key={sun?'solar':'mood'} position={sunPosition} color={rain?'#c5dcf2':golden?'#ffd4a0':'#fff0d8'} intensity={rain?.4:sun?(sun.aboveHorizon?Math.max(.3,Math.sin(sun.elevation*Math.PI/180)*3.3):0):night?.1:golden?2.6:2.05} castShadow={!rain} shadow-mapSize={sun?[4096,4096]:[2048,2048]} shadow-camera-left={-105} shadow-camera-right={105} shadow-camera-top={105} shadow-camera-bottom={-105} shadow-camera-far={700} shadow-normalBias={.04} shadow-bias={-.00005}/>
+    {ink ? <SceneEffects/> : <Sky key={dusk?'dusk':'sky'} dusk={dusk} horizon={bg} zenith={night?'#101c38':rain?'#8297ac':golden?'#8daabd':'#70abd7'}/>}
+    <hemisphereLight ref={fill} key={dusk?'dusk-fill':'fill'} args={[night?'#8299c3':'#e4eff8',night?'#26362e':rain?'#81959b':'#b1a788',night?.85:rain?1.8:sun?1.0:golden?1.35:1.75]}/>
+    <directionalLight ref={keyLight} target={lightTarget} key={dusk?'dusk-key':sun?'solar':'mood'} position={sunPosition} color={rain?'#c5dcf2':golden?'#ffd4a0':'#fff0d8'} intensity={rain?.4:sun?(sun.aboveHorizon?Math.max(.3,Math.sin(sun.elevation*Math.PI/180)*3.3):0):night?.1:golden?2.6:2.05} castShadow={!rain} shadow-mapSize={sun?[4096,4096]:[2048,2048]} shadow-camera-left={-105} shadow-camera-right={105} shadow-camera-top={105} shadow-camera-bottom={-105} shadow-camera-far={700} shadow-normalBias={.04} shadow-bias={-.00005}/>
     {night&&selectedVenue==='1573'&&shot.view==='seat'&&<><pointLight position={[lightTarget.position.x-18,18,lightTarget.position.z]} intensity={shot.destination&&shot.destination!=='1573'?560:1600} distance={85} decay={2} color="#e7f2ff"/><pointLight position={[lightTarget.position.x+18,18,lightTarget.position.z]} intensity={shot.destination&&shot.destination!=='1573'?560:1600} distance={85} decay={2} color="#fff0d6"/><pointLight position={[lightTarget.position.x,17,lightTarget.position.z-22]} intensity={shot.destination&&shot.destination!=='1573'?385:1100} distance={65} decay={2}/><pointLight position={[lightTarget.position.x,17,lightTarget.position.z+22]} intensity={shot.destination&&shot.destination!=='1573'?385:1100} distance={65} decay={2}/></>}
     {featured&&inBowl&&(rain||night||closedStudyRoof)&&<spotLight target={lightTarget} position={[featured.x+12,14,featured.z+8]} angle={1.06} penumbra={.56} color="#f4f5ec" intensity={1700} distance={75} decay={2} castShadow shadow-mapSize={[1024,1024]} shadow-normalBias={.025}/>}
-    <World {...{selectedVenue,data,light,crowd,closedStudyRoof,onReady,onProgress,onFailure,sun,onShade,roofs,reducedMotion,onRoof}} panorama={!!shot.home||(!shot.destination&&(shot.view==='ao'||shot.view==='precinct'))||chapter!==null} crowdMoving={!reducedMotion&&(chapter===null||playing)} compareStands={compareStands&&selectedVenue==='1573'} context={showPrecinct}/>
-    {(floodPower>0||rain||closedStudyRoof)&&<CourtFloodlights data={data} night={floodPower} covered={rain||closedStudyRoof} venue={selectedVenue} surroundings={showPrecinct}/>}
+    <World {...{track,selectedVenue,data,light,crowd,closedStudyRoof,onReady,onProgress,onFailure,sun,onShade,roofs,reducedMotion,onRoof}} panorama={!!shot.home||(!shot.destination&&(shot.view==='ao'||shot.view==='precinct'))||chapter!==null} crowdMoving={!reducedMotion&&(chapter===null||playing)} compareStands={compareStands&&selectedVenue==='1573'} context={showPrecinct}/>
+    {(dusk||floodPower>0||rain||closedStudyRoof)&&<CourtFloodlights dusk={dusk} data={data} night={floodPower} covered={!!dusk||rain||closedStudyRoof} venue={selectedVenue} surroundings={showPrecinct}/>}
     <primitive object={lightTarget}/>
-    {ready&&venueVisible('kia',selectedVenue,showPrecinct)&&<PrecinctAssets visible/>}
-    {ready&&<Suspense fallback={null}><CourtStaff courts={courts} venue={selectedVenue} surroundings={showPrecinct}/></Suspense>}
+    {(take||(ready&&venueVisible('kia',selectedVenue,showPrecinct)))&&<PrecinctAssets visible={venueVisible('kia',selectedVenue,showPrecinct)} onSettled={setKiaSettled}/>}
+    {ready&&take&&kiaSettled&&<Suspense fallback={null}><PrepareFilm onPrepared={onFilmPrepared}/></Suspense>}
+    {ready&&<Suspense fallback={null}><CourtStaff courts={courts} venue={take?'all':selectedVenue} surroundings={!!take||showPrecinct}/></Suspense>}
     {ready&&showPrecinct&&crowd&&<Visitors data={data} visible/>}
-    {rain&&<Rain ink={ink} roofs={roofs}/>}
+    {rain&&<Rain ink={ink} roofs={roofs} filmTime={track?.seconds}/>}
     {markers&&shot.view==='ao'&&destinations.filter(d=>venueVisible(d.id,selectedVenue,context)).map(d=><Html key={d.id} position={[d.target[0],38,d.target[2]]} center zIndexRange={[10,0]}><button className={styles.venuePin} title={tr(d.name)} aria-label={tr(d.name)} onClick={()=>onSelect(d.id)}>{d.id==='mca'?'MCA':d.id==='rla'?'RLA':d.id==='1573'?'1573':tr(d.name)}</button></Html>)}
-    {ready&&venueVisible('1573',selectedVenue,showPrecinct)&&<Suspense fallback={null}><TennisRally active={rally} time={time} court="1573"/></Suspense>}
-    {ready&&away&&<group position={[away.x,away.y,away.z]} rotation={[0,away.rotation,0]}><Suspense fallback={null}><TennisRally active={rally} time={time} phase={away.phase} court={away.key}/></Suspense></group>}
-    {ready&&!inBowl&&<Suspense fallback={null}><PrecinctRallies data={data} time={time} surroundings={context} selectedVenue={selectedVenue} excludeCourt={away?.id}/></Suspense>}
+    {ready&&(take||venueVisible('1573',selectedVenue,showPrecinct))&&<Suspense fallback={null}><TennisRally active={rally} time={time} court="1573"/></Suspense>}
+    {ready&&!take&&away&&<group position={[away.x,away.y,away.z]} rotation={[0,away.rotation,0]}><Suspense fallback={null}><TennisRally active={rally} time={time} phase={away.phase} court={away.key}/></Suspense></group>}
+    {ready&&(take||!inBowl)&&<Suspense fallback={null}><PrecinctRallies data={data} time={time} surroundings={context} selectedVenue={take?'all':selectedVenue} excludeCourt={take?undefined:away?.id}/></Suspense>}
     {markers&&shot.view!=='ao'&&points.filter(p=>context||selectedVenue==='all'||(p.id==='precinct'?selectedVenue==='mca':selectedVenue==='1573')).map((p,i)=><Html key={p.id} position={p.position} center zIndexRange={[10,0]}><button className={styles.pin} title={tr(p.title)} aria-label={`${tr('探索')}${tr(p.title)}`} onClick={()=>onSelect(p.id)}><span>{String(i+1).padStart(2,'0')}</span><b>{tr(p.title)}</b></button></Html>)}
-    <Rig {...{shot,rotate,rain,language,onInteract,canvasRef,compassRef,featured,chapter,playing,onCut}}/>
+    <Rig {...{shot,rotate,rain,language,onInteract,canvasRef,compassRef,featured,chapter,playing,onCut,filmTime}}/>
   </>;
 }
 
@@ -378,7 +439,7 @@ export default function ArenaScene({onFailure,reducedMotion,...props}:ArenaScene
     node.addEventListener('webglcontextlost',onFailure);
     return ()=>node.removeEventListener('webglcontextlost',onFailure);
   },[onFailure]);
-  const animated=props.rally || props.rotate || props.playing || (!reducedMotion && (props.light==='rain' || (props.crowd && (props.chapter===null || props.playing))));
+  const animated=props.chapter!==null?props.playing:props.rally||props.rotate||(!reducedMotion&&(props.light==='rain'||props.crowd));
   return <Canvas ref={connect} frameloop={animated?'always':'demand'} shadows camera={{position:cameras.hero.position,fov:43,near:.1,far:4000}} dpr={[1,1.5]}
     gl={{antialias:true,preserveDrawingBuffer:true,powerPreference:'high-performance'}}
     onCreated={({gl})=>{gl.toneMapping=T.ACESFilmicToneMapping;gl.toneMappingExposure=1.03;}}>

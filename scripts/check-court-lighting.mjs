@@ -17,7 +17,7 @@ for (const {c, indoor, lamps} of field.circuits) {
       const pz=c.z-u*Math.sin(c.rotation)+v*Math.cos(c.rotation);
       const index=4*(Math.floor((pz-y)*height/w)*width + Math.floor((px-x)*width/z));
       assert.ok(irradiance[index+(indoor?1:0)] >= 210, c.id+' baseline receives match light');
-      assert.ok(irradiance[index+2]/6 > c.y+10, c.id+' lighting reaches above the players');
+      assert.ok(Math.abs(irradiance[index+(indoor?3:2)]/6-lamps[0].y)<.1,c.id+' floodlighting stops at its own mast height');
     }
   }
 }

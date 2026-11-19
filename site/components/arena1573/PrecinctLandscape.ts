@@ -120,7 +120,9 @@ function treeShape(style:number) {
   return g;
 }
 
-export function addParkTrees(root:T.Group,invalidate:()=>void){
+export function addParkTrees(root:T.Group,invalidate:()=>void,onSettled:()=>void){
+  let pending=3;
+  const settled=()=>{if(--pending===0&&!controller.signal.aborted)onSettled();};
   const controller=new AbortController();
   const forest=new T.Group();forest.name='park-trees';root.add(forest);
   let terrace:T.Group|undefined;
@@ -129,8 +131,8 @@ export function addParkTrees(root:T.Group,invalidate:()=>void){
   }).then(plan=>{
     if(controller.signal.aborted)return;
     terrace=buildCentralTerrace(plan);terrace.visible=forest.visible;root.add(terrace);invalidate();
-  }).catch(()=>{/* The ground plan includes the same paving and planting. */});
-  const tex=new T.TextureLoader().load('/images/court-atlas/park-canopies.webp',()=>{if(!controller.signal.aborted)invalidate();});
+  }).catch(()=>{/* The ground plan includes the same paving and planting. */}).finally(settled);
+  const tex=new T.TextureLoader().load('/images/court-atlas/park-canopies.webp',()=>{if(!controller.signal.aborted)invalidate();settled();},undefined,settled);
   tex.colorSpace=T.SRGBColorSpace;tex.anisotropy=8;
   const mat=new T.MeshLambertMaterial({map:tex,alphaTest:.38,side:T.DoubleSide});
   fetch('/data/precinct-canopy.json',{signal:controller.signal}).then(r=>{
@@ -150,7 +152,7 @@ export function addParkTrees(root:T.Group,invalidate:()=>void){
       });
       mesh.castShadow=true;mesh.receiveShadow=true;forest.add(mesh);
     });invalidate();
-  }).catch(()=>{ /* The underlying aerial canopy remains visible. */ });
+  }).catch(()=>{ /* The underlying aerial canopy remains visible. */ }).finally(settled);
   return ()=>{
     controller.abort();root.remove(forest);
     forest.children.forEach(o=>{const m=o as T.InstancedMesh;m.geometry.dispose();m.dispose();});mat.dispose();tex.dispose();

@@ -180,6 +180,16 @@ export class RoofMotion {
     });
   }
 
+  // A film cut can seek straight to an authored point in the closure.
+  setFilmClosure(progress:number):RoofStatus {
+    this.target=progress>0?1:0;
+    if(this.progress!==progress){
+      this.progress=progress;
+      for(const assembly of this.assemblies)assembly.setClosure(progress);
+    }
+    return this.status;
+  }
+
   advance(rain: boolean, reducedMotion: boolean, delta: number): RoofStatus {
     const target = rain ? 1 : 0, previous = this.progress;
     // Demand rendering can wake up with a delta that includes minutes of idle time.

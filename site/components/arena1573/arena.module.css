@@ -99,6 +99,7 @@
 .inkNote { position: absolute; right: var(--gutter); top: 70px; z-index: 12; padding: 4px 8px; border-radius: 4px; font-size: 10px; background: #faf8eced; color: #273735; }
 .experience[data-cinema] { grid-template-rows: minmax(0,1fr); }
 .experience[data-cinema] .header, .experience[data-cinema] .shade { display: none; }
+:global(body):has(.experience[data-cinema]) :global(astro-dev-toolbar) { display:none; }
 .cameraNav { display: flex; align-items: center; gap: 20px; min-width: 0; padding: 6px var(--gutter) max(6px,env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid #446067; }
 .railHeading { flex: 0 0 auto; align-items: flex-start; flex-direction: column; gap: 4px; }
 .railHeading h2 { font-size: 12px; font-weight: 600; }
@@ -160,10 +161,11 @@
 .filmBar div {display:grid;gap:3px;margin-right:7px;}
 .filmBar small {color:var(--accent);font:10px/1.2 ui-monospace,monospace;letter-spacing:.1em;}
 .filmBar strong {font-size:13px;font-weight:550;}
-.filmBar button {justify-content:center;width:40px;height:40px;}
+.filmBar button {justify-content:center;width:44px;height:44px;}
 .filmBar button:hover {background:#ffffff14;}
 @media (max-width:720px) {
-  .filmBar {left:10px;bottom:18px;}
+  .filmBar {left:max(10px,env(safe-area-inset-left));bottom:max(12px,env(safe-area-inset-bottom));max-width:calc(100% - 20px);}
+  .experience[data-cinema] .cinema {top:max(12px,env(safe-area-inset-top));bottom:auto;}
 }
 @media (max-width:500px){.experience .eventName {display:none;}}
 .drawerBody { min-height: 100%; padding: 20px 24px max(24px,env(safe-area-inset-bottom)); }

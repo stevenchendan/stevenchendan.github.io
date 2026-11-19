@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef, type RefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as T from 'three';
 import type { RoofMotion } from './roofs';
+import { filmRain } from './film';
 
 /** A bounded, camera-following shower. One draw call, no per-frame allocations. */
-export default function Rain({ ink, roofs }: { ink: boolean; roofs: RoofMotion }) {
+export default function Rain({ ink, roofs,filmTime }: { ink: boolean; roofs: RoofMotion;filmTime?:RefObject<number> }) {
+  const material=useRef<T.LineBasicMaterial>(null);
   const [reducedMotion, setReducedMotion] = useState(true);
   useEffect(() => {
     const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -30,7 +32,10 @@ export default function Rain({ ink, roofs }: { ink: boolean; roofs: RoofMotion }
   }, []);
   useEffect(() => () => shower.geometry.dispose(), [shower]);
   useFrame(({ camera }, delta) => {
-    if (!reducedMotion) shower.elapsed += Math.min(delta, .05);
+    if(filmTime){
+      shower.elapsed=reducedMotion?0:filmTime.current;
+      if(material.current)material.current.opacity=.52*filmRain(filmTime.current);
+    }else if (!reducedMotion) shower.elapsed += Math.min(delta, .05);
     const span = Math.max(35, camera.position.y * 1.6);
     for (let i = 0; i < shower.count; i++) {
       const seed = i * 3, p = i * 6;
@@ -54,6 +59,6 @@ export default function Rain({ ink, roofs }: { ink: boolean; roofs: RoofMotion }
     shower.geometry.attributes.position.needsUpdate = true;
   });
   return <lineSegments geometry={shower.geometry} frustumCulled={false}>
-    <lineBasicMaterial color={ink ? '#657d86' : '#e3f0f5'} transparent opacity={.42} depthWrite={false} toneMapped={false} />
+    <lineBasicMaterial key={filmTime?'film':'weather'} ref={material} color={ink ? '#657d86' : '#e3f0f5'} transparent opacity={filmTime?0:.42} depthWrite={false} toneMapped={false} />
   </lineSegments>;
 }

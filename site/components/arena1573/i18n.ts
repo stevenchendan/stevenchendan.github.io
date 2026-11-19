@@ -2,6 +2,7 @@ export type Language = 'en' | 'zh';
 
 // Chinese is the original copy; proper names and architectural signage stay intact.
 const english: Record<string, string> = {
+  '雨临约翰·凯因球场':'Rain over John Cain Arena','墨尔本公园亮灯':'Melbourne Park under lights',
   '园区地表 · 墨尔本市 2020 年 5 月航摄影像（已裁切、重投影和遮罩）↗': 'Ground imagery © City of Melbourne, May 2020 (cropped, reprojected and masked) ↗',
   '园区航摄影像授权 · CC BY 4.0 ↗': 'Aerial imagery licence · CC BY 4.0 ↗',
   '澳网比赛日航拍参考 · Lensaloft ↗': 'Tournament aerial reference · Lensaloft ↗',
@@ -10,6 +11,7 @@ const english: Record<string, string> = {
   '查看玛格丽特球场屋顶':'See Margaret Court’s roof','拖动环顾 · 滚轮缩放':'Drag to look around · Scroll to zoom','拖动环顾看台':'Drag to look around',
   '选择球场':'Choose a court',
   '探索三维球场':'Explore in 3D','正在读取场馆地图':'Loading venue map','正在打开三维视图':'Opening 3D view',
+  '正在准备影片':'Preparing cinema',
   '正在构建场馆':'Building venue','正在构建园区':'Building grounds','正在加载航拍影像':'Loading aerial imagery',
   '签名攻略':'Autograph guide','训练村':'Practice Village',
   '园区平面图':'Melbourne Park grounds map',
@@ -18,7 +20,7 @@ const english: Record<string, string> = {
   '2023 年澳网，罗德·拉沃尔球场暮色中的四分之一决赛':'A quarterfinal at dusk inside Rod Laver Arena, Australian Open 2023',
   '墨尔本公园场馆探索':'Melbourne Park venue explorer','探索球场':'Explore the courts','播放场馆短片':'Watch the film',
   '铜色屋顶':'The copper roof','罗德·拉沃尔球场':'Rod Laver Arena','约翰·凯因球场':'John Cain Arena','底线回合':'Behind the baseline',
-  '暂停短片':'Pause film','播放短片':'Play film','下一镜头':'Next shot','运动捕捉与球员模型署名 ↗':'Player model & motion capture credits ↗',
+  '暂停短片':'Pause film','播放短片':'Play film','上一镜头':'Previous shot','下一镜头':'Next shot','运动捕捉与球员模型署名 ↗':'Player model & motion capture credits ↗',
   '在三个可伸缩屋顶场馆中，雨天会触发加速模拟的闭合过程。':'Rain starts an accelerated roof closure at all three retractable-roof arenas.',
   '三维球场。方向键旋转，加减键缩放。':'3D court. Use the arrow keys to orbit and the plus and minus keys to zoom.',
   '澳大利亚网球公开赛':'Australian Open', '返回作品集':'Back to the portfolio',

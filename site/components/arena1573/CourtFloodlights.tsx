@@ -1,11 +1,12 @@
-import { useEffect, useMemo } from 'react';
-import { useThree } from '@react-three/fiber';
+import { useEffect, useLayoutEffect, useMemo, useRef, type RefObject } from 'react';
+import { useFrame,useThree } from '@react-three/fiber';
 import * as T from 'three';
 import type { ContextData } from './model';
 import { courtLighting } from './courtLighting';
 import { venueVisible } from './venueVisibility';
+import { filmLights } from './film';
 
-export default function CourtFloodlights({data,night,covered,venue,surroundings}:{data:ContextData;night:number;covered:boolean;venue:string;surroundings:boolean}) {
+export default function CourtFloodlights({data,night,covered,venue,surroundings,dusk}:{data:ContextData;night:number;covered:boolean;venue:string;surroundings:boolean;dusk?:RefObject<number>}) {
   const scene = useThree(s=>s.scene), invalidate = useThree(s=>s.invalidate);
   const field = useMemo(()=>courtLighting(data),[data]);
   const power = useMemo(()=>({value:new T.Vector2()}),[]);
@@ -28,11 +29,12 @@ export default function CourtFloodlights({data,night,covered,venue,surroundings}
           #include <lights_fragment_end>
           if (max(matchLightPower.x,matchLightPower.y)>0.) {
             vec2 uv=(matchWorld.xz-matchLightBounds.xy)/matchLightBounds.zw;
-            vec3 lamp=texture2D(matchLightField,clamp(uv,0.,1.)).rgb;
-            float heightFade=1.-smoothstep(lamp.b*42.5-1.,lamp.b*42.5+1.,matchWorld.y);
+            vec4 lamp=texture2D(matchLightField,clamp(uv,0.,1.));
+            vec2 ceiling=lamp.ba*42.5;
+            vec2 heightFade=1.-smoothstep(ceiling-1.,ceiling+1.,vec2(matchWorld.y));
             float facing=mix(.26,1.,smoothstep(-.5,.95,(normal * mat3(viewMatrix)).y));
-            float power=max(lamp.r*matchLightPower.x,lamp.g*matchLightPower.y);
-            reflectedLight.indirectDiffuse+=diffuseColor.rgb*vec3(.91,.97,1.)*power*heightFade*facing*1.55;
+            vec2 lit=lamp.rg*matchLightPower*heightFade;
+            reflectedLight.indirectDiffuse+=diffuseColor.rgb*vec3(.91,.97,1.)*max(lit.x,lit.y)*facing*1.55;
           }`);
       };
       material.customProgramCacheKey = ()=>oldKey+'-match-floodlights';
@@ -70,7 +72,27 @@ export default function CourtFloodlights({data,night,covered,venue,surroundings}
       return {id,indoor:list[0].indoor,geometry};
     });
   },[field]);
-  return <group>{groups.map(({id,indoor,geometry})=><mesh key={id} geometry={geometry} visible={venueVisible(id,venue,surroundings)&&(night>.01||covered&&indoor)}>
-    <meshBasicMaterial color="#fff9df" side={T.DoubleSide} toneMapped={false}/>
+  const lamps=useRef<T.Group>(null);
+  useLayoutEffect(()=>{
+    if(dusk||!lamps.current)return;
+    for(const [i,circuit] of groups.entries()){
+      const mesh=lamps.current.children[i] as T.Mesh<T.BufferGeometry,T.MeshBasicMaterial>;
+      mesh.visible=venueVisible(circuit.id,venue,surroundings)&&(night>.01||covered&&circuit.indoor);
+      mesh.material.opacity=1;
+    }
+  },[dusk,groups,night,covered,venue,surroundings]);
+  useFrame(()=>{
+    if(!dusk||!lamps.current)return;
+    const level=filmLights(dusk.current);
+    power.value.set(level,covered?1:level);
+    for(const [i,circuit] of groups.entries()){
+      const mesh=lamps.current.children[i] as T.Mesh<T.BufferGeometry,T.MeshBasicMaterial>;
+      const brightness=circuit.indoor&&covered?1:level;
+      mesh.visible=venueVisible(circuit.id,venue,surroundings)&&brightness>.001;
+      mesh.material.opacity=brightness;
+    }
+  });
+  return <group ref={lamps} name="court-floodlights">{groups.map(({id,indoor,geometry})=><mesh key={id} name={id+'-floodlights'} geometry={geometry} visible={venueVisible(id,venue,surroundings)&&(night>.01||covered&&indoor)}>
+    <meshBasicMaterial color="#fff9df" transparent={!!dusk} opacity={1} depthWrite={!dusk} side={T.DoubleSide} toneMapped={false}/>
   </mesh>)}</group>;
 }

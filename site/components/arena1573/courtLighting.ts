@@ -40,7 +40,9 @@ export function courtLighting(data: ContextData) {
         const ch = indoor ? 1 : 0;
         if (light > pixels[p+ch]) {
           pixels[p+ch] = light;
-          pixels[p+2] = Math.max(pixels[p+2], Math.round((mastY+c.y) * 6));
+          // The strongest field in each circuit owns its own ceiling. The
+          // taller outdoor masts must not lift indoor light onto a closed roof.
+          pixels[p+2+ch] = Math.round((mastY+c.y) * 6);
         }
       }
     }
