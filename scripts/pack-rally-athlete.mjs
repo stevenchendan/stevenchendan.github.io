@@ -34,6 +34,11 @@ const bones=boneNames.map(name=>athlete.getObjectByName(name));
 const wrist=athlete.getObjectByName('RightHand');
 const mesh=athlete.getObjectByName('Human_Mesh');
 
+const dress=mesh.clone(false);
+dress.name='TourDress';
+mesh.parent.add(dress);
+dress.updateWorldMatrix(true,false);
+tailorAthlete(dress,portraits,true);
 tailorAthlete(mesh,portraits);
 
 // Merge the authored 16 × 19 strung racket into one mesh and attach its grip
@@ -58,6 +63,8 @@ mountRacket(wrist,racket);
 // Attach the original Blender portraits to the bone in their fitted bind pose.
 // Precompute an additional small index buffer for the precinct representation.
 await MeshoptSimplifier.ready;
+const [dressIndices]=MeshoptSimplifier.simplify(Uint32Array.from(dress.geometry.index.array),dress.geometry.attributes.position.array,3,1700*3,.012,['Permissive']);
+dress.userData.distantIndices=Array.from(dressIndices);
 for(const [name,role] of [['CapPlayer','TennisCap'],['BandPlayer','HeadbandPlayer'],['CropPlayer','CroppedPlayer'],['TiePlayer','TiedPlayer']]){
   const head=portraits.getObjectByName(name);head.name=role;
   const g=head.geometry;
@@ -108,14 +115,14 @@ function readyArm(side,handTarget,elbowPole){
   const elbow=a.clone().addScaledVector(axis,along).addScaledVector(bend,Math.sqrt(Math.max(0,upper*upper-along*along)));
   aim(arm,forearm,elbow);aim(forearm,hand,a.addScaledVector(axis,reach));
 }
-readyArm('Right',new T.Vector3(.13,1.00,-.30),new T.Vector3(.44,.96,-.06));
-const shaft=new T.Vector3(-.38,.77,-.51).normalize();
-const face=new T.Vector3(.90,.08,-.43).projectOnPlane(shaft).normalize();
+readyArm('Right',new T.Vector3(.055,.97,-.32),new T.Vector3(.38,.96,-.11));
+const shaft=new T.Vector3(-.40,.87,-.29).normalize();
+const face=new T.Vector3(.32,.08,-.94).projectOnPlane(shaft).normalize();
 const racketRotation=new T.Quaternion().setFromRotationMatrix(new T.Matrix4().makeBasis(shaft.clone().cross(face),shaft,face));
 wrist.quaternion.copy(wrist.parent.getWorldQuaternion(new T.Quaternion()).invert().multiply(racketRotation).multiply(racket.quaternion.clone().invert()));
 athlete.updateMatrixWorld(true);
-const throat=racket.localToWorld(new T.Vector3(0,-.18,0));
-readyArm('Left',throat.add(new T.Vector3(-.045,-.035,.045)),new T.Vector3(-.42,.95,-.20));
+const throat=racket.localToWorld(new T.Vector3(0,-.275,0));
+readyArm('Left',throat.add(new T.Vector3(-.04,-.038,.042)),new T.Vector3(-.37,.94,-.18));
 athlete.updateMatrixWorld(true);
 
 // Keep 50 Hz sampling at each impact. Only varying tracks need every frame.

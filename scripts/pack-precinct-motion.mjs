@@ -8,6 +8,7 @@ import {loadModule,loadAthlete} from './rally-fixture.mjs';
 loadModule('strokeContacts');
 const {strokes,rallyFrame,RALLY_SECONDS}=loadModule('rallyMotion');
 const {makeAthlete}=loadModule('athleteRig');
+const {readyHalfWidth}=loadModule('footwork');
 const {scene,animations}=await loadAthlete();
 const athlete=makeAthlete(scene,animations,'#277b9a',true),root=athlete.group;
 const skeleton=root.getObjectByName('Human_Mesh').skeleton;
@@ -46,7 +47,7 @@ const previous=Array.from({length:jointCount},()=>new T.Quaternion());
 function steps(phase,running){
   return {phase,speed:running?3:0,feet:[0,1].map((side)=>{
     const t=phase*2*Math.PI+side*Math.PI;
-    const lateral=running?.17:.235;
+    const lateral=running?.17:readyHalfWidth;
     return {x:side===0?-lateral:lateral,y:.074+(running?.12*Math.max(0,Math.sin(t)):0),z:running?.32*Math.cos(t):side===0?.075:-.075,swing:0,planted:true};
   })};
 }

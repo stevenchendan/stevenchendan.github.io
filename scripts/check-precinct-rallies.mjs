@@ -7,7 +7,7 @@ import {loadModule,loadAthlete} from './rally-fixture.mjs';
 const {rallyCourts,courtDirectory,venueCourts}=loadModule('courtPlacements');
 const {strokes,RALLY_SECONDS}=loadModule('rallyMotion');
 const {makePrecinctPlayers,readPoseAtlas,poseRow}=loadModule('precinctPlayers');
-const {matchPair,athleteModelUrl,athleteMotionUrl}=loadModule('athleteKits');
+const {matchPair,wearsDress,athleteModelUrl,athleteMotionUrl}=loadModule('athleteKits');
 for(const path of [athleteModelUrl,athleteMotionUrl]){
   const [file,version]=path.split('?v=');
   const bytes=fs.readFileSync(new URL('../public'+file,import.meta.url));
@@ -68,7 +68,9 @@ for(const [index,c] of other.entries()){
   for(let side=0;side<2;side++){
     const mesh=pair.children[side].getObjectByName('Human_Mesh');
     assert.ok(mesh.isSkinnedMesh);
-    const build=matchPair(c.key)[side].build;
+    const {build,portrait}=matchPair(c.key)[side];
+    const template=scene.getObjectByName(wearsDress(portrait)?'TourDress':'Human_Mesh');
+    assert.equal(mesh.geometry.index.count,template.geometry.index.count,'Restore the garment cut on '+c.en);
     assert.equal(mesh.morphTargetInfluences[0],build,'Restore the fitted build on '+c.en);
     assert.ok(Math.abs(person.geometry.attributes.playerPose.getY(index*2+side)-build)<1e-6,'Match the distant build on '+c.en);
     person.getMatrixAt(index*2+side,matrix);assert.ok(Math.abs(matrix.determinant())<.000001,'Avoid a duplicate athlete at '+c.en);

@@ -3,7 +3,7 @@ import { clone } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { rallyFrame } from './rallyMotion';
 import {playerContactShadows} from './playerContactShadows';
 import {footwork} from './footwork';
-import {portraits,skinTones} from './athleteKits';
+import {fabricSlot,portraits,skinTones,wearsDress} from './athleteKits';
 import {impactTime,type StrokeKind} from './strokeContacts';
 
 type Actor = ReturnType<typeof rallyFrame>['players'][number];
@@ -58,45 +58,45 @@ export function makeAthlete(source:T.Group,clips:T.AnimationClip[],shirt:string,
   group.add(body);
   const heads=portraits.map(name=>body.getObjectByName(name)!);
   const figure=body.getObjectByName('Human_Mesh') as T.SkinnedMesh;
-  const jerseySlots:{colors:T.BufferAttribute|T.InterleavedBufferAttribute;body:number[];panel:number[];skin:number[];shorts:number[];shortsPanel:number[]}[]=[];
+  const dress=body.getObjectByName('TourDress') as T.SkinnedMesh;
+  // The two cuts use the same skeleton, bind matrix and build morph. Keep one
+  // live skinned body per player and only allocate a cut when it is worn.
+  dress.removeFromParent();
+  const templates=[figure.geometry,dress.geometry];
+  function prepareKit(template:T.BufferGeometry,capOnly=false){
+    const geometry=template.clone(),colors=geometry.getAttribute('color');
+    const slots:number[][]=Array.from({length:6},()=>[]);
+    for(let i=0;i<colors.count;i++){
+      const id=fabricSlot(colors.getX(i),colors.getY(i),colors.getZ(i),capOnly);
+      if(id)slots[id].push(i);
+    }
+    ownedGeometry.push(geometry);
+    return {geometry,colors,slots};
+  }
+  const cuts=new Map<number,ReturnType<typeof prepareKit>>();
+  const capMesh=heads[0] as T.Mesh;
+  const capFabric=prepareKit(capMesh.geometry,true);
+  capMesh.geometry=capFabric.geometry;
   function setKit(hex:string,portrait=cap?0:1,shorts='#213944',build=0){
     heads.forEach((h,i)=>h.visible=i===portrait);
+    const cut=wearsDress(portrait)?1:0;
+    let kit=cuts.get(cut);
+    if(!kit){kit=prepareKit(templates[cut]);cuts.set(cut,kit);}
+    figure.geometry=kit.geometry;
     if(figure.morphTargetInfluences)figure.morphTargetInfluences[0]=build;
-    const flesh=new T.Color(skinTones[portrait]),woven=new T.Color(shorts);
-    const c=new T.Color(hex),p=c.clone().multiplyScalar(.74);
-    const stripe=woven.clone().lerp(c,.23);
-    for(const {colors,body,panel,skin,shorts,shortsPanel} of jerseySlots){
-      for(const i of skin)colors.setXYZ(i,flesh.r,flesh.g,flesh.b);
-      for(const i of shorts)colors.setXYZ(i,woven.r,woven.g,woven.b);
-      for(const i of shortsPanel)colors.setXYZ(i,stripe.r,stripe.g,stripe.b);
-      for(const i of body)colors.setXYZ(i,c.r,c.g,c.b);
-      for(const i of panel)colors.setXYZ(i,p.r,p.g,p.b);
+    const shirt=new T.Color(hex),woven=new T.Color(shorts);
+    const palette=[shirt,shirt.clone().multiplyScalar(.74),new T.Color(skinTones[portrait]),woven,woven.clone().lerp(shirt,.23)];
+    for(const {colors,slots} of portrait===0?[kit,capFabric]:[kit]){
+      palette.forEach((c,index)=>{
+        for(const i of slots[index+1])colors.setXYZ(i,c.r,c.g,c.b);
+      });
       colors.needsUpdate=true;
     }
   }
   body.traverse(o=>{
-    if(!(o instanceof T.Mesh))return;
-    o.castShadow=true;o.receiveShadow=true;
-    if(!(o instanceof T.SkinnedMesh))return;
-    o.frustumCulled=false;
-    // Each player has a separate vertex-colour buffer and skeleton while the
-    // racket, cap and skin material stay shared between the two athletes.
-    o.geometry=o.geometry.clone();ownedGeometry.push(o.geometry);
-    const colors=o.geometry.getAttribute('color'),base=new T.Color('#277b9a'),bodySlots:number[]=[],panelSlots:number[]=[];
-    const panel=new T.Color('#206980');
-    const skinSlots:number[]=[],shortSlots:number[]=[],stripeSlots:number[]=[],stripe=new T.Color('#334954');
-    jerseySlots.push({colors,body:bodySlots,panel:panelSlots,skin:skinSlots,shorts:shortSlots,shortsPanel:stripeSlots});
-    const skin=new T.Color('#c89779'),fabric=new T.Color('#213944');
-    for(let i=0;i<colors.count;i++){
-      const r=colors.getX(i),g=colors.getY(i);
-      if(Math.abs(r-base.r)<.001 && Math.abs(g-base.g)<.001)bodySlots.push(i);
-      if(Math.abs(r-panel.r)<.001 && Math.abs(g-panel.g)<.001)panelSlots.push(i);
-      if(Math.abs(r-skin.r)<.001 && Math.abs(g-skin.g)<.001)skinSlots.push(i);
-      if(Math.abs(r-fabric.r)<.001 && Math.abs(g-fabric.g)<.001)shortSlots.push(i);
-      if(Math.abs(r-stripe.r)<.001 && Math.abs(g-stripe.g)<.001)stripeSlots.push(i);
-    }
-    colors.needsUpdate=true;
+    if(o instanceof T.Mesh){o.castShadow=true;o.receiveShadow=true;}
   });
+  figure.frustumCulled=false;
   setKit(shirt);
   const shadows=playerContactShadows(group,body);
   const hips=body.getObjectByName('Hips')!;

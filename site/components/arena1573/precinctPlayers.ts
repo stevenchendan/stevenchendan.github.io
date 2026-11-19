@@ -1,5 +1,5 @@
 import * as T from 'three';
-import {matchPair,portraits,skinTones} from './athleteKits';
+import {fabricSlot,matchPair,portraits,skinTones,wearsDress} from './athleteKits';
 import {courtFrameAt} from './courtMatches';
 import {extraPoseRows,matchPoseRow} from './strokePoseRows';
 import {nearbyAthletes} from './nearbyAthletes';
@@ -34,9 +34,8 @@ export function poseRow(times:Float32Array,seconds:number){
 function playerGeometry(scene:T.Group,skinIndices:Uint16Array){
   const skin=scene.getObjectByName('Human_Mesh') as T.SkinnedMesh;
   const position:number[]=[],normal:number[]=[],color:number[]=[],joints:number[]=[],weights:number[]=[],kitPart:number[]=[],indices:number[]=[],buildDelta:number[]=[];
-  const p=new T.Vector3(),n=new T.Vector3(),c=new T.Color(),shirt=new T.Color('#277b9a');
-  const identity=new T.Matrix4(),skinColor=new T.Color('#c89779'),panel=new T.Color('#206980');
-  const shortsPanel=new T.Color('#334954');
+  const p=new T.Vector3(),n=new T.Vector3(),c=new T.Color();
+  const identity=new T.Matrix4();
   function append(g:T.BufferGeometry,transform:T.Matrix4,attachment:number,tint?:T.Color,part=0,selection?:readonly number[]){
     const normalTransform=new T.Matrix3().getNormalMatrix(transform),linear=new T.Matrix3().setFromMatrix4(transform);
     const attr=g.attributes,shape=g.morphAttributes.position?.[0];
@@ -53,17 +52,17 @@ function playerGeometry(scene:T.Group,skinIndices:Uint16Array){
       n.fromBufferAttribute(attr.normal,i).applyNormalMatrix(normalTransform).toArray(normal,normal.length);
       if(tint)c.copy(tint);else c.fromBufferAttribute(attr.color as T.BufferAttribute,i);
       c.toArray(color,color.length);
-      const jersey=attachment===-1&&Math.abs(c.r-shirt.r)<.001&&Math.abs(c.g-shirt.g)<.001;
-      const skin=attachment===-1&&Math.abs(c.r-skinColor.r)<.001&&Math.abs(c.g-skinColor.g)<.001;
-      const sidePanel=attachment===-1&&Math.abs(c.r-panel.r)<.001&&Math.abs(c.g-panel.g)<.001;
-      const shorts=attachment===-1&&Math.abs(c.r-.01521)<.001&&Math.abs(c.g-.04092)<.001;
-      const stripe=attachment===-1&&Math.abs(c.r-shortsPanel.r)<.001&&Math.abs(c.g-shortsPanel.g)<.001;
-      kitPart.push(jersey?1:skin?4:sidePanel?5:shorts?6:stripe?7:part);
+      const slot=attachment===-1||part===3?fabricSlot(c.r,c.g,c.b,part===3):0;
+      kitPart.push(part*10+slot);
       if(attachment!==-1){joints.push(attachment,0,0,0);weights.push(1,0,0,0);}
       else for(let k=0;k<4;k++){joints.push(attr.skinIndex.getComponent(i,k));weights.push(attr.skinWeight.getComponent(i,k));}
     }
   }
-  append(skin.geometry,skin.bindMatrix,-1);
+  // Part 0 is the shared racket, 1 and 2 are the two garment cuts,
+  // and parts 3 onwards are the individual portraits.
+  append(skin.geometry,skin.bindMatrix,-1,undefined,1);
+  const dress=scene.getObjectByName('TourDress') as T.SkinnedMesh;
+  append(dress.geometry,dress.bindMatrix,-1,undefined,2,dress.userData.distantIndices);
   const racketIndex=skin.skeleton.bones.length;
   const graphite=new T.Color('#26383b'),strings=new T.Color('#dce2d8');
   const ring=new T.TorusGeometry(1,.044,5,26).scale(.151,.19,.16);
@@ -85,7 +84,7 @@ function playerGeometry(scene:T.Group,skinIndices:Uint16Array){
   }
   for(const [i,name] of portraits.entries()){
     const head=scene.getObjectByName(name) as T.Mesh;
-    append(head.geometry,identity,racketIndex+1,undefined,10+i,head.userData.distantIndices);
+    append(head.geometry,identity,racketIndex+1,undefined,3+i,head.userData.distantIndices);
   }
   const result=new T.BufferGeometry();
   for(const [name,data,size] of [['position',position,3],['normal',normal,3],['color',color,3],['kitPart',kitPart,1],['jointIndex',joints,4],['jointWeight',weights,4],['buildDelta',buildDelta,3]] as const){
@@ -107,16 +106,20 @@ function animateMaterial(material:T.Material,atlas:T.DataTexture){
       attribute float kitPart;
       vec3 rotateJoint(vec4 q,vec3 v){return v+2.0*cross(q.xyz,cross(q.xyz,v)+q.w*v);}
     `).replace('#include <color_vertex>',`#include <color_vertex>
-      if(kitPart==1.0)vColor.rgb=shirtColor;
-      if(kitPart==5.0)vColor.rgb=shirtColor*.74;
-      if(kitPart==4.0)vColor.rgb=skinColor;
-      if(kitPart==6.0)vColor.rgb=shortsColor;
-      if(kitPart==7.0)vColor.rgb=mix(shortsColor,shirtColor,.23);
+      float slot=mod(kitPart,10.0);
+      if(slot==1.0)vColor.rgb=shirtColor;
+      if(slot==2.0)vColor.rgb=shirtColor*.74;
+      if(slot==3.0)vColor.rgb=skinColor;
+      if(slot==4.0)vColor.rgb=shortsColor;
+      if(slot==5.0)vColor.rgb=mix(shortsColor,shirtColor,.23);
     `).replace('void main() {',`void main() {
       vec3 posedPosition=vec3(0.0),posedNormal=vec3(0.0);
       vec3 fittedPosition=position+buildDelta*playerPose.y;
       vec2 pixel=1.0/vec2(textureSize(poses,0));
-      for(int i=0;i<4;i++){
+      float part=floor(kitPart*.1+.001);
+      const float cuts[${portraits.length}]=float[${portraits.length}](${portraits.map((_,i)=>wearsDress(i)?'2.0':'1.0').join(',')});
+      bool show=part==0.0 || part==cuts[int(playerPose.z)] || part==3.0+playerPose.z;
+      if(show)for(int i=0;i<4;i++){
         float w=jointWeight[i];
         if(w<=0.0)continue;
         vec2 uv=vec2(jointIndex[i]*2.0+0.5,playerPose.x+0.5)*pixel;
@@ -125,7 +128,7 @@ function animateMaterial(material:T.Material,atlas:T.DataTexture){
         posedPosition+=(rotateJoint(q,fittedPosition*tr.w)+tr.xyz)*w;
         posedNormal+=rotateJoint(q,normal)*w;
       }
-    `).replace('#include <beginnormal_vertex>','vec3 objectNormal=normalize(posedNormal);').replace('#include <begin_vertex>','vec3 transformed=(kitPart>=10.0 && kitPart!=10.0+playerPose.z)?vec3(0.0):posedPosition;');
+    `).replace('#include <beginnormal_vertex>','vec3 objectNormal=show?normalize(posedNormal):normal;').replace('#include <begin_vertex>','vec3 transformed=posedPosition;');
   };
 }
 

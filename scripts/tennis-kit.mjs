@@ -27,6 +27,10 @@ function measure(p,axis){
   if(axis==='shortHem')return p.y-.662-.027*smooth(Math.abs(p.x),.145,.237);
   if(axis==='shirtHem')return p.y-.910-.021*smooth(Math.abs(p.x),.10,.175)-.009*smooth(p.z,-.08,.10);
   if(axis==='shortStripe')return Math.abs(p.x)-.154-.055*(.93-p.y)-.41*Math.abs(p.z);
+  if(axis==='armhole')return Math.abs(p.x)-.245+.086*smooth(p.y,1.205,1.325)
+    +.014*smooth(p.z,-.08,.09)+.021*smooth(p.y,1.32,1.43);
+  if(axis==='scoop')return p.y-1.445+.088*smooth(p.z,-.065,.09)*(1-smooth(Math.abs(p.x),.025,.115));
+  if(axis==='placket')return Math.abs(p.x)-.011;
   return p[axis];
 }
 function divide(polygon,axis,level){
@@ -42,7 +46,7 @@ function divide(polygon,axis,level){
   return [first,second];
 }
 
-export function tailorAthlete(mesh,models){
+export function tailorAthlete(mesh,models,dress=false){
   const attr=mesh.geometry.attributes,world=mesh.matrixWorld,local=world.clone().invert();
   const normalToWorld=new T.Matrix3().getNormalMatrix(world),normalToLocal=new T.Matrix3().getNormalMatrix(local);
   const source=[],normals=new Map();
@@ -91,7 +95,16 @@ export function tailorAthlete(mesh,models){
       }
       surfaceNormal.sub(slope.addScaledVector(v.n,-slope.dot(v.n))).normalize();
     }
-    origin.copy(v.p).addScaledVector(v.n,athletic+lift).applyMatrix4(local).toArray(pos,pos.length);
+    origin.copy(v.p).addScaledVector(v.n,v.clothShell?0:athletic+lift);
+    if(dress){
+      // Fit the torso between the existing neck, wrists and hip sockets.
+      // The running and striking skeleton remains at the captured landmarks.
+      const y=v.p.y,torso=1-smooth(lateral,.18,.35);
+      const waist=Math.exp(-((y-1.05)**2/.012)),rib=Math.exp(-((y-1.225)**2/.009));
+      origin.x*=1-torso*(.145*waist+.035*rib);
+      origin.z+=torso*(.025*rib*smooth(v.p.z,.015,.085)-.10*waist*v.p.z);
+    }
+    origin.applyMatrix4(local).toArray(pos,pos.length);
     direction.copy(surfaceNormal).applyNormalMatrix(normalToLocal).toArray(normal,normal.length);
     color.toArray(colors,colors.length);
     for(let i=0;i<4;i++){joints.push(v.joints[i]??0);weights.push(v.weights[i]??0);}
@@ -114,7 +127,11 @@ export function tailorAthlete(mesh,models){
     const levels=[.072,.20,.215,1.455].map(v=>['y',v]);
     if(tri.some(v=>v.p.y>.60&&v.p.y<1.01))levels.push(['shortHem',0],['shortHem',.009],['shortStripe',0],['shirtHem',0],['shirtHem',.012]);
     if(tri.some(v=>v.p.y>1.2 && Math.abs(v.p.x)>.29))for(const v of [-.735,-.69,-.34,-.330, .330,.34,.69,.735])levels.push(['x',v]);
-    if(tri.some(v=>v.p.y>.91&&v.p.y<1.51))levels.push(['neckline',0],['neckline',-.009],['raglan',0],['raglan',.004],['sidePanel',0]);
+    if(tri.some(v=>v.p.y>.91&&v.p.y<1.51)){
+      if(dress)levels.push(['scoop',0],['scoop',-.008],['armhole',0],['armhole',-.009],['sidePanel',0]);
+      else levels.push(['neckline',0],['neckline',-.009],['raglan',0],['raglan',.004],['sidePanel',0],['placket',0],['y',1.335]);
+    }
+    if(dress&&tri.some(v=>v.p.y>.66&&v.p.y<.85))levels.push(['y',.751]);
     if(tri.some(v=>Math.abs(v.p.x)>.73))levels.push(['wrist',.745]);
     let polygons=[tri];
     for(const [axis,value] of levels)polygons=polygons.flatMap(poly=>divide(poly,axis,value));
@@ -126,18 +143,87 @@ export function tailorAthlete(mesh,models){
       for(const v of poly)if(Math.abs(Math.abs(v.p.x)-.745)<1e-6)wristEdges[v.p.x>0?'Left':'Right'].set(key(v.p),v);
       let color=skinTone,offset=0,garment;
       if(p.y<.215){color=p.y<.20?sock:trim;offset=.002;}
-      if(measure(p,'shortHem')>=0 && measure(p,'shirtHem')<0){
-        garment='shorts';color=measure(p,'shortStripe')>0 || measure(p,'shortHem')<.009?shortsPanel:shorts;
+      if((dress?p.y>=.751:measure(p,'shortHem')>=0) && measure(p,'shirtHem')<0){
+        if(dress){color=shorts;offset=.003;}
+        else {garment='shorts';color=measure(p,'shortStripe')>0 || measure(p,'shortHem')<.009?shortsPanel:shorts;}
       }
-      if(measure(p,'shirtHem')>=0 && measure(p,'neckline')<0 && Math.abs(p.x)<.34){
+      if(!dress && measure(p,'shirtHem')>=0 && measure(p,'neckline')<0 && Math.abs(p.x)<.34){
         garment='jersey';
         const seam=measure(p,'raglan'),side=measure(p,'sidePanel');
         color=(side>0 && p.y<1.26)||(p.y>1.27&&seam>.004)?jerseyPanel:jersey;
         if(measure(p,'neckline')>-.009 || Math.abs(p.x)>.330 || (p.y>1.27&&seam>=0&&seam<.004))color=trim;
         if(measure(p,'shirtHem')<.012)color=jerseyPanel;
+        if(p.z>.04 && p.y>1.335 && measure(p,'placket')<0)color=jerseyPanel;
+      }
+      if(dress && measure(p,'shirtHem')>=0 && measure(p,'scoop')<0 && measure(p,'armhole')<0){
+        offset=.004;
+        color=measure(p,'sidePanel')>0?shorts:jersey;
+        if(measure(p,'scoop')>-.008 || measure(p,'armhole')>-.009)color=shorts;
       }
       if(p.y>1.23 && p.y<1.385 && Math.abs(p.x)>.69 && Math.abs(p.x)<.735){color=sock;offset=.0035;}
       for(let j=1;j<poly.length-1;j++)for(const v of [poly[0],poly[j],poly[j+1]])vertex(v,color,offset,garment);
+    }
+  }
+  // Sew the free garment surfaces to the same joints as their attachment.
+  // Build quads in metres, then feed the existing bind-space vertex pipeline.
+  const boneIndex=name=>mesh.skeleton.bones.findIndex(b=>b.name===name);
+  function fabricQuad(a,b,c,d,color){
+    for(const tri of [[a,b,d],[b,c,d]]){
+      const n=tri[1].p.clone().sub(tri[0].p).cross(tri[2].p.clone().sub(tri[0].p)).normalize();
+      for(const v of tri)vertex({...v,n:v.n??n,clothShell:true},color);
+    }
+  }
+  if(dress){
+    const hip=boneIndex('Hips'),left=boneIndex('LeftUpLeg'),right=boneIndex('RightUpLeg');
+    // A continuous waist and hem, with two inset box pleats on each side.
+    // The hem follows the nearer thigh and blends between legs at the centre.
+    const rows=[[1.007,.174,.140],[.980,.180,.146],[.902,.203,.157],[.813,.229,.169],[.734,.250,.182],[.727,.250,.182]];
+    const segments=64;
+    function hem(row,j){
+      const [y,rx,rz]=rows[row],a=2*Math.PI*j/segments,s=Math.sin(a),c=Math.cos(a);
+      const drop=(rows[0][0]-y)/.28,pleat=.010*Math.cos(12*a)*drop**1.45;
+      const x=(rx+pleat)*s,weight=.84*smooth(drop,.10,.95),side=smooth(x,-.11,.11);
+      const p=new T.Vector3(x,y+.014*Math.abs(s)*drop,(rz+pleat)*c-.010);
+      // Keep both sides of each pleat on the same normal at a shared seam.
+      // The build morph displaces along that normal even during wide strides.
+      const slope=-.12*Math.sin(12*a)*drop**1.45;
+      const n=new T.Vector3((rz+pleat)*s-slope*c,.045,(rx+pleat)*c+slope*s).normalize();
+      return {p,n,joints:[hip,left,right],weights:[1-weight,weight*side,weight*(1-side)]};
+    }
+    for(let row=0;row<rows.length-1;row++)for(let j=0;j<segments;j++){
+      const flank=Math.abs(Math.sin((j+.5)*2*Math.PI/segments));
+      const insert=row>0 && flank>.79 && flank<.94;
+      fabricQuad(hem(row,j),hem(row+1,j),hem(row+1,j+1),hem(row,j+1),insert?shorts:jersey);
+    }
+  }else{
+    const spine=boneIndex('Spine2'),neck=boneIndex('Neck');
+    // The folded collar opens at the placket. Its two tips turn down onto the chest.
+    function collar(row,j){
+      const u=j/48,a=.115+u*(2*Math.PI-.230),s=Math.sin(a),c=Math.cos(a);
+      const tip=Math.exp(-((Math.min(u,1-u)-.082)**2/.0019));
+      const rx=[.074,.081,.103][row],rz=[.089,.096,.120][row];
+      const y=[1.461,1.481,1.438][row]-.009*c-(row===2?.045*tip:0);
+      const p=new T.Vector3((rx+(row===2?.031*tip:0))*s,y,rz*c-.011+(row===2?.018*tip:0));
+      return {p,joints:[spine,neck],weights:[.92,.08]};
+    }
+    for(let j=0;j<48;j++){
+      fabricQuad(collar(0,j),collar(0,j+1),collar(1,j+1),collar(1,j),jerseyPanel);
+      fabricQuad(collar(1,j),collar(2,j),collar(2,j+1),collar(1,j+1),jersey);
+    }
+    for(const y of [1.356,1.379]){
+      const button=new T.SphereGeometry(.0038,8,5).scale(1,1,.48);
+      // Place the button on the front surface of the finished placket.
+      let front=-Infinity;
+      for(let i=0;i<pos.length;i+=3){
+        origin.fromArray(pos,i).applyMatrix4(world);
+        if(Math.abs(origin.x)<.018 && Math.abs(origin.y-y)<.013)front=Math.max(front,origin.z);
+      }
+      if(Number.isFinite(front))for(const i of button.index.array){
+        const p=new T.Vector3().fromBufferAttribute(button.attributes.position,i).add(new T.Vector3(0,y,front+.002));
+        const n=new T.Vector3().fromBufferAttribute(button.attributes.normal,i);
+        vertex({p,n,joints:[spine],weights:[1]},sock);
+      }
+      button.dispose();
     }
   }
   // Both laced Blender shoes are rigidly weighted to their matching foot.

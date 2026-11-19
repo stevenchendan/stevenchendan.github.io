@@ -6,6 +6,7 @@ type Actor=ReturnType<typeof rallyFrame>['players'][number];
 const clamp=(x:number)=>Math.max(0,Math.min(1,x));
 const smooth=(x:number)=>x*x*(3-2*x);
 const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
+export const readyHalfWidth=.27;
 
 // One timetable for both feet. Stride grows with speed, so a sprint covers
 // distance with longer steps instead of playing a short shuffle at double speed.
@@ -60,7 +61,7 @@ export function footwork(actor:Actor){
     // At a standstill the next running footprint can be across the body.
     // Set both feet beneath their hips as the player brakes for a stroke.
     const moving=actor.court?smooth(clamp(speed/1.2)):1;
-    const localX=mix(index===0?-.235:.235,dx*c-dz*s,moving);
+    const localX=mix(index===0?-readyHalfWidth:readyHalfWidth,dx*c-dz*s,moving);
     const localZ=mix(index===0?.075:-.075,dx*s+dz*c,moving);
     return {x:localX,z:localZ,y:.074+lift+.035*actor.split,swing:t,planted:t===0||t===1};
   });

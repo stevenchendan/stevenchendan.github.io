@@ -3,7 +3,7 @@
 blender -b --python scripts/sculpt-tennis-players.py -- <asset directory> <output.glb>
 The input directory contains makehuman-base.obj from
 https://github.com/makehumancommunity/makehuman/blob/master/makehuman/data/3dobjs/base.obj
-and the three CC0 MPFB macro shapes named below, from
+and the CC0 MPFB macro shapes named below, from
 https://github.com/makehumancommunity/mpfb2/tree/master/src/mpfb/data/targets/macrodetails. The generated GLB is an intermediate for pack-rally-athlete.
 """
 import bpy
@@ -142,8 +142,8 @@ def target(name):
     with gzip.open(source_dir/(name+'.target.gz'),'rt') as file:
         return [(int(a),Vector((float(x),float(y),float(z)))) for a,x,y,z in (l.split() for l in file if l[0].isdigit())]
 
-shape_a=target('caucasian-male-young')
-shape_b=target('african-male-young')
+face_shapes={sex: [target(f'{ancestry}-{sex}-young') for ancestry in ('caucasian','african')]
+             for sex in ('male','female')}
 athletic=target('universal-male-young-maxmuscle-averageweight')
 
 def centre(points): return sum(points,Vector((0,0,0)))/len(points)
@@ -151,7 +151,9 @@ def centre(points): return sum(points,Vector((0,0,0)))/len(points)
 def portrait_shape(near,style=''):
     v=[p.copy() for p in verts]
     mix={'crop':.62,'tie':.43}.get(style,.87 if near else .17)
-    for morph,amount in [(shape_a,mix),(shape_b,1-mix),(athletic,.65 if near else .84)]:
+    women=style in ('crop','tie')
+    shape_a,shape_b=face_shapes['female' if women else 'male']
+    for morph,amount in [(shape_a,mix),(shape_b,1-mix),(athletic,0 if women else .65 if near else .84)]:
         for i,d in morph: v[i] += d*amount
     ids=lambda g:set(k for face in groups[g] for k in face)
     eye=centre([v[i] for i in ids('joint-l-eye')]); top=max(v[i].y for i in ids('body'))
@@ -195,6 +197,9 @@ def portrait(near, canonical,style):
         flat=base_skin.lerp(cheek,blush*.38).lerp(shadow,stubble*.68).lerp(lips,mouth*.65)
         sample=complexion[i]
         detail=Vector(tuple(flat[k]*max(.22,min(1.65,(sample[k]/ref)**.65)) for k,ref in enumerate((.55,.285,.19))))
+        if style in ('crop','tie'):
+            flat=base_skin.lerp(cheek,blush*.32).lerp(lips,mouth*.78)
+            detail=Vector(tuple(flat[k]*max(.62,min(1.45,(sample[k]/ref)**.38)) for k,ref in enumerate((.55,.285,.19))))
         pigments.append(flat.lerp(detail,max(0,min(.87,(y-6.24)*3))))
     art.surface(points,faces,pigments)
     bvh=BVHTree.FromPolygons(points,faces,all_triangles=False)
@@ -295,7 +300,7 @@ def portrait(near, canonical,style):
                 if ((j+.5-32)/5.2)**2+((i+.5)/3.4)**2<1:continue
                 k=(j+1)%64
                 panels.append((i*64+j,i*64+k,(i+1)*64+k,(i+1)*64+j))
-        art.surface(crown_points,panels,'efece2')
+        art.surface(crown_points,panels,'277b9a')
         art.grid(2,15,lambda i,j:cap(math.pi+(j-7)*.060,.035+i*.047),'adafa5',False)
         for k in range(6):
             t=(k+.5)*TAU/6
@@ -308,20 +313,28 @@ def portrait(near, canonical,style):
                     outward=Vector((math.sin(theta),-math.cos(theta),.32)).normalized();p+=outward*.0007
                     art.ellipsoid(p,(.00165,.00165,.00115),'86938c',6,4)
         art.ellipsoid((0,centre_y,crown+.011),(.007,.007,.0035),'d4d5ca')
-        # Curved laminated brim, shaped across its width and at the outer corners.
+    if style in ('cap','tie'):
+        if style=='tie':
+            def visor_band(i,j):
+                t=TAU*j/64
+                z=1.681+.022*math.cos(t)+i*.0065
+                return scalp(t,z,.012)
+            art.grid(4,64,visor_band,'f2f1e9')
+            art.tube([visor_band(3,j%64) for j in range(65)],.0016,'c8d8df',5)
+        # The open visor leaves the hair and knot exposed above its sweatband.
         rows,cols=5,25
         def brim(i,j):
             u=2*j/(cols-1)-1;f=i/(rows-1)
             y0=-.079+.049*u*u
             return Vector((u*(.092+.007*f),y0-f*(.088*(1-u*u)**.72+.009),1.708-.016*u*u-.019*f*f))
-        art.grid(rows,cols,brim,'e9e8df',False)
+        art.grid(rows,cols,brim,'f2f1e9' if style=='tie' else '277b9a',False)
         art.grid(rows,cols,lambda i,j:brim(rows-1-i,j)-Vector((0,0,.0034)),'5a6962',False)
         for row in (.77,.90):
             line=[brim(rows-1,j)*row+brim(0,j)*(1-row)+Vector((0,0,.00065)) for j in range(cols)]
             art.tube(line,.00055,'c0c4b9',4)
         art.tube([brim(rows-1,j) for j in range(cols)],.0018,'3d625e',5)
         for j in (0,cols-1):art.tube([brim(i,j) for i in range(rows)],.0015,'d4dbd3',4)
-    else:
+    elif style=='band':
         rng=random.Random(1753)
         # Short coiled hair gives the rear player a separate crown and profile.
         for row,count in enumerate([43,42,40,37,33,29,24,18,11,5]):
@@ -349,16 +362,25 @@ def shoe(side):
         d,w,h=ring[i];a=j*TAU/20;u=math.cos(a);z=math.sin(a)
         centre=x0-side*.013*max(0,d)/.19
         return Vector((centre+w*u, -d, .032+max(-.018,z*(h-.032))+.010*max(0,(d-.12)/.08)))
-    art.grid(len(ring),20,shell,'e4e7dc')
+    # The woven upper takes the player's kit colour. The heel counter, laces
+    # and curved midsole keep their own finishes and outline the foot at distance.
+    art.grid(len(ring),20,shell,'277b9a')
+    for end in (0,10):
+        sign=1 if end==0 else -1
+        def quarter(i,j):
+            k=1+i
+            angle=end+sign*(.45+j*.48+i*.14)
+            return shell(k,angle)+Vector((sign*.0013,0,.0018))
+        art.grid(5,4,quarter,'e0e5e3',False)
     def outsole(i,j):
         d,w,h=ring[i];a=j*TAU/14
         return Vector((x0-side*.013*max(0,d)/.19+(w+.0025)*math.cos(a),-d,.012+.013*math.sin(a)+.016*max(0,(d-.12)/.08)**1.5))
-    art.grid(len(ring),14,outsole,'64736f')
+    art.grid(len(ring),14,outsole,'a6afad')
     for sign in [-1,1]:
         path=[shell(i,0 if sign==1 else 10)+Vector((sign*.0008,0,.006)) for i in range(1,9)]
         art.tube(path,.0028,'c9d0c4',6)
         path=[shell(i,1 if sign==1 else 9)+Vector((sign*.0007,0,.003)) for i in range(1,7)]
-        art.tube(path,[.003,.005,.006,.006,.004,.002],'476a6e',6)
+        art.tube(path,[.003,.005,.006,.006,.004,.002],'206980',6)
     for i in range(2,7):
         for sign in [-1,1]:
             a=shell(i,4 if sign==1 else 6);b=shell(i+1,6 if sign==1 else 4)
