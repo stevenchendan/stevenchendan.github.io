@@ -1,3 +1,5 @@
+import {forkBridgeId,forkBridgeParts} from './forkBridge';
+import { bridgeSections } from './bridge';
 import { grandSlamOval } from './GrandSlamOval';
 import { festivalStructures } from './FestivalStructures';
 import { outerCourtStands } from './OuterCourtStands';
@@ -5,7 +7,7 @@ import { SEATING_LIFT } from './dimensions';
 import { seatedCrowd } from './seatedCrowd';
 import * as T from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { courtFrame, pathIntervals, pointInRing, outsideRingIntervals } from './precinctGeometry';
+import { riverRing, courtFrame, pathIntervals, pointInRing, outsideRingIntervals } from './precinctGeometry';
 import { facade, supportBuilding } from './architecture';
 import { ArenaRoof, copperRoofHeight, rodLaverAnnexes } from './roofs';
 import { rodLaverBowl } from './RodLaverBowl';
@@ -378,7 +380,6 @@ export function buildContext(data: ContextData, part?:string) {
     for(let x=600;x<708;x+=6)venue('east').box(x,2.4,242,.35,4.5,.3,'#c1c8c7');
   }
   const roadNodes=new Map<string,number>();
-  const riverRing=[[-598,-153],[-527,-163],[-457,-168],[-398,-162],[-347,-152],[-290,-132],[-233,-107],[-175,-68],[-133,-18],[-97,37],[-60,82],[-8,132],[48,175],[93,222],[145,273],[202,328],[272,397],[335,470],[377,527],[272,535],[213,470],[167,417],[113,358],[60,305],[8,257],[-40,212],[-92,170],[-138,118],[-177,73],[-217,32],[-257,-3],[-303,-33],[-352,-55],[-403,-68],[-455,-73],[-507,-68],[-603,-47]];
   if(landscape){
     ground.polygon([[-1500,-1500],[1500,-1500],[1500,1500],[-1500,1500]],-.15,'#758268');
     ground.polygon(EVENT_CONCOURSE,GROUND.concourse,'#b8bcb8');
@@ -413,8 +414,29 @@ export function buildContext(data: ContextData, part?:string) {
     if(f.kind==='path'){
       const finish=routeFinish(f);
       if(!finish)continue;
-      const bridge=f.name==='Tanderrum Bridge',width=bridge?6:finish.width;
-      const y=bridge?6.6:finish.road?GROUND.road:finish.color==='#828988'?GROUND.path-.006:GROUND.path;
+      if(f.name==='Tanderrum Bridge'){
+        const sections=bridgeSections(f.points);
+        for(let i=1;i<sections.length;i++){
+          const a=sections[i-1],c=sections[i],g=new T.BoxGeometry(2,1,2);
+          const pos=g.attributes.position;
+          for(let j=0;j<pos.count;j++){
+            const end=pos.getZ(j)>0?c:a,side=pos.getX(j)*3;
+            pos.setXYZ(j,end.x+end.nx*side,end.h+(pos.getY(j)-.5)*.48,end.z+end.nz*side);
+          }
+          g.computeVertexNormals();b.add(g,'#d7d4c5');
+          for(const side of [-2.9,2.9]){
+            const ax=a.x+a.nx*side,az=a.z+a.nz*side,cx=c.x+c.nx*side,cz=c.z+c.nz*side;
+            for(const rail of [.58,1.1])b.rod([ax,a.h+rail,az],[cx,c.h+rail,cz],.04,'#818984');
+            b.rod([ax,a.h,az],[ax,a.h+1.1,az],.04);
+            if(i===sections.length-1)b.rod([cx,c.h,cz],[cx,c.h+1.1,cz],.04);
+          }
+          if(c.h>1.5&&Math.floor(a.station/22)!==Math.floor(c.station/22))
+            b.box(c.x,(c.h-.48)/2,c.z,1.1,c.h-.48,1.1,'#aeb2a9');
+        }
+        continue;
+      }
+      const width=finish.width;
+      const y=finish.road?GROUND.road:finish.color==='#828988'?GROUND.path-.006:GROUND.path;
       let distance=0;
       for(let i=1;i<f.points.length;i++){
         const a=f.points[i-1], c=f.points[i], dx=c[0]-a[0],dz=c[1]-a[1];
@@ -424,28 +446,27 @@ export function buildContext(data: ContextData, part?:string) {
         if(Math.abs((a[0]+c[0])/2)<24&&Math.abs((a[1]+c[1])/2)<33)continue;
         const dry=outsideRingIntervals(a,c,riverRing);
         const clipped=pathIntervals(a,c,courtExclusions,width/2+(finish.road?.4:.15)).flatMap(([lo,hi])=>dry.map(([u,v])=>[Math.max(lo,u),Math.min(hi,v)]).filter(([u,v])=>v-u>1e-5));
-        for(const [lo,hi] of bridge?[[0,1]]:clipped){
-          const middle=(lo+hi)/2;
-          if(bridge)b.box(a[0]+dx*middle,y,a[1]+dz*middle,width,.5,len*(hi-lo),'#d7d4c5',Math.atan2(dx,dz));
-          else{
+        for(const [lo,hi] of clipped){
             const left=[a[0]+dx*lo,a[1]+dz*lo],right=[a[0]+dx*hi,a[1]+dz*hi];
             // All carriageways sit above their kerb bands. Joining streets
             // naturally cut through those bands and leave a continuous junction.
             if(finish.road)ground.strip(left,right,width+.52,y-.009,'#a8aca8',lo<1e-8,hi>1-1e-8);
             ground.strip(left,right,width,y,finish.color,lo<1e-8,hi>1-1e-8);
-          }
-        }
-        if(bridge){
-          const len=Math.hypot(dx,dz),nx=dz/len*2.9,nz=-dx/len*2.9;
-          for(const side of [-1,1]){
-            b.rod([a[0]+nx*side,7.9,a[1]+nz*side],[c[0]+nx*side,7.9,c[1]+nz*side],.065,'#8c938c');
-            for(let d=0;d<len;d+=3){const t=d/len,x=a[0]+dx*t+nx*side,z=a[1]+dz*t+nz*side;b.rod([x,6.85,z],[x,7.9,z],.035);}
-          }
-          for(let d=8;d<len;d+=24){const t=d/len;b.box(a[0]+dx*t,3.15,a[1]+dz*t,1.1,6.3,1.1,'#aeb2a9');}
         }
         if(!finish.arterial)continue;
         const entry=(roadNodes.get(a.join(','))??0)>2?4/len:0;
         const exit=(roadNodes.get(c.join(','))??0)>2?1-4/len:1;
+        // Place lamps on the verge, clear of junctions and clipped court edges.
+        for(let station=Math.ceil((start+1)/32)*32;station<distance-1;station+=32){
+          const t=(station-start)/len;
+          if(t<entry||t>exit||!clipped.some(([u,v])=>t>u&&t<v))continue;
+          const side=(station/32)%2?1:-1,nx=dz/len*side,nz=-dx/len*side;
+          const x=a[0]+dx*t+nx*(width/2+.72),z=a[1]+dz*t+nz*(width/2+.72);
+          b.rod([x,0,z],[x,5.3,z],.09,'#687577');
+          b.rod([x,4.97,z],[x-nx*1.3,5.5,z-nz*1.3],.065,'#687577');
+          b.box(x-nx*1.32,5.48,z-nz*1.32,.65,.13,.29,'#536066',Math.atan2(dx,dz));
+          b.box(x-nx*1.32,5.40,z-nz*1.32,.55,.025,.22,'#e4e5dc',Math.atan2(dx,dz));
+        }
         // Carry the dash rhythm around bends and leave intersecting roads clear.
         for(let d=Math.floor(start/9)*9;d<distance;d+=9)for(const [u,v] of clipped){
           const lo=Math.max(u,entry,(d-start)/len),hi=Math.min(v,exit,(d+2.8-start)/len);
@@ -578,23 +599,37 @@ export function buildContext(data: ContextData, part?:string) {
     if(building.structureType==='Bridge'){
       // The city data describes the full bridge elevation envelope, not a solid
       // building. Keep open clearance under its deck instead of extruding a wall.
-      const top=building.base+building.height,deck=new T.Shape(building.ring.map(p=>new T.Vector2(p[0],-p[1])));
-      const geometry=new T.ExtrudeGeometry(deck,{depth:.65,bevelEnabled:false});geometry.rotateX(-Math.PI/2);geometry.translate(0,top-.65,0);b.add(geometry,'#b6beb7');
+      const top=building.base+building.height,fork=building.id===forkBridgeId;
+      const parts=fork?forkBridgeParts(building.ring,top):[{ring:building.ring,height:(_x:number,_z:number)=>top}];
+      for(const part of parts){
+        const deck=new T.Shape(part.ring.map(p=>new T.Vector2(p[0],-p[1])));
+        const geometry=new T.ExtrudeGeometry(deck,{depth:.65,bevelEnabled:false});
+        geometry.rotateX(-Math.PI/2);
+        const pos=geometry.attributes.position;
+        for(let i=0;i<pos.count;i++)pos.setY(i,pos.getY(i)+part.height(pos.getX(i),pos.getZ(i))-.65);
+        geometry.computeVertexNormals();b.add(geometry,'#b6beb7');
+      }
       const xs=building.ring.map(p=>p[0]),zs=building.ring.map(p=>p[1]);
       for(let x=Math.min(...xs)+2;x<Math.max(...xs);x+=12)for(let z=Math.min(...zs)+2;z<Math.max(...zs);z+=24){
-        if(pointInRing([x,z],building.ring))b.box(x,(top-.65)/2,z,1.1,top-.65,1.1,'#929f98');
+        const part=parts.find(p=>pointInRing([x,z],p.ring));
+        const h=part?part.height(x,z)-.65:0;
+        if(h>.15)b.box(x,h/2,z,1.1,h,1.1,'#929f98');
       }
       let railDistance=0;
       building.ring.forEach((p,i)=>{
         if(!i)return;
         const a=building.ring[i-1],dx=p[0]-a[0],dz=p[1]-a[1],span=Math.hypot(dx,dz);
         if(span<.02)return;
-        b.rod([a[0],top+1.05,a[1]],[p[0],top+1.05,p[1]],.07,'#667b78');
-        if(building.id==='806910-1-0'){
-          b.box((a[0]+p[0])/2,top+.54,(a[1]+p[1])/2,.07,.43,span,'#97a6a5',Math.atan2(dx,dz));
-          b.box((a[0]+p[0])/2,top-.23,(a[1]+p[1])/2,.13,.21,span,'#536b74',Math.atan2(dx,dz));
+        // Leave both street-level mouths open. The original ring closes across each one.
+        if(fork&&(i===97||i===241))return;
+        const part=fork&&i>27&&i<=161?parts[0]:fork&&i>162&&i<=294?parts[1]:parts[parts.length-1];
+        const ha=part.height(a[0],a[1]),hp=part.height(p[0],p[1]);
+        b.rod([a[0],ha+1.05,a[1]],[p[0],hp+1.05,p[1]],.07,'#667b78');
+        if(fork){
+          b.rod([a[0],ha+.55,a[1]],[p[0],hp+.55,p[1]],.055,'#97a6a5');
+          b.rod([a[0],ha-.23,a[1]],[p[0],hp-.23,p[1]],.09,'#536b74');
           for(let d=Math.ceil(railDistance/2.2)*2.2;d<railDistance+span;d+=2.2){
-            const t=(d-railDistance)/span;b.box(a[0]+dx*t,top+.52,a[1]+dz*t,.075,1.04,.075,'#62787e');
+            const t=(d-railDistance)/span;b.box(a[0]+dx*t,ha+(hp-ha)*t+.52,a[1]+dz*t,.075,1.04,.075,'#62787e');
           }
           railDistance+=span;
         }

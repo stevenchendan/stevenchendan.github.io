@@ -7,17 +7,16 @@ import type {MatchAudio} from './useMatchSound';
 import {visitMatchCues} from './matchSoundCues';
 
 type Court=ReturnType<typeof courtDirectory>[number];
-type Props={audio:MatchAudio;time:RefObject<number>;courts:Court[];focus?:string|null;crowd:boolean};
-const showCourts=new Set(['rla','mca','john','kia','1573','west-show']);
+type Props={audio:MatchAudio;time:RefObject<number>;courts:Court[];focus?:string|null};
 
-export default function CourtSounds({audio,time,courts,focus,crowd}:Props){
+export default function CourtSounds({audio,time,courts,focus}:Props){
   useGLTF(athleteModelUrl);
   const previous=useRef<{court:Court;seconds:number}|null>(null);
   useEffect(()=>{
     const reset=()=>{previous.current=null;audio.stop();};
     document.addEventListener('visibilitychange',reset);
     return ()=>{document.removeEventListener('visibilitychange',reset);reset();};
-  },[audio,crowd,focus]);
+  },[audio,focus]);
   useFrame(({camera})=>{
     if(document.hidden||!courts.length)return;
     const eye=camera.position;
@@ -28,15 +27,12 @@ export default function CourtSounds({audio,time,courts,focus,crowd}:Props){
     if(last?.court!==court){audio.stop();return;}
     const right=camera.matrixWorld.elements;
     visitMatchCues(court.key,last.seconds,seconds,cue=>{
-      const cheer=cue.sample==='cheer';
-      if(cheer&&!crowd)return;
       const cos=Math.cos(court.rotation),sin=Math.sin(court.rotation);
       const dx=court.x+cue.x*cos+cue.z*sin-eye.x,dz=court.z-cue.x*sin+cue.z*cos-eye.z;
       const dy=court.y+1-eye.y,d=Math.max(1,Math.hypot(dx,dy,dz));
       const pan=(dx*right[0]+dy*right[1]+dz*right[2])/d;
-      const level=cheer&&!showCourts.has(court.key) ? .38 : .86;
-      const volume=level/(1+d/(cheer?90:44));
-      audio.play(cue,volume,Math.max(-.86,Math.min(.86,pan))*(cheer ? .36 : 1));
+      const volume=.86/(1+d/44);
+      audio.play(cue,volume,Math.max(-.86,Math.min(.86,pan)));
     });
   });
   return null;

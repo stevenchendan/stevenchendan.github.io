@@ -6,7 +6,6 @@ import type {LoadProgress} from './ArenaScene';
 import {courtDirectory,venueCourts} from './courtPlacements';
 import { getTranslator, type Language } from './i18n';
 import { destinations, homeShot, points, views, isRoofed, type Light, type Shot, type Theme, type View } from './views';
-import {benchDescription,benchLayout} from './playerBenches';
 import SectionPicker from './SectionPicker';
 import GroundsPlan from './GroundsPlan';
 import Autographs from './Autographs';
@@ -131,12 +130,10 @@ export default function ArenaExperience(){
   const [dataAttempt,setDataAttempt]=useState(0);
   const [interactive,setInteractive]=useState(false);
   const [failure,setFailure]=useState<'data'|'render'|null>(null);
-  const [requested,setRequested]=useState(false),[ready,setReady]=useState(false);
+  const [ready,setReady]=useState(false);
   const [progress,setProgress]=useState<LoadProgress|null>(null);
-  const preview=!requested&&!failure;
   const matchSound=useMatchSound();
   const unlockSound=matchSound.unlock;
-  const startScene=()=>{unlockSound();setRequested(true);};
   const [seats,setSeats]=useState(0);
   const [shot,setShot]=useState<Shot>({...homeShot,serial:0});
   const [focusKey,setFocusKey]=useState<string|null|undefined>(undefined);
@@ -176,7 +173,7 @@ export default function ArenaExperience(){
   const sun=useMemo(()=>light==='solar'?summerSun(solarDate):null,[light,solarDate]);
   const seatedStudy=shot.section!==undefined&&isRoofed(shot.destination)&&light==='solar';
   const studyVisible=panel==='sections'||(seatedStudy&&!cinema&&!panel);
-  const clockVisible=panel==='sections'||(!cinema&&!panel&&light==='solar'&&requested);
+  const clockVisible=panel==='sections'||(!cinema&&!panel&&light==='solar');
   const visibility=useSeatDaylight(studyVisible);
   const study={...visibility,date:solarDate,closed:studyClosed,playing:sunPlaying,
     setClosed:setStudyClosed,setDate:(date:SolarDate)=>{setSolarDate(date);setSunPlaying(false);},
@@ -230,7 +227,6 @@ export default function ArenaExperience(){
       if(arena)url.searchParams.set('arena',arena);
       history.replaceState(history.state,'',url);
     }
-    if(arena&&destinations.some(d=>d.id===arena))setRequested(true);
     const preset=views.find(v=>v.id===query.get('view'))?.id;
     if(isRoofed(arena)){
       const choice=seatSections[arena].find(s=>String(s.id)===sectionId)??(preset==='seat'?baselineSection(arena):undefined);
@@ -272,7 +268,7 @@ export default function ArenaExperience(){
     try{localStorage.setItem('1573-arena-'+key,value);}catch{/* Storage is optional. */}
   }
   const navigate=useCallback((next:Omit<Shot,'serial'>)=>{
-    unlockSound();setRequested(true);
+    unlockSound();
     const url=new URL(window.location.href);
     for(const key of ['arena','section','view','date','time','roof'])url.searchParams.delete(key);
     url.searchParams.delete('court');url.searchParams.delete('end');
@@ -363,7 +359,7 @@ export default function ArenaExperience(){
   useEffect(()=>{if(toast){const timer=setTimeout(()=>setToast(''),3500);return ()=>clearTimeout(timer);}},[toast]);
   function toggleCinema(){
     if(cinema){setPlaying(false);setCinema(false);return;}
-    startScene();setCinema(true);setChapter(0);setPlaying(!reducedMotion);setRotate(false);
+    unlockSound();setCinema(true);setChapter(0);setPlaying(!reducedMotion);setRotate(false);
     setReady(false);setFilmPrepared(false);music.prepare();
   }
   const onCut=useCallback(()=>{if(chapter<film.length-1)setChapter(chapter+1);else {setPlaying(false);setCinema(false);}},[chapter]);
@@ -381,11 +377,11 @@ export default function ArenaExperience(){
   }
   function viewStand(stand:Stand){navigate({view:'seat',stand,destination:'1573'});}
   function activateClock(){
-    startScene();
+    unlockSound();
     setContext(true);setLight('solar');
   }
   function setSolar(){
-    startScene();
+    unlockSound();
     if(light==='solar')setLight('day');
     else {setContext(true);setLight('solar');}
   }
@@ -419,9 +415,9 @@ export default function ArenaExperience(){
     !data?tr('正在读取场馆地图'):!progress?tr('正在打开三维视图'):
     progress.stage==='imagery'?tr('正在加载航拍影像'):progress.total>1?tr('正在构建园区'):tr('正在构建场馆');
 
-  const loading=!failure&&(!interactive||requested&&!presentable);
+  const loading=!failure&&(!interactive||!presentable);
   const soundButton=<button type="button" data-match-sound="" aria-label={tr('球场音效')} title={tr('球场音效')} aria-pressed={matchSound.enabled}
-    onClick={()=>{matchSound.toggle();setRequested(true);}}><Icon name={matchSound.enabled?'sound':'muted'}/></button>;
+    onClick={matchSound.toggle}><Icon name={matchSound.enabled?'sound':'muted'}/></button>;
   const loadingTitle=cinema?tr('正在打开影院'):tr('正在打开球场地图');
   return <main ref={container} className={styles.experience} data-loading={loading||undefined} data-interactive={interactive} data-cinema={cinema||undefined} data-roof={roof} lang={language==='zh'?'zh-CN':'en'}>
     <header className={styles.header}>
@@ -435,22 +431,20 @@ export default function ArenaExperience(){
       </nav>
     </header>
     <section className={styles.stage} aria-label={tr('墨尔本公园场馆探索')}
-      onPointerUpCapture={event=>{if(requested&&!(event.target as Element).closest('[data-match-sound]'))unlockSound();}}
-      onKeyDownCapture={event=>{if(requested&&!(event.target as Element).closest('[data-match-sound]'))unlockSound();}}
-      onPointerDown={event=>{if(preview&&event.target===event.currentTarget)startScene();}}
-      onWheel={event=>{if(preview&&event.target===event.currentTarget)startScene();}}>
+      onPointerUpCapture={event=>{if(!(event.target as Element).closest('[data-match-sound]'))unlockSound();}}
+      onKeyDownCapture={event=>{if(!(event.target as Element).closest('[data-match-sound]'))unlockSound();}}>
       {!cinema&&ready&&light==='rain'&&!isRoofed(venue?.id)&&<button className={styles.weatherLink} onClick={()=>navigate({view:'ao',destination:'mca'})}><Icon name="rain"/>{tr('查看玛格丽特球场屋顶')}<Icon name="next"/></button>}
       {!presentable&&<picture className={styles.poster}>
         <source media="(orientation: portrait)" srcSet={`/images/court-atlas/${staticView}-portrait.webp`}/>
         <img src={`/images/court-atlas/${staticView}.webp`} alt={tr(activeView.label)} fetchPriority="high"/>
       </picture>}
-      {requested&&!failure&&data&&<div className={styles.viewport}>
+      {!failure&&data&&<div className={styles.viewport}>
         <SceneBoundary onFailure={onFailure}><Suspense fallback={null}><ArenaScene matchAudio={matchSound.audio} onFilmPrepared={onFilmPrepared} shadowCourt={shadowCourt} movingSun={sunPlaying&&light==='solar'&&!cinema} onFocus={onFocus} {...{data,shot,light,rotate,crowd,ready,onProgress,onSelect,onReady,onInteract,language,theme,sun,onFailure,reducedMotion,compassRef,onCut}} rally={cinema?playing&&presentable:rally} compareStands={showStandComparison&&panel==='settings'} closedStudyRoof={light==='solar'&&seatedStudy&&studyClosed} chapter={cinema?chapter:null} playing={cinema&&playing&&presentable} context={cinema||context} onRoof={setRoof} markers={markers&&!cinema} onShade={setShade} canvasRef={canvas}/></Suspense></SceneBoundary>
       </div>}
       <div className={styles.shade}/>
       {!cinema&&!loading&&<div className={styles.stageBar}>
         {!failure&&<StageLighting light={light} minutes={solarDate.minutes} language={language} interactive={interactive}
-          onPreset={preset=>{startScene();setSunPlaying(false);setLight(preset);}}>
+          onPreset={preset=>{unlockSound();setSunPlaying(false);setLight(preset);}}>
           <SeatDaylight compact language={language} active={light==='solar'} activate={activateClock}
             venue={seatedStudy&&isRoofed(shot.destination)?shot.destination:undefined} id={seatedStudy?shot.section:undefined}
             study={{...study,setDate:date=>{activateClock();setShade(null);study.setDate(date);},toggle:()=>{activateClock();study.toggle();}}}
@@ -468,24 +462,18 @@ export default function ArenaExperience(){
           <p className={styles.location}><Icon name="pin"/>{tr(wide?'澳大利亚墨尔本':'澳大利亚 · 墨尔本公园')}</p>
           <h1>{title}</h1>
           <p className={styles.facts}>{caption}{!wide&&<><i/>{shot.view==='plan'?'23.77 × 10.97 m':seats?`${seats.toLocaleString(language)} ${tr('模型座椅').toLowerCase()}`:'23.77 × 10.97 m'}</>}{isRoofed(venue?.id)&&<><i/>{tr(roofNames[roof])}</>}</p>
-          {preview&&<button className={styles.start3d} onClick={startScene}><Icon name="play"/>{tr('探索三维球场')}</button>}
           {isRoofed(venue?.id)&&<button className={styles.seatLink} onClick={openSeats}><Icon name="seat"/>{tr('选择座区')}<Icon name="next"/></button>}
           {chosen&&ready&&<>
             {playable.length>1&&<select className={styles.courtChoice} aria-label={tr('选择球场')} value={courtKey?chosen.key:''} onChange={e=>navigate({view:'hero',destination:venue?.id,court:e.target.value})}>
               <option value="" disabled>{tr('选择球场')}</option>
               {playable.map(c=><option key={c.key} value={c.key}>{c[language]}</option>)}
             </select>}
-            {(courtKey||playable.length===1)&&<details className={styles.benchGuide} key={chosen.key}>
-              <summary>{language==='zh'?'球员休息席':'Player benches'}</summary>
-              <p>{benchDescription(chosen.key,language)}</p>
-              {benchLayout(chosen.key).source&&<a href={benchLayout(chosen.key).source} target="_blank" rel="noreferrer">{language==='zh'?'澳网场地布置图（2025）':'AO court layout (2025)'} ↗</a>}
-            </details>}
           </>}
           {venue?.id==='village'&&<button className={styles.seatLink} onClick={()=>setPanel('autographs')}>{tr('签名攻略')}<Icon name="next"/></button>}
         </div>}
         {failure&&<div className={styles.status} role="status"><span>{tr('静态场馆视图')}</span><button onClick={()=>{
           if(failure==='data')setDataAttempt(n=>n+1);
-          setProgress(null);setFailure(null);startScene();
+          setProgress(null);setFailure(null);unlockSound();
         }}>{tr('重试 3D')}</button></div>}
       </div>
       {loading&&<div className={styles.loading} data-atlas-loader="">
@@ -506,7 +494,7 @@ export default function ArenaExperience(){
         <button aria-label={tr(playing?'暂停短片':'播放短片')} title={tr(playing?'暂停短片':'播放短片')} onClick={togglePlayback}><Icon name={playing?'pause':'play'}/></button>
         <button aria-label={tr('下一镜头')} title={tr('下一镜头')} onClick={()=>setChapter(i=>(i+1)%film.length)}><Icon name="next"/></button>
       </div>}
-      {(ready||cinema||preview)&&<button className={styles.cinema} disabled={!interactive} aria-pressed={cinema} onClick={toggleCinema}><Icon name={cinema?'exit':'cinema'}/><span>{tr(cinema?'退出影院模式':'影院模式')}</span></button>}
+      {(ready||cinema)&&<button className={styles.cinema} disabled={!interactive} aria-pressed={cinema} onClick={toggleCinema}><Icon name={cinema?'exit':'cinema'}/><span>{tr(cinema?'退出影院模式':'影院模式')}</span></button>}
       {theme==='ink'&&ready&&!cinema&&<span className={styles.inkNote}>{tr('远山为艺术化背景，并非当地地貌。')}</span>}
     </section>
     {!cinema&&<nav className={styles.cameraNav} aria-labelledby="camera-heading">
@@ -532,13 +520,13 @@ export default function ArenaExperience(){
         })}</div><a className={styles.textLink} href="https://ausopen.com/digitalmap" target="_blank" rel="noreferrer">{tr('官方 AO26 地图 ↗')}</a>
       </>}
       {panel==='settings'&&<>
-        <fieldset disabled={!!failure} onChange={startScene} className={styles.section}>
-          <legend>{tr('视觉主题')}</legend><div className={styles.segment}>{(['classic','ink'] as const).map((option,i)=><button key={option} aria-pressed={theme===option} onClick={()=>{startScene();setTheme(option);savePreference('theme',option);}}>{tr(i?'水墨':'原色')}</button>)}</div>
+        <fieldset disabled={!!failure} onChange={unlockSound} className={styles.section}>
+          <legend>{tr('视觉主题')}</legend><div className={styles.segment}>{(['classic','ink'] as const).map((option,i)=><button key={option} aria-pressed={theme===option} onClick={()=>{unlockSound();setTheme(option);savePreference('theme',option);}}>{tr(i?'水墨':'原色')}</button>)}</div>
         </fieldset>
-        <fieldset disabled={!!failure} onChange={startScene} className={styles.section}><legend>{tr('场景图层')}</legend>
+        <fieldset disabled={!!failure} onChange={unlockSound} className={styles.section}><legend>{tr('场景图层')}</legend>
           {[{name:'周边建筑',value:context,set:setContext,locked:light==='solar'},{name:'显示标签',value:markers,set:setMarkers},{name:'活动人群',value:crowd,set:setCrowd}].map(row=><label key={row.name} className={styles.switch}><span>{tr(row.name)}</span><input type="checkbox" disabled={row.locked} checked={row.value} onChange={e=>row.set(e.target.checked)}/></label>)}
         </fieldset>
-        <fieldset disabled={!!failure} onChange={startScene} className={styles.section}><legend>{tr('动态效果')}</legend>
+        <fieldset disabled={!!failure} onChange={unlockSound} className={styles.section}><legend>{tr('动态效果')}</legend>
           <label className={styles.switch}><span>{tr('自动环绕')}</span><input type="checkbox" checked={rotate} onChange={toggleOrbit}/></label>
           <label className={styles.switch}><span>{tr('球员回合')}</span><input type="checkbox" checked={rally} onChange={e=>setRally(e.target.checked)}/></label>
         </fieldset>

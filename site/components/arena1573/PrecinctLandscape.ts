@@ -60,12 +60,13 @@ export function addGroundPhotography(root:T.Group, invalidate:()=>void, onSettle
         vec4 farSample=texture2D(parklandAtlas,vec2(farUV.x,1.-farUV.y));
         float farFade=parklandReady*(1.-fade)*smoothstep(0.,.08,min(farBorder.x,farBorder.y));
         diffuseColor.rgb=mix(diffuseColor.rgb,farSample.rgb*1.12,farSample.a*farFade);
-        float distanceBlend=smoothstep(6.,75.,distance(cameraPosition.xz,orthoPosition)+cameraPosition.y*.55);
+        // Horizontal travel must not brighten the paving or drag photographed shade along it.
+        float aerialBlend=smoothstep(20.,110.,cameraPosition.y);
         // Kia's Central Terrace is one continuous stone surface. Its mapped
         // pedestrian paths use that same finish through the plaza.
         vec2 centralEdge=min(orthoPosition-vec2(217.,17.),vec2(407.,147.)-orthoPosition);
         float terrace=smoothstep(-2.,7.,min(centralEdge.x,centralEdge.y));
-        float coverage=mix(${contribution.toFixed(2)}*mix(${base?'.71':'.25'},1.,distanceBlend),.965,terrace);
+        float coverage=mix(${contribution.toFixed(2)},.965,terrace)*mix(.18,1.,aerialBlend);
         diffuseColor.rgb=mix(diffuseColor.rgb,photo.rgb*mix(1.25,1.05,terrace),orthoReady*fade*photo.a*coverage);
         ${['ground-#b8bcb8','ground-#c8cac4'].includes(o.name)?`
         // Resolve individual stone setts at walking height, where the half-
@@ -81,7 +82,7 @@ export function addGroundPhotography(root:T.Group, invalidate:()=>void, onSettle
         vec2 widths=max(fwidth(stone),vec2(.001)),joint=min(fract(stone),1.-fract(stone));
         float grout=max(1.-smoothstep(.004,.012+widths.x*.5,joint.x),1.-smoothstep(.004,.012+widths.y*.5,joint.y));
         setts*=1.-grout*.19;
-        float nearStone=1.-smoothstep(32.,105.,length(vec3(cameraPosition.x-orthoPosition.x,cameraPosition.y,cameraPosition.z-orthoPosition.y)));
+        float nearStone=1.-aerialBlend;
         diffuseColor.rgb=mix(diffuseColor.rgb,setts,terrace*photo.a*nearStone*orthoReady);`:''}`);
     };
     material.customProgramCacheKey=()=>key+'-melbourne-ground-'+contribution;
@@ -99,8 +100,8 @@ function treeShape(style:number) {
     uv.push((style+u)/3,(upper?0:.5)+v*.5);
     const len=Math.hypot(x*.4,1,z*.4);normals.push(x*.4/len,1/len,z*.4/len);
   };
-  for(let k=0;k<2;k++){
-    const a=k*Math.PI/2,c=Math.cos(a),s=Math.sin(a);
+  for(let k=0;k<3;k++){
+    const a=k*Math.PI/3,c=Math.cos(a),s=Math.sin(a);
     for(const [u,v] of [[0,0],[1,0],[1,1],[0,0],[1,1],[0,1]])add((u*2-1)*c,v*2.65,(u*2-1)*s,u,v,false);
   }
   for(let k=0;k<16;k++){

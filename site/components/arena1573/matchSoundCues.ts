@@ -1,6 +1,6 @@
 import {courtMatch,tossTime} from './courtMatches';
 
-export type MatchCue={at:number; sample:number|'cheer'; x:number; z:number; gain:number; rate:number};
+export type MatchCue={at:number; sample:number; x:number; z:number; gain:number; rate:number};
 const cache=new Map<string,{duration:number;cues:MatchCue[]}>();
 
 export function matchSoundCues(key:string){
@@ -15,13 +15,7 @@ export function matchSoundCues(key:string){
       const sample=serve?3+index%2:(i+index)%3;
       cues.push({at:start+stroke.at,sample,x:sign*stroke.contact[0],z:sign*stroke.contact[2],
         gain:serve ? .96 : volley ? .57 : .80,rate:stroke.pace*(volley?1.09:1)});
-      const bounce=point.rally.bounceAfter[i];
-      if(bounce!==null){
-        const at=stroke.at+bounce,[x,,z]=point.rally.frame(at).ball;
-        cues.push({at:start+at,sample:5,x:sign*x,z:sign*z,gain:.39,rate:1+(i%3-1)*.045});
-      }
     }
-    cues.push({at:start+point.liveEnd+.16,sample:'cheer',x:0,z:0,gain:.78,rate:.98+.015*index});
   }
   const result={duration:match.duration,cues};
   cache.set(key,result);

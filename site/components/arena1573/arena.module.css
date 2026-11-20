@@ -86,8 +86,6 @@
 .cinema svg { width: 17px; }
 .cinema:hover { background: #15262c; }
 .status { gap: 9px; color: white; background: #1a3138ee; border-radius: 6px; padding: 8px 12px; font-size: 12px; }
-.start3d { pointer-events:auto; display:inline-flex; align-items:center; gap:7px; margin:9px 6px 0 0; padding:0 13px; min-height:39px; border-radius:6px; color:#142c32; background:var(--accent); font-size:12px; font-weight:700; }
-.start3d svg { width:15px; height:15px; }
 .experience[data-loading] .cameraNav, .experience[data-loading] .cinema[aria-pressed=false] { display:none; }
 .experience[data-loading] .cinema[aria-pressed=true] { z-index:16; }
 .loading {
@@ -310,15 +308,9 @@
   .lightingPanel .moods button { flex: 1; flex-direction: column; gap: 2px; min-height: 48px; padding: 2px; }
   .lightingPanel .moods button span { display: inline; }
   .lightingPanel > section[data-compact] { width: 100%; padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
-  .start3d, .seatLink { min-height: 44px; }
+  .seatLink { min-height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .loadingTrack:has(progress:indeterminate)::after { animation:none; }
   .cameraCard { transition: none; }
 }
-
-.benchGuide {width:fit-content;max-width:min(27rem,75vw);font-size:.85rem;line-height:1.45;pointer-events:auto;}
-.benchGuide summary {cursor:pointer;font-weight:650;}
-.benchGuide[open] {padding:.5rem .7rem;background:var(--panel,#f5f7f3);color:#18373f;border-radius:.35rem;text-shadow:none;}
-.benchGuide p {margin:.35rem 0;}
-.benchGuide a {color:inherit;text-decoration:underline;}

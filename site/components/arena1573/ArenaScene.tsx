@@ -417,20 +417,30 @@ function Scene({matchAudio,movingSun,shadowCourt,onFilmPrepared,onFocus,data,sho
     if(previous.current!==null)time.current+=(now-previous.current)/1000;
     previous.current=now;
   },-3);
+  // The grounds camera can cross several venue focus boundaries in one drag.
+  // Its sunlight covers Melbourne Park in world coordinates throughout the orbit.
+  const groundsShadow=!take&&(shot.home||shot.view==='ao'||shot.view==='precinct');
+  const shadowExtent=groundsShadow?860:105;
+  const lightingCourt=groundsShadow?undefined:shadowCourt;
   const lightTarget=useMemo(()=>{
     const target=new T.Object3D();
-    const court=courts.find(c=>c.key===shadowCourt);
-    const venue=destinations.find(d=>d.id===(shadowCourt??selectedVenue));
+    if(groundsShadow){target.position.set(320,0,55);return target;}
+    const court=courts.find(c=>c.key===lightingCourt);
+    const venue=destinations.find(d=>d.id===(lightingCourt??selectedVenue));
     if(court)target.position.set(court.x,court.y,court.z);
     else if(venue)target.position.set(venue.target[0],0,venue.target[2]);
     return target;
-  },[courts,shadowCourt,selectedVenue]);
-  const sunPosition:[number,number,number]=sun?[lightTarget.position.x+sun.direction[0]*300,sun.direction[1]*300,lightTarget.position.z+sun.direction[2]*300]:[lightTarget.position.x+(golden?-65:-40),golden?24:80,lightTarget.position.z+(golden?38:-30)];
+  },[courts,lightingCourt,selectedVenue,groundsShadow]);
   const ink=!take&&theme==='ink', rain=light==='rain';
   const floodPower=light==='night'?1:sun?1-T.MathUtils.smoothstep(sun.elevation,-1,7):0;
   const bg=rain?(ink?'#dde3df':'#aebcc3'):ink?'#f3f0e6':night?'#172b38':golden?'#d6c5ab':'#cbdde9';
   const fill=useRef<T.HemisphereLight>(null),keyLight=useRef<T.DirectionalLight>(null);
-  const shadowSize=sun?(movingSun?(compactViewport?1024:2048):(compactViewport?2048:4096)):2048;
+  const shadowSize=groundsShadow?(compactViewport?2048:4096):sun?(movingSun?(compactViewport?1024:2048):(compactViewport?2048:4096)):2048;
+  const sunPosition=useMemo(()=>{
+    const distance=groundsShadow?1000:sun?300:golden?Math.hypot(65,24,38):Math.hypot(40,80,30);
+    const axis=sun?new T.Vector3(...sun.direction):new T.Vector3(golden?-65:-40,golden?24:80,golden?38:-30);
+    return lightTarget.position.clone().addScaledVector(axis.normalize(),distance);
+  },[groundsShadow,sun,golden,lightTarget]);
   useLayoutEffect(()=>{
     // Three allocates the shadow target once. Resize it with the texture sampling grid.
     keyLight.current?.shadow.map?.setSize(shadowSize,shadowSize);
@@ -463,7 +473,7 @@ function Scene({matchAudio,movingSun,shadowCourt,onFilmPrepared,onFocus,data,sho
     {ink&&<InkLandscape/>}
     {ink ? <SceneEffects/> : <Sky key={dusk?'dusk':sun?'solar':'sky'} elevation={sun?.elevation} dusk={dusk} horizon={bg} zenith={night?'#101c38':rain?'#8297ac':golden?'#8daabd':'#70abd7'}/>}
     <hemisphereLight ref={fill} key={dusk?'dusk-fill':sun?'solar-fill':'fill'} args={[night?'#8299c3':'#e4eff8',night?'#26362e':rain?'#81959b':'#b1a788',night?.85:rain?1.8:sun?1.0:golden?1.35:1.75]}/>
-    <directionalLight ref={keyLight} target={lightTarget} key={dusk?'dusk-key':sun?'solar':'mood'} position={sunPosition} color={rain?'#c5dcf2':golden?'#ffd4a0':'#fff0d8'} intensity={rain?.4:sun?(sun.aboveHorizon?Math.max(.3,Math.sin(sun.elevation*Math.PI/180)*3.3):0):night?.1:golden?2.6:2.05} castShadow={!rain} shadow-mapSize={[shadowSize,shadowSize]} shadow-camera-left={-105} shadow-camera-right={105} shadow-camera-top={105} shadow-camera-bottom={-105} shadow-camera-far={700} shadow-normalBias={.04} shadow-bias={-.00005}/>
+    <directionalLight ref={keyLight} target={lightTarget} key={groundsShadow?'grounds-sun':dusk?'dusk-key':sun?'solar':'mood'} position={sunPosition} color={rain?'#c5dcf2':golden?'#ffd4a0':'#fff0d8'} intensity={rain?.4:sun?(sun.aboveHorizon?Math.max(.3,Math.sin(sun.elevation*Math.PI/180)*3.3):0):night?.1:golden?2.6:2.05} castShadow={!rain} shadow-mapSize={[shadowSize,shadowSize]} shadow-camera-left={-shadowExtent} shadow-camera-right={shadowExtent} shadow-camera-top={shadowExtent} shadow-camera-bottom={-shadowExtent} shadow-camera-far={groundsShadow?2000:700} shadow-normalBias={.04} shadow-bias={-.00005}/>
     {night&&selectedVenue==='1573'&&shot.view==='seat'&&<><pointLight position={[lightTarget.position.x-18,18,lightTarget.position.z]} intensity={shot.destination&&shot.destination!=='1573'?560:1600} distance={85} decay={2} color="#e7f2ff"/><pointLight position={[lightTarget.position.x+18,18,lightTarget.position.z]} intensity={shot.destination&&shot.destination!=='1573'?560:1600} distance={85} decay={2} color="#fff0d6"/><pointLight position={[lightTarget.position.x,17,lightTarget.position.z-22]} intensity={shot.destination&&shot.destination!=='1573'?385:1100} distance={65} decay={2}/><pointLight position={[lightTarget.position.x,17,lightTarget.position.z+22]} intensity={shot.destination&&shot.destination!=='1573'?385:1100} distance={65} decay={2}/></>}
     {featured&&inBowl&&(rain||night||closedStudyRoof)&&<spotLight target={lightTarget} position={[featured.x+12,14,featured.z+8]} angle={1.06} penumbra={.56} color="#f4f5ec" intensity={1700} distance={75} decay={2} castShadow shadow-mapSize={[1024,1024]} shadow-normalBias={.025}/>}
     <World {...{track,selectedVenue,data,light,crowd,closedStudyRoof,onReady,onProgress,onFailure,sun,onShade,roofs,reducedMotion,onRoof}} panorama={!!shot.home||(!shot.destination&&(shot.view==='ao'||shot.view==='precinct'))||chapter!==null} crowdMoving={!reducedMotion&&(chapter===null||playing)} compareStands={compareStands&&selectedVenue==='1573'} context={showPrecinct}/>
@@ -481,7 +491,7 @@ function Scene({matchAudio,movingSun,shadowCourt,onFilmPrepared,onFocus,data,sho
     {markers&&shot.view!=='ao'&&points.filter(p=>context||selectedVenue==='all'||(p.id==='precinct'?selectedVenue==='mca':selectedVenue==='1573')).map((p,i)=><Html key={p.id} position={p.position} center zIndexRange={[10,0]}><button className={styles.pin} title={tr(p.title)} aria-label={`${tr('探索')}${tr(p.title)}`} onClick={()=>onSelect(p.id)}><span>{String(i+1).padStart(2,'0')}</span><b>{tr(p.title)}</b></button></Html>)}
     {ready&&rally&&matchAudio&&audibleCourts.length>0&&<Suspense fallback={null}>
       <CourtSounds audio={matchAudio} time={time} courts={audibleCourts}
-        focus={take?take.venue:shadowCourt===undefined?featured?.key:shadowCourt} crowd={crowd}/>
+        focus={take?take.venue:shadowCourt===undefined?featured?.key:shadowCourt}/>
     </Suspense>}
     <Rig context={showPrecinct} {...{data,areas,selectedVenue,onFocus,shot,rotate,rain,language,onInteract,canvasRef,compassRef,featured,chapter,playing,onCut,filmTime}}/>
   </>;

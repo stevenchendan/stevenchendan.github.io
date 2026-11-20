@@ -4,46 +4,36 @@ import type {MatchCue} from './matchSoundCues';
 /** The contact bank has six onset-aligned, quarter-second recordings. */
 export class MatchAudio {
   readonly context=new AudioContext();
-  private buffers=new Map<string,AudioBuffer>();
-  private fetching=new Set<string>();
+  private buffer:AudioBuffer|null=null;
+  private fetching=false;
   private voices=new Set<AudioBufferSourceNode>();
   private abort=new AbortController();
 
   prepare(){
-    for(const file of ['court-contacts.wav','point-cheer.mp3']){
-      if(this.fetching.has(file)||this.buffers.has(file))continue;
-      this.fetching.add(file);
-      void fetch('/audio/'+file,{signal:this.abort.signal}).then(r=>{
-        if(!r.ok)throw Error('Audio unavailable');
-        return r.arrayBuffer();
-      }).then(b=>this.context.decodeAudioData(b)).then(b=>{
-        if(!this.abort.signal.aborted)this.buffers.set(file,b);
-      }).catch(()=>{/* Retry a missing recording on the next interaction. */})
-        .finally(()=>this.fetching.delete(file));
-    }
+    if(this.buffer||this.fetching)return;
+    this.fetching=true;
+    void fetch('/audio/court-contacts.wav',{signal:this.abort.signal}).then(r=>{
+      if(!r.ok)throw Error('Audio unavailable');
+      return r.arrayBuffer();
+    }).then(b=>this.context.decodeAudioData(b)).then(b=>{
+      if(!this.abort.signal.aborted)this.buffer=b;
+    }).catch(()=>{/* Retry on the next interaction. */})
+      .finally(()=>{this.fetching=false;});
   }
   play(cue:MatchCue,volume:number,pan:number){
-    const ctx=this.context,cheer=cue.sample==='cheer';
-    const buffer=this.buffers.get(cheer?'point-cheer.mp3':'court-contacts.wav');
+    const ctx=this.context,buffer=this.buffer;
     if(!buffer||ctx.state!=='running'||document.hidden)return;
     const source=ctx.createBufferSource(),level=ctx.createGain(),stereo=ctx.createStereoPanner();
     source.buffer=buffer;source.playbackRate.value=cue.rate;
     stereo.pan.value=pan;
     const start=ctx.currentTime,gain=volume*cue.gain;
     level.gain.value=gain;
-    if(cheer){
-      level.gain.setValueAtTime(0,start);
-      level.gain.linearRampToValueAtTime(gain,start+.14);
-      level.gain.setValueAtTime(gain,start+1.6);
-      level.gain.linearRampToValueAtTime(0,start+2.6);
-    }
     source.connect(level).connect(stereo).connect(ctx.destination);
     this.voices.add(source);
     source.onended=()=>{
       this.voices.delete(source);source.disconnect();level.disconnect();stereo.disconnect();
     };
-    if(cue.sample==='cheer'){source.start();source.stop(start+2.6);}
-    else source.start(start,cue.sample*.25,.25);
+    source.start(start,cue.sample*.25,.25);
   }
   stop(){for(const source of this.voices)source.stop();}
   dispose(){this.abort.abort();this.stop();void this.context.close().catch(()=>{});}

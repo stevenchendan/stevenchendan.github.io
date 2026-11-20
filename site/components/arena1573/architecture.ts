@@ -44,6 +44,13 @@ export function supportBuilding(b:Batch,building:Building){
   const ntc=building.id==='810422-1-0', pavilion=building.id==='812707-1-0', centre=building.name==='Centrepiece Melbourne',office=building.id==='808864-1-0';
   const h=ntc?13:centre?15:pavilion?14:office?22:height;
   const shape=new T.Shape(ring.map(p=>new T.Vector2(p[0],-p[1])));
+  if(pavilion){
+    // The mapped pavilion tier starts 3 m above the plaza. Carry its curved
+    // perimeter down past the lowest ground finish to enclose the lower storey.
+    const footing=-.16;
+    const plinth=new T.ExtrudeGeometry(shape,{depth:base-footing,bevelEnabled:false});
+    plinth.rotateX(-Math.PI/2);plinth.translate(0,footing,0);b.add(plinth,'#979d9b');
+  }
   const mass=new T.ExtrudeGeometry(shape,{depth:h,bevelEnabled:false});mass.rotateX(-Math.PI/2);mass.translate(0,base,0);
   b.add(mass,centre?'#9ba6a7':ntc?'#bac4c5':pavilion?'#a8b3b7':'#969e9d');
   const cap=new T.ShapeGeometry(shape);cap.rotateX(-Math.PI/2);cap.translate(0,base+h+.08,0);b.add(cap,'#cbd0ce');

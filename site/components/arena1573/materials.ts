@@ -80,11 +80,11 @@ function groundTexture(kind: GroundFinish){
       }
     }
   }
-  for(let i=0;i<6800;i++){
-    seed=(Math.imul(seed,1664525)+1013904223)>>>0;const x=seed%256;
-    seed=(Math.imul(seed,1664525)+1013904223)>>>0;const y=seed%256;
+  for(let i=0;i<18000;i++){
+    const x=Math.floor(random()*256);
+    const y=Math.floor(random()*256);
     ctx.fillStyle=kind==='lawn'?(i%2?'#a5b99e':'#edf0df'):kind==='asphalt'?(i%2?'#969f9e':'#e3e4dd'):(i%2?'#b8b8ad':'#efede4');
-    ctx.globalAlpha=.13;ctx.fillRect(x,y,1,1);
+    ctx.globalAlpha=kind==='asphalt'?.52:.29;ctx.fillRect(x,y,1,1);
   }
   ctx.globalAlpha=1;
   const texture=new T.CanvasTexture(canvas);texture.wrapS=texture.wrapT=T.RepeatWrapping;
@@ -99,7 +99,7 @@ export function pavingMaterial(color:string,geometry:T.BufferGeometry,kind:Groun
   if(kind==='plain')return material;
   material.map=shared??groundTexture(kind);
   const position=geometry.getAttribute('position'),uv=new Float32Array(position.count*2);
-  const tileSize=kind==='lawn'?16:4;
+  const tileSize=kind==='lawn'?5:kind==='asphalt'?1.5:4;
   for(let i=0;i<position.count;i++){uv[i*2]=position.getX(i)/tileSize;uv[i*2+1]=position.getZ(i)/tileSize;}
   geometry.setAttribute('uv',new T.BufferAttribute(uv,2));
   return material;
@@ -149,7 +149,12 @@ export function precinctMaterial(color:string,geometry:T.BufferGeometry){
   }
   const texture=new T.CanvasTexture(canvas);texture.wrapS=texture.wrapT=T.RepeatWrapping;texture.colorSpace=T.SRGBColorSpace;texture.anisotropy=8;
   const p=geometry.getAttribute('position'),uv=new Float32Array(p.count*2);
-  for(let i=0;i<p.count;i++){uv[i*2]=p.getX(i)/8;uv[i*2+1]=p.getZ(i)/8;}
+  const n=geometry.getAttribute('normal');
+  for(let i=0;i<p.count;i++){
+    const wall=Math.abs(n.getY(i))<.65;
+    uv[i*2]=(wall?p.getX(i)*n.getZ(i)-p.getZ(i)*n.getX(i):p.getX(i))/4;
+    uv[i*2+1]=(wall?p.getY(i):p.getZ(i))/4;
+  }
   geometry.setAttribute('uv',new T.BufferAttribute(uv,2));material.map=texture;
   return material;
 }
