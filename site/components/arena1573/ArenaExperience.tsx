@@ -151,7 +151,7 @@ export default function ArenaExperience(){
   const [studyClosed,setStudyClosed]=useState(false),[sunPlaying,setSunPlaying]=useState(false);
   const [shade,setShade]=useState<ShadeResult|null>(null);
   const [rotate,setRotate]=useState(false),[context,setContext]=useState(true),[crowd,setCrowd]=useState(true);
-  const [markers,setMarkers]=useState(false),[rally,setRally]=useState(true);
+  const [markers,setMarkers]=useState(true),[rally,setRally]=useState(true);
   const [reducedMotion,setReducedMotion]=useState(true);
   const [panel,setPanel]=useState<Panel|null>(null),[selected,setSelected]=useState<string|null>(null);
   const [cinema,setCinema]=useState(false),[toast,setToast]=useState('');
@@ -309,7 +309,8 @@ export default function ArenaExperience(){
     if(view==='precinct'||view==='ao')setContext(true);
     navigate({view,destination,court:court?.key,preset:true});
   },[subjectCourt,subjectVenue,nearestSeatCourt,seatVenue,section,navigate]);
-  const onSelect=useCallback((id:string)=>{
+  const onSelect=useCallback((id:string,court?:string)=>{
+    if(court){navigate({view:'hero',destination:id,court});return;}
     if(destinations.some(venue=>venue.id===id)){
       navigate({view:'hero',destination:id});
       return;

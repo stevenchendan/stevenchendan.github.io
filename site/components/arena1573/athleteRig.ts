@@ -77,7 +77,7 @@ export function makeAthlete(source:T.Group,clips:T.AnimationClip[],shirt:string,
   const capMesh=heads[0] as T.Mesh;
   const capFabric=prepareKit(capMesh.geometry,true);
   capMesh.geometry=capFabric.geometry;
-  function setKit(hex:string,portrait=cap?0:1,shorts='#213944',build=0){
+  function setKit(hex:string,portrait=cap?0:1,shorts='#213944',build=0,accent?:string){
     heads.forEach((h,i)=>h.visible=i===portrait);
     const cut=wearsDress(portrait)?1:0;
     let kit=cuts.get(cut);
@@ -85,7 +85,7 @@ export function makeAthlete(source:T.Group,clips:T.AnimationClip[],shirt:string,
     figure.geometry=kit.geometry;
     if(figure.morphTargetInfluences)figure.morphTargetInfluences[0]=build;
     const shirt=new T.Color(hex),woven=new T.Color(shorts);
-    const palette=[shirt,shirt.clone().multiplyScalar(.74),new T.Color(skinTones[portrait]),woven,woven.clone().lerp(shirt,.23)];
+    const palette=[shirt,accent?new T.Color(accent):shirt.clone().multiplyScalar(.74),new T.Color(skinTones[portrait]),woven,woven.clone().lerp(shirt,.23)];
     for(const {colors,slots} of portrait===0?[kit,capFabric]:[kit]){
       palette.forEach((c,index)=>{
         for(const i of slots[index+1])colors.setXYZ(i,c.r,c.g,c.b);
