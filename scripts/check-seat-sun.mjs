@@ -22,6 +22,14 @@ assert.equal(calls,2);
 const date={year:2027,month:1,day:17};
 const daylight=[9,13,17].map(hour=>summerSun({...date,minutes:hour*60}));
 const night=summerSun({...date,minutes:23*60});
+// Opposing lower sideline seats have a clear morning-to-afternoon reversal.
+// Walking the real section IDs through the lookup catches mirrored plan axes.
+for(const [venue,east,west] of [['rla',6,16],['mca',5,15],['john','7A','18A']]){
+  for(const [sun,brighter,darker] of [[daylight[0],west,east],[daylight[2],east,west]]){
+    assert.ok(sectionSun(atlas,venue,brighter,sun,false)>sectionSun(atlas,venue,darker,sun,false),
+      `${venue}: section ${brighter} should receive more direct sun than ${darker}`);
+  }
+}
 let open=0,partial=0,shaded=0;
 for(const [venue,sections] of Object.entries(seatSections)){
   for(const {id} of sections){

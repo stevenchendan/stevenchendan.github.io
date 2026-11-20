@@ -21,6 +21,22 @@ close(sunDirection(90,0)[2],-Math.sin(.142));
 close(sunDirection(0,0)[0],-Math.sin(.142));
 close(sunDirection(0,0)[2],-Math.cos(.142));
 close(sunDirection(0,90)[1],1);
+// US Naval Observatory AltAz table for Melbourne Park, 17 January 2027,
+// UTC+11, one-hour interval. Bearings are clockwise from true north.
+// https://aa.usno.navy.mil/data/AltAz (apparent altitude includes refraction).
+for(const [hour,bearing,altitude] of [[9,94.1,30.1],[13,23.0,71.8],[14,337.0,71.8],[17,275.3,41.9],[18,266.0,30.0]]){
+  const sun=summerSun({year:2027,month:1,day:17,minutes:hour*60});
+  close(sun.azimuth,bearing,.6);
+  close(sun.elevation,altitude,.2);
+}
+// OSM way 1239949234, nodes 11519576540 -> 11519576539, runs toward
+// the north baseline. Compare its geographic bearing to the actual scene edge.
+const context=JSON.parse(fs.readFileSync(path.join(root,'public/data/1573-context.json'),'utf8'));
+const court=context.features.find(feature=>feature.id==='way/1239949234').points;
+const rad=Math.PI/180;
+const bearing=Math.atan2((144.977573-144.9775118)*Math.cos(-37.821*rad),-37.8208615+37.8211998);
+const [x,,z]=sunDirection(bearing/rad,0);
+close(Math.atan2(x,-z),Math.atan2(court[1][0]-court[2][0],court[2][1]-court[1][1]),.2*rad);
 for(const year of [2027,2028])for(const day of [1,15,31]){
   const events=summerDaylight(year,1,day);
   assert.ok(events.sunrise>350&&events.sunrise<410,'January sunrise should be around 06:00–06:50 AEDT');
