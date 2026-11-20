@@ -1,3 +1,4 @@
+import {mcaRow,mcaLowerRows} from './mcaProfile';
 import {forkBridgeId,forkBridgeParts} from './forkBridge';
 import { bridgeSections } from './bridge';
 import { grandSlamOval } from './GrandSlamOval';
@@ -195,16 +196,39 @@ function arenaBowl(b:Builder,x:number,z:number,w:number,d:number,onlySeats=false
   if(!onlySeats){const floor=new T.ShapeGeometry(roundedPath(w,d,12));floor.rotateX(-Math.PI/2);floor.translate(x,.06,z);b.add(floor,'#394f5b');}
   for(let row=0;row<rows;row++){
     const t=row/rows,u=(row+1)/rows;
-    const shape=roundedPath(13+(w-13)*u,22+(d-22)*u,3+8*u);
-    shape.holes.push(new T.Path(roundedPath(13+(w-13)*t,22+(d-22)*t,3+8*t).getPoints(12).reverse()));
-    const tier=new T.ExtrudeGeometry(shape,{depth:.57,bevelEnabled:false,curveSegments:12});
-    if(!onlySeats){tier.rotateX(-Math.PI/2);tier.translate(x,.26+row*.57,z);b.add(tier,'#77888f');}else tier.dispose();
-    const path=roundedPath(13+(w-13)*(t+u)/2,22+(d-22)*(t+u)/2,3+8*u),count=Math.floor(path.getLength()/.57);
+    const m=b.group.userData.venue==='mca'?mcaRow(row):null;
+    const innerW=m?.innerWidth??13+(w-13)*t,innerD=m?.innerDepth??22+(d-22)*t;
+    const outerW=m?innerW+m.run:13+(w-13)*u,outerD=m?innerD+m.depthRun:22+(d-22)*u;
+    const innerR=m?.radius??3+8*t,outerR=m?innerR+m.run*8/19:3+8*u;
+    const rise=m?.rise??.57,top=m?.top??.83+row*.57;
+    const shape=roundedPath(outerW,outerD,outerR);
+    shape.holes.push(new T.Path(roundedPath(innerW,innerD,innerR).getPoints(12).reverse()));
+    const tier=new T.ExtrudeGeometry(shape,{depth:rise,bevelEnabled:false,curveSegments:12});
+    if(!onlySeats){tier.rotateX(-Math.PI/2);tier.translate(x,top-rise,z);b.add(tier,'#77888f');}else tier.dispose();
+    const path=roundedPath((innerW+outerW)/2,(innerD+outerD)/2,m?(innerR+outerR)/2:outerR),count=Math.floor(path.getLength()/.57);
+    if(m&&row===mcaLowerRows){
+      const lower=mcaRow(row-1),edge=roundedPath(innerW,innerD,innerR);
+      const landing=roundedPath(innerW+.10,innerD+.10,innerR);
+      landing.holes.push(new T.Path(roundedPath(lower.innerWidth+lower.run,lower.innerDepth+lower.depthRun,lower.radius+lower.run*8/19).getPoints(12).reverse()));
+      const deck=new T.ExtrudeGeometry(landing,{depth:.23,bevelEnabled:false,curveSegments:12});
+      deck.rotateX(-Math.PI/2);deck.translate(x,lower.top-.23,z);b.add(deck,'#b8bfbe');
+      // The face below the first upper row encloses the change in level.
+      const lip=roundedPath(innerW+.12,innerD+.12,innerR);
+      lip.holes.push(new T.Path(edge.getPoints(12).reverse()));
+      const face=new T.ExtrudeGeometry(lip,{depth:top-lower.top,bevelEnabled:false,curveSegments:12});
+      face.rotateX(-Math.PI/2);face.translate(x,lower.top,z);b.add(face,'#394f5b');
+      for(let i=0;i<128;i++){
+        if(i%8===0)continue;
+        const a=edge.getPointAt(i/128),c=edge.getPointAt((i+1)/128);
+        b.rod([x+a.x,top+.73,z-a.y],[x+c.x,top+.73,z-c.y],.035,'#829097');
+        b.rod([x+a.x,top,z-a.y],[x+a.x,top+.73,z-a.y],.03,'#829097');
+      }
+    }
     if(indoor){
       const width=Math.min(1.35,path.getLength()*.073/16);
       for(let section=0;section<16;section++){
         const f=(section+.04)/16,p=path.getPointAt(f),outer=shape.getPointAt(f),v=path.getTangentAt(f);
-        const angle=Math.atan2(v.y,v.x),depth=outer.distanceTo(p),top=.83+row*.57;
+        const angle=Math.atan2(v.y,v.x),depth=outer.distanceTo(p);
         const px=x+p.x,pz=z-p.y;
         // The aisle climbs two shallow treads for each seating tier.
         b.box(px,top+.012,pz,width,.024,2*depth,'#b8bfbe',angle);
@@ -225,7 +249,7 @@ function arenaBowl(b:Builder,x:number,z:number,w:number,d:number,onlySeats=false
     for(let i=0;i<count;i++){
       const f=i/count;if((f*16)%1<.08)continue;
       const p=path.getPointAt(f),v=path.getTangentAt(f);
-      seatPositions.push({x:x+p.x,y:(onlySeats?1.4:1.25)+row*(onlySeats?.48:.57),z:z-p.y,angle:Math.atan2(v.y,v.x)});
+      seatPositions.push({x:x+p.x,y:onlySeats?1.4+row*.48:top+.42,z:z-p.y,angle:Math.atan2(v.y,v.x)});
     }
   }
   const seat=mouldedSeatGeometry(false),mesh=new T.InstancedMesh(seat,new T.MeshStandardMaterial({roughness:.66,side:T.DoubleSide}),seatPositions.length),o=new T.Object3D();

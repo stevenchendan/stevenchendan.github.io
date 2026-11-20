@@ -1,3 +1,4 @@
+import {mcaRow} from './mcaProfile';
 import { SEATING_LIFT } from './dimensions';
 import type { Stand } from './solar';
 import {sectionPosition, type SectionId, type SeatingVenue} from './seating';
@@ -27,7 +28,10 @@ export function sectionEye(venue:SeatingVenue,id:SectionId){
   if(venue==='rla')return rodLaverSeatEye(section.x,section.z,section.level);
   const [width,depth]=venue==='john'?[40,48]:[32,36];
   const row=Math.round(21*section.level), fraction=(row+.5)/22;
-  const w=13+(width-13)*fraction,d=22+(depth-22)*fraction,r=3+8*fraction;
+  const m=venue==='mca'?mcaRow(row):null;
+  const w=m?m.innerWidth+m.run/2:13+(width-13)*fraction;
+  const d=m?m.innerDepth+m.depthRun/2:22+(depth-22)*fraction;
+  const r=m?m.radius+m.run*4/19:3+8*fraction;
   const dx=section.x*w,dz=section.z*d;
   let lo=0,hi=5;
   for(let i=0;i<20;i++){
@@ -35,7 +39,7 @@ export function sectionEye(venue:SeatingVenue,id:SectionId){
     const u=Math.max(0,Math.abs(mid*dx)-(w-r)),v=Math.max(0,Math.abs(mid*dz)-(d-r));
     if(u*u+v*v<=r*r)lo=mid;else hi=mid;
   }
-  return [dx*lo,2.17+row*.57,dz*lo] as const;
+  return [dx*lo,m?m.top+1.34:2.17+row*.57,dz*lo] as const;
 }
 export const destinations = [
   {id:'1573',name:'1573 Arena',target:[0,0,0],offset:[-68,82,98]},
