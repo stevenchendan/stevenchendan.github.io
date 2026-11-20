@@ -141,11 +141,13 @@ export default function SectionPicker({ venue, section, language, onSelect, onVi
   const directionsOnPlan = (delta: [number, number]): [number, number] =>
     venue === 'john' ? delta : [delta[1], -delta[0]];
 
+  const activateSection = canView ? onView : onSelect;
+
   function onMapKey(event: KeyboardEvent<SVGGElement>, current: SeatSection) {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       event.stopPropagation();
-      onSelect(current.id);
+      activateSection(current.id);
     }
     const direction = directions[event.key];
     if (!direction) return;
@@ -172,7 +174,6 @@ export default function SectionPicker({ venue, section, language, onSelect, onVi
       </div>
     </div>
 
-    <SeatDaylight {...{language, venue, study}} id={selected.id}/>
     <div className={styles.selection}>
       <div className={styles.selectionTop}>
         <div className={styles.sectionControl}>
@@ -195,6 +196,8 @@ export default function SectionPicker({ venue, section, language, onSelect, onVi
         {selected.nearbyDoor && <span className={styles.doorInfo}>{labels.door} {selected.nearbyDoor}</span>}
       </div>
     </div>
+
+    <SeatDaylight {...{language, venue, study}} id={selected.id}/>
 
     <div className={styles.map}>
       <div className={styles.mapHeading}>
@@ -221,7 +224,7 @@ export default function SectionPicker({ venue, section, language, onSelect, onVi
             const name = labels.section + ' ' + s.id + ' · ' + labels[location(venue, s)] + ' · ' + labels[s.tier] + ' · ' + exposureLabels[exposure];
             return <g key={s.id} data-section={s.id} data-tier={s.tier} data-exposure={exposure} role="button" aria-label={name}
               aria-pressed={s.id === selected.id} tabIndex={s.id === selected.id ? 0 : -1}
-              className={styles.block} onClick={() => onSelect(s.id)} onKeyDown={e => onMapKey(e, s)}>
+              className={styles.block} onClick={() => activateSection(s.id)} onKeyDown={e => onMapKey(e, s)}>
               <title>{name}</title><path d={s.path} />
             </g>;
           })}
@@ -255,7 +258,8 @@ export default function SectionPicker({ venue, section, language, onSelect, onVi
       </div>
     </div>
 
-    <footer className={styles.sources}>
+    <details className={styles.sources}>
+      <summary>{language==='zh'?'座区说明、票务与来源':'Seating notes, tickets & sources'}</summary>
       <p>{benchDescription(venue,language)}</p>
       <a href={benchLayout(venue).source} target="_blank" rel="noreferrer">{language==='zh'?'澳网场地布置图（2025）':'AO court layout (2025)'} ↗</a>
       <p>{language === 'zh' ? '颜色根据所选时刻、太阳位置和场馆模型计算。屋顶开合与天气以比赛现场为准。' : 'Colours estimate direct sun from the arena model at your chosen time. Actual roof operation and weather vary.'}</p>
@@ -266,6 +270,6 @@ export default function SectionPicker({ venue, section, language, onSelect, onVi
       </div>
       <p className={styles.credit}>{labels.photo} <a href={`https://commons.wikimedia.org/wiki/File:${headerPhotos[venue].file}`}
         target="_blank" rel="noreferrer">{headerPhotos[venue].author}</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noreferrer">CC BY-SA 4.0</a></p>
-    </footer>
+    </details>
   </div>;
 }

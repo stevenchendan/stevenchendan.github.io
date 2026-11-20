@@ -129,7 +129,8 @@ export default function SeatDaylight(props: Props) {
       </div>
     </div>
     {compact && selected && <div className={styles.quickExposure} data-exposure={state}><span>{name}</span><b>{sectionStatus}</b></div>}
-    {!compact && <>
+    {!compact && <details className={styles.sunOptions}>
+      <summary>{zh?'日期、屋顶与采样结果':'Date, roof & seat samples'}</summary>
       <div className={styles.dayFilters}>
         <label>{zh ? '日期' : 'Date'}<input type="date" aria-label={zh ? '日期' : 'Date'} value={dateValue} min={year + '-01-01'} max={year + '-02-' + daysInMonth(year, 2)} onChange={e => {
           if (!e.target.value || !e.target.validity.valid) return;
@@ -143,7 +144,7 @@ export default function SeatDaylight(props: Props) {
       {count !== null && sun.aboveHorizon && !closed && <p className={styles.sampleSummary}>{zh
         ? `9 个前中后排采样座位中，${count} 个受直射。模拟视角位于${centre ? '阳光下' : '阴影中'}。`
         : `${count} of 9 seats sampled across the rows receive direct sun. The 3D viewpoint is in ${centre ? 'sun' : 'shade'}.`}</p>}
-    </>}
+    </details>}
     {study.failed && selected && <button className={styles.retry} onClick={study.retry}>{zh ? '重新加载日照数据' : 'Reload shade data'}</button>}
   </section>;
 }

@@ -52,7 +52,7 @@ class SceneBoundary extends Component<{children:ReactNode;onFailure:()=>void},{f
   render(){return this.state.failed?null:this.props.children;}
 }
 
-function Drawer({title,closeLabel,onClose,children,wide}:{title:string;closeLabel:string;onClose:()=>void;children:ReactNode;wide?:boolean}){
+function Drawer({title,closeLabel,onClose,children,wide,seating}:{title:string;closeLabel:string;onClose:()=>void;children:ReactNode;wide?:boolean;seating?:boolean}){
   const dialog=useRef<HTMLDialogElement>(null);
   useEffect(()=>{
     const node=dialog.current;
@@ -60,7 +60,7 @@ function Drawer({title,closeLabel,onClose,children,wide}:{title:string;closeLabe
     node.showModal();
     return ()=>node.close();
   },[]);
-  return <dialog ref={dialog} className={styles.drawer} data-wide={wide||undefined} aria-labelledby="atlas-panel-title"
+  return <dialog ref={dialog} className={styles.drawer} data-wide={wide||undefined} data-seating={seating||undefined} aria-labelledby="atlas-panel-title"
     onCancel={onClose} onClick={event=>{if(event.target===dialog.current)onClose();}}>
     <div className={styles.drawerBody}>
       <div className={styles.drawerHeading}><h2 id="atlas-panel-title">{title}</h2><button autoFocus aria-label={closeLabel} onClick={onClose}><Icon name="close"/></button></div>
@@ -508,7 +508,7 @@ export default function ArenaExperience(){
         <span className={styles.cardLabel}>{tr(view.label)}{shot.view===view.id&&<Icon name="check"/>}</span>
       </button>)}</div>
     </nav>}
-    {panel&&<Drawer title={heading} closeLabel={tr('关闭')} onClose={close} wide={panel==='sections'||panel==='venues'}>
+    {panel&&<Drawer title={heading} closeLabel={tr('关闭')} onClose={close} seating={panel==='sections'} wide={panel==='sections'||panel==='venues'}>
       {panel==='sections'&&<SectionPicker venue={seatVenue} section={section} language={language} study={study} canView={!failure&&!!data} onSelect={setSection} onVenueChange={id=>{setSeatVenue(id);setSection(null);}} onView={id=>{setSection(id);setLight('solar');setContext(true);navigate({view:'seat',destination:seatVenue,section:id});}}/>}
       {(panel==='sections'||panel==='venues')&&<button className={styles.guideLink} onClick={()=>setPanel('autographs')}>{tr('签名攻略')}<Icon name="next"/></button>}
       {panel==='autographs'&&<Autographs language={language} visit={()=>{setContext(true);navigate({view:'ao',destination:'village'});}}/>}
