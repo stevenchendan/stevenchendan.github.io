@@ -145,6 +145,7 @@ export class ArenaRoof extends T.Group {
     if (insideRounded(u,v,halfWidth,halfDepth,corner)) return 0;
     if (this.venue === 'rla') {
       if (insideRounded(u,v,56,65,31)) return 23 + 5 * (1 - Math.max(u / 56, v / 65));
+      if (x>=216 && x<=247.5 && Math.abs(z-74.28)<36) return 19.6-2.4*Math.pow((z-74.28)/36,2);
       for (const [cx,cz,w,d] of rodLaverAnnexes) {
         if (insideRounded(Math.abs(x-cx),Math.abs(z-cz),w,d,6)) return 7.3;
       }

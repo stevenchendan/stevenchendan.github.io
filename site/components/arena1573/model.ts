@@ -1,3 +1,4 @@
+import {pavilionEnvelope} from './RodLaverPavilion';
 import {mcaRow,mcaLowerRows} from './mcaProfile';
 import {forkBridgeId,forkBridgeParts,currentForkBridgeRing,tennisBridgeId,tennisBridgeParts} from './forkBridge';
 import { bridgeSections } from './bridge';
@@ -668,6 +669,31 @@ export function buildContext(data: ContextData, part?:string) {
       return;
     }
     if(building.name==='Margaret Court Arena')return;
+    if(building.id==='812707-1-0'){
+      // COX Eastern Pavilion: a single elevated volume, not a generic solid
+      // building covering a second annex. Preserve the surveyed footprint.
+      const shape=new T.Shape(building.ring.map(p=>new T.Vector2(p[0],-p[1])));
+      for(const y of [5.2,10.8]){
+        const slab=new T.ExtrudeGeometry(shape,{depth:.32,bevelEnabled:false});
+        slab.rotateX(-Math.PI/2);slab.translate(0,y-.32,0);b.add(slab,y===17?'#d6d9d4':'#aab7b8');
+      }
+      pavilionEnvelope(b);
+      facade(b,[[216,44.15],[216.12,104.92]],5.2,11.5,'#52707d');
+      for(const z of [46,60,88,102])b.box(241,2.55,z,.65,5.1,.65,'#a6b1b0');
+      // Recessed ticket counter and lobby glazing beneath the upper pavilion.
+      for(const z of [49,99]){
+        b.box(238,2,z,1,4,12,'#31454d');
+        b.box(238.6,1.15,z,.45,.24,10,'#c0c7c0');
+      }
+      for(const y of [5.2,10.8])for(const z of [55,94]){
+        b.box(212.5,y-.15,z,15,.3,6,'#aebbbd');
+        b.box(212.5,y+3.3,z,15,.18,6,'#c6d0cd');
+        for(const side of [-1,1])b.box(212.5,y+1.6,z+side*3,15,3.2,.1,'#55747f');
+      }
+      const sign=label('ROD LAVER ARENA',30,1.5,'#dcebe5','#243f48');
+      sign.rotation.y=Math.PI/2;sign.position.set(245.2,16.1,74.3);b.group.add(sign);
+      return;
+    }
     if(building.name==='John Cain Arena'){
       const ring=building.ring.slice(0,-1);
       const cx=ring.reduce((s,p)=>s+p[0],0)/ring.length,cz=ring.reduce((s,p)=>s+p[1],0)/ring.length;
@@ -825,6 +851,7 @@ export function disposeModel(group: T.Group) {
     for(const material of Array.isArray(obj.material)?obj.material:[obj.material]){
       materials.add(material);
       if('map' in material&&material.map instanceof T.Texture&&!material.map.userData.sharedSpectatorAtlas)textures.add(material.map);
+      if('envMap' in material&&material.envMap instanceof T.Texture)textures.add(material.envMap);
     }
   });
   geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());
