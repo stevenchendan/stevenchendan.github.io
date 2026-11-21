@@ -165,7 +165,7 @@ export default function ArenaExperience(){
   const [filmPrepared,setFilmPrepared]=useState(false);
   const onFilmPrepared=useCallback(()=>setFilmPrepared(true),[]);
   const musicUnavailable=useCallback(()=>setToast('影院音乐暂时无法播放，请退出后重试。'),[]);
-  const music=useCinemaSound(cinema&&playing&&ready&&filmPrepared,musicUnavailable);
+  const music=useCinemaSound(cinema&&playing,musicUnavailable,ready);
   const presentable=ready&&(!cinema||(filmPrepared&&music.ready));
   const compassRef=useRef<HTMLElement>(null);
   const tr=getTranslator(language);
