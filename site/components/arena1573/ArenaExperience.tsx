@@ -239,9 +239,8 @@ export default function ArenaExperience(){
       setShot({view:preset??(court||arena==='1573'?'hero':'ao'),preset:!!preset,destination:arena,court,serial:1});
     }
     try{
-      const savedTheme=localStorage.getItem('1573-arena-theme'), savedLanguage=localStorage.getItem('1573-arena-language');
+      const savedTheme=localStorage.getItem('1573-arena-theme');
       if(savedTheme==='ink')setTheme(savedTheme);
-      if(savedLanguage==='zh')setLanguage(savedLanguage);
     }catch{/* Preferences still work for this visit. */}
     const motion=window.matchMedia('(prefers-reduced-motion: reduce)');
     function updateMotion(){
@@ -428,7 +427,7 @@ export default function ArenaExperience(){
         <button aria-haspopup="dialog" onClick={openSeats} aria-label={tr('座区指南')}><Icon name="seat"/><span>{tr('座区指南')}</span></button>
         <button disabled={!!failure} aria-haspopup="dialog" onClick={()=>setPanel('venues')} aria-label={tr('场馆列表')}><Icon name="venues"/><span>{tr('场馆列表')}</span></button>
         <button aria-haspopup="dialog" onClick={()=>setPanel('settings')} aria-label={tr('场景设置')}><Icon name="settings"/><span>{tr('场景设置')}</span></button>
-        <button className={styles.language} lang={language==='en'?'zh-CN':'en'} aria-label={language==='en'?'切换到中文':'Switch to English'} onClick={()=>{const next=language==='en'?'zh':'en';setLanguage(next);savePreference('language',next);}}>{language==='en'?'中文':'EN'}</button>
+        <button className={styles.language} lang={language==='en'?'zh-CN':'en'} aria-label={language==='en'?'切换到中文':'Switch to English'} onClick={()=>setLanguage(value=>value==='en'?'zh':'en')}>{language==='en'?'中文':'EN'}</button>
       </nav>
     </header>
     <section className={styles.stage} aria-label={tr('墨尔本公园场馆探索')}
