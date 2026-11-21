@@ -18,6 +18,9 @@ import { buildingVenue, courtVenue } from './venueVisibility';
 import { arenaEntryFacilities, eventFacilities } from './EventFacilities';
 import { routeFinish } from './eventLayout';
 import { EVENT_CONCOURSE, GROUND, GroundSurfaces } from './ground';
+import {arenaEntries,carveEntries,entrance} from './arenaAccess';
+import {insidePassage,passage} from './bowlAccess';
+import {showCourtEnvelope} from './showCourtEnvelope';
 
 export interface ContextData {
   buildings: { id: string; name?: string; ring: number[][]; height: number; base: number; roof: string; structureType?:string }[];
@@ -191,6 +194,10 @@ function addSeatMounts(group:T.Group,chairs:T.InstancedMesh){
 // A real interior surface and stepped bowl beneath each open roof, so terrain
 // colours and pedestrian paths cannot read as the arena floor.
 function arenaBowl(b:Builder,x:number,z:number,w:number,d:number,onlySeats=false,rows=22,drawCourt=true,spectators?:T.Group){
+  const passages=b.group.userData.venue==='mca'?[
+    {name:'Player entry',x:x+13,z:z-10,yaw:-Math.PI/2,width:3,height:2.8,depth:15},
+    ...[-1,1].flatMap(side=>[-12,12].map(dz=>({name:'Concourse passage',x:x+side*26.06,z:z+dz,yaw:-side*Math.PI/2,width:2.8,height:2.6,base:6.59,depth:7}))),
+  ]:[];
   const seatPositions:{x:number;y:number;z:number;angle:number}[]=[];
   const indoor=['john','mca','rla'].includes(b.group.userData.venue);
   if(!onlySeats){const floor=new T.ShapeGeometry(roundedPath(w,d,12));floor.rotateX(-Math.PI/2);floor.translate(x,.06,z);b.add(floor,'#394f5b');}
@@ -249,9 +256,11 @@ function arenaBowl(b:Builder,x:number,z:number,w:number,d:number,onlySeats=false
     for(let i=0;i<count;i++){
       const f=i/count;if((f*16)%1<.08)continue;
       const p=path.getPointAt(f),v=path.getTangentAt(f);
+      if(passages.some(e=>insidePassage(x+p.x,top+.42,z-p.y,e)))continue;
       seatPositions.push({x:x+p.x,y:onlySeats?1.4+row*.48:top+.42,z:z-p.y,angle:Math.atan2(v.y,v.x)});
     }
   }
+  carveEntries(b,passages);for(const e of passages)passage(b,e);
   const seat=mouldedSeatGeometry(false),mesh=new T.InstancedMesh(seat,new T.MeshStandardMaterial({roughness:.66,side:T.DoubleSide}),seatPositions.length),o=new T.Object3D();
   const shades=(b.group.userData.venue==='john'?['#5e839d','#648aa2','#7194a7']:['#4286b0','#4e90b7','#609bbd']).map(color=>new T.Color(color));
   seatPositions.forEach((p,i)=>{o.position.set(p.x,p.y,p.z);o.rotation.y=p.angle;o.updateMatrix();mesh.setMatrixAt(i,o.matrix);mesh.setColorAt(i,shades[i%17===0?2:i%5===0?1:0]);});
@@ -290,11 +299,6 @@ export function buildArena() {
     const p=perimeter.getPointAt(i/bays),v=perimeter.getTangentAt(i/bays);
     const angle=Math.atan2(v.y,v.x);
     b.box(p.x,3.5,-p.y,.055,6.7,.08,'#94a1a3',angle);
-    if(i%10!==4)continue;
-    const x=p.x+v.y*.12,z=-p.y+v.x*.12;
-    b.box(x,1.47,z,2.7,2.75,.14,'#354851',angle);
-    b.box(x+v.y*.15,2.95,z+v.x*.15,3.05,.14,.64,palette.edge,angle);
-    for(const offset of [-.83,0,.83])b.box(x+offset*v.x+v.y*.08,1.47,z-offset*v.y+v.x*.08,.06,2.7,.08,palette.steel,angle);
   }
   ring(b,10.9,11.02,6.78,.22,'#778b94');
   // Tall court-facing retaining wall visible in the supplied four photographs.
@@ -369,6 +373,9 @@ export function buildArena() {
   addSeatMounts(stand.group,seatMesh);
   const crowd=seatedCrowd(seats);
   crowd.visible=false;stand.group.add(crowd);
+  carveEntries(b,arenaEntries['1573']);
+  carveEntries(stand,arenaEntries['1573'].map(e=>({...e,base:-SEATING_LIFT})));
+  for(const e of arenaEntries['1573'])entrance(b,e);
   stand.finish();stand.group.position.y=SEATING_LIFT;b.group.add(stand.group);
   return {group:b.finish(),lamps,crowd,seats:seats.length};
 }
@@ -508,9 +515,7 @@ export function buildContext(data: ContextData, part?:string) {
       if(data.buildings.some(building=>building.name&&pointInRing([x,z],building.ring)))continue;
       if(f.id==='way/126844350'){
         arenaBowl(b,x,z,22,31,false,12,true,spectatorsFor(b));
-        const canopy=roundedPath(24,33,10);canopy.holes.push(new T.Path(roundedPath(19.5,28.5,8).getPoints(24).reverse()));
-        const g=new T.ExtrudeGeometry(canopy,{depth:.25,bevelEnabled:false});g.rotateX(-Math.PI/2);g.translate(x,8.2,z);b.add(g,'#dce1df');
-        facade(b,roundedPath(23,32,9).getPoints(32).map(p=>[x+p.x,z-p.y]),0,7,'#5d7079');
+        showCourtEnvelope(b,x,z,roundedPath);
         continue;
       }
       const elevation=courtElevation(x,f.layer);
@@ -730,9 +735,13 @@ export function buildContext(data: ContextData, part?:string) {
         for(let dz=-65;dz<=65;dz+=10)b.rod([x,23.25,72+dz*.91],[x,27.85,72+dz],.15,'#9eaaaa');
       }
       for(const [x,z,w,d] of rodLaverAnnexes){
-        const pod=roundedPath(w,d,6),g=new T.ExtrudeGeometry(pod,{depth:7,bevelEnabled:false});g.rotateX(-Math.PI/2);g.translate(x,.2,z);b.add(g,'#bcc8c9');
-        facade(b,pod.getPoints(24).map(p=>[x+p.x,z-p.y]),.3,5.8);
-        const roof=new T.ShapeGeometry(pod);roof.rotateX(-Math.PI/2);roof.translate(x,7.3,z);b.add(roof,'#e0e3df');
+        const height=7;
+        const pod=roundedPath(w,d,6),shell=roundedPath(w,d,6);
+        shell.holes.push(new T.Path(roundedPath(w-.4,d-.4,5.6).getPoints(24).reverse()));
+        const g=new T.ExtrudeGeometry(shell,{depth:height,bevelEnabled:false});g.rotateX(-Math.PI/2);g.translate(x,.2,z);b.add(g,'#bcc8c9');
+        facade(b,pod.getPoints(24).map(p=>[x+p.x,z-p.y]),.3,height-1.2);
+        const roof=new T.ShapeGeometry(pod);roof.rotateX(-Math.PI/2);roof.translate(x,height+.3,z);b.add(roof,'#e0e3df');
+
       }
       return;
     }
@@ -791,9 +800,13 @@ export function buildContext(data: ContextData, part?:string) {
     const fasciaGeometry=mergeGeometries(fasciaParts);fasciaParts.forEach(g=>g.dispose());
     if(fasciaGeometry){const face=new T.Mesh(fasciaGeometry,new T.MeshStandardMaterial({color:'#aa7657',roughness:.8,side:T.DoubleSide}));face.castShadow=true;face.receiveShadow=true;b.group.add(face);}
     for(const z of [-26,-23,20,23])b.box(25.3,5.3,z,.55,10.6,1.25,'#c8c8b9');
-    const sign=label('MARGARET COURT ARENA',15,.8,'#d5dcda','#263c43');sign.rotation.y=-Math.PI/2;sign.position.set(25.1,3.6,-4);b.group.add(sign);
+
   }
 
+  for(const [id,builder] of venues){
+    const entries=arenaEntries[id];if(!entries)continue;
+    carveEntries(builder,entries);for(const e of entries)entrance(builder,e);
+  }
   if(part && !landscape)return venue(part).finish();
   b=environment;
   arenaEntryFacilities(b);
