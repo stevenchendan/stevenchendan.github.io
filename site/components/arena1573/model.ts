@@ -1,5 +1,5 @@
 import {mcaRow,mcaLowerRows} from './mcaProfile';
-import {forkBridgeId,forkBridgeParts} from './forkBridge';
+import {forkBridgeId,forkBridgeParts,currentForkBridgeRing,tennisBridgeId,tennisBridgeParts} from './forkBridge';
 import { bridgeSections } from './bridge';
 import { grandSlamOval } from './GrandSlamOval';
 import { festivalStructures } from './FestivalStructures';
@@ -621,10 +621,11 @@ export function buildContext(data: ContextData, part?:string) {
     // This footprint is the elevated bridge, rebuilt as an open deck above.
     if(building.id==='810459-2-0')return;
     if(building.structureType==='Bridge'){
+      if(building.id===forkBridgeId)building={...building,ring:currentForkBridgeRing(building.ring)};
       // The city data describes the full bridge elevation envelope, not a solid
       // building. Keep open clearance under its deck instead of extruding a wall.
-      const top=building.base+building.height,fork=building.id===forkBridgeId;
-      const parts=fork?forkBridgeParts(building.ring,top):[{ring:building.ring,height:(_x:number,_z:number)=>top}];
+      const top=building.base+building.height,fork=building.id===forkBridgeId,tennis=building.id===tennisBridgeId;
+      const parts=fork?forkBridgeParts(building.ring,top):tennis?tennisBridgeParts(building.ring,top):[{ring:building.ring,height:(_x:number,_z:number)=>top}];
       for(const part of parts){
         const deck=new T.Shape(part.ring.map(p=>new T.Vector2(p[0],-p[1])));
         const geometry=new T.ExtrudeGeometry(deck,{depth:.65,bevelEnabled:false});
@@ -646,10 +647,11 @@ export function buildContext(data: ContextData, part?:string) {
         if(span<.02)return;
         // Leave both street-level mouths open. The original ring closes across each one.
         if(fork&&(i===97||i===241))return;
-        const part=fork&&i>27&&i<=161?parts[0]:fork&&i>162&&i<=294?parts[1]:parts[parts.length-1];
+        if(tennis&&(i===1||i===25))return;
+        const part=tennis?(parts.find(part=>part.ring.some(v=>v[0]===a[0]&&v[1]===a[1])&&part.ring.some(v=>v[0]===p[0]&&v[1]===p[1]))??parts[2]):fork&&i>27&&i<=161?parts[0]:fork&&i>162&&i<=294?parts[1]:parts[parts.length-1];
         const ha=part.height(a[0],a[1]),hp=part.height(p[0],p[1]);
         b.rod([a[0],ha+1.05,a[1]],[p[0],hp+1.05,p[1]],.07,'#667b78');
-        if(fork){
+        if(fork||tennis){
           b.rod([a[0],ha+.55,a[1]],[p[0],hp+.55,p[1]],.055,'#97a6a5');
           b.rod([a[0],ha-.23,a[1]],[p[0],hp-.23,p[1]],.09,'#536b74');
           for(let d=Math.ceil(railDistance/2.2)*2.2;d<railDistance+span;d+=2.2){
