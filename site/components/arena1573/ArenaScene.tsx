@@ -15,6 +15,7 @@ import type {MatchAudio} from './useMatchSound';
 import PrecinctRallies from './PrecinctRallies';
 import PrecinctAssets from './PrecinctAssets';
 import Rain from './Rain';
+import Storm from './Storm';
 import CourtFloodlights from './CourtFloodlights';
 import { athleteModelUrl, athleteMotionUrl } from './athleteKits';
 import { bindSpectators, spectatorImagesSettled } from './seatedCrowd';
@@ -484,6 +485,7 @@ function Scene({matchAudio,movingSun,shadowCourt,onFilmPrepared,onFocus,data,sho
     {ready&&<Suspense fallback={null}><CourtStaff courts={courts} venue={take?'all':selectedVenue} surroundings={!!take||showPrecinct}/></Suspense>}
     {ready&&showPrecinct&&crowd&&<Visitors data={data} visible/>}
     {rain&&<Rain ink={ink} roofs={roofs} filmTime={track?.seconds}/>}
+    {rain&&<Storm audio={matchAudio} active={!reducedMotion&&(chapter===null||playing)}/>}
     {markers&&courts.filter(c=>venueVisible(c.venue,selectedVenue,showPrecinct)).map(c=>{
       const name=language==='zh'?c.zh:c.en;
       return <Html key={c.key} position={[c.x,c.y+3,c.z-10]} center zIndexRange={[10,0]}>
