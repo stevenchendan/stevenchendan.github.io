@@ -151,7 +151,7 @@ export default function ArenaExperience(){
   const [studyClosed,setStudyClosed]=useState(false),[sunPlaying,setSunPlaying]=useState(false);
   const [shade,setShade]=useState<ShadeResult|null>(null);
   const [rotate,setRotate]=useState(false),[context,setContext]=useState(true),[crowd,setCrowd]=useState(true);
-  const [markers,setMarkers]=useState(true),[rally,setRally]=useState(true);
+  const [markers,setMarkers]=useState(false),[rally,setRally]=useState(true);
   const [reducedMotion,setReducedMotion]=useState(true);
   const [panel,setPanel]=useState<Panel|null>(null),[selected,setSelected]=useState<string|null>(null);
   const [cinema,setCinema]=useState(false),[toast,setToast]=useState('');
@@ -535,7 +535,7 @@ export default function ArenaExperience(){
         {light==='solar'&&(isRoofed(captionVenueId)?<button className={styles.guideLink} onClick={openSeats}>{tr('选择座区')}<Icon name="seat"/></button>:<SunControls date={solarDate} onChange={date=>{setShade(null);setSolarDate(date);}} language={language} shade={shade} onStand={showStandComparison?viewStand:undefined}/>)}
         <button className={styles.aboutButton} onClick={()=>setPanel('about')}><Icon name="info"/>{tr('关于模型')}<Icon name="next"/></button>
       </>}
-      {panel==='detail'&&detail&&<div className={styles.prose}><p>{tr(detail.description)}</p><button className={styles.textLink} onClick={()=>{navigate({view:'hero'});setMarkers(true);}}>{tr('返回场馆全景 ↗')}</button></div>}
+      {panel==='detail'&&detail&&<div className={styles.prose}><p>{tr(detail.description)}</p><button className={styles.textLink} onClick={()=>navigate({view:'hero'})}>{tr('返回场馆全景 ↗')}</button></div>}
       {panel==='about'&&<div className={styles.prose}><p>{tr('1573 Arena 的标准球场与周边地理位置采用米制建模；圆角看台、座椅、遮阳棚、灯架和屋顶细节依据卫星图与公开场馆资料做视觉近似。不是测绘模型，也不代表最新的现场设施。')}</p><p>{tr('日落与夜场为艺术灯光预设，网球轨迹为演示动画。观众和街道家具是示意布置。')}</p><p>{tr('在三个可伸缩屋顶场馆中，雨天会触发加速模拟的闭合过程。')}</p><div className={styles.sources}>{sources.map(([label,url])=><a key={url} href={url} target="_blank" rel="noreferrer">{tr(label)}</a>)}<a href="/data/1573-context.json" download>{tr('下载衍生地理数据 · ODbL / CC BY 4.0 ↓')}</a></div><small>{tr('快捷键：1–5 切换视角 · R 重置 · H 热点 · 空格环绕')}</small></div>}
     </Drawer>}
     {toast&&<div className={styles.toast} role="status">{tr(toast)}</div>}
