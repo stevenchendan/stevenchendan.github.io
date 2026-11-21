@@ -26,7 +26,7 @@ import { cameraFootprints, trackCameraFocus } from './cameraFocus';
 import { presetCamera } from './cameraFraming';
 import { courtDirectory,venueCourts } from './courtPlacements';
 import { RoofMotion,type RoofStatus } from './roofs';
-import { film,filmDusk,filmRoof,filmFieldOfView } from './film';
+import { film,filmDusk,filmRoof,filmFieldOfView,filmPosition } from './film';
 import { cameras, homeCamera, standCameras, destinations, isRoofed,sectionEye,type Shot, type Light, type Theme } from './views';
 import { ARENA_LOCATION, summerSun, type ShadeResult, standSamples, STANDS } from './solar';
 
@@ -314,7 +314,7 @@ function Rig({areas,data,selectedVenue,context,onFocus,shot,rotate,rain,language
       const ease=u*u*(3-2*u);
       const {offset}=scratch;
       orbit.target.fromArray(take.look).lerp(offset.fromArray(take.lookTo),ease);
-      camera.position.fromArray(take.from).lerp(offset.fromArray(take.to),ease);
+      camera.position.fromArray(filmPosition(take,ease));
       if(camera instanceof T.PerspectiveCamera){
         const fov=filmFieldOfView(take,size.width/Math.max(1,size.height));
         if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
@@ -395,7 +395,7 @@ function Scene({matchAudio,movingSun,shadowCourt,onFilmPrepared,onFocus,data,sho
   },-4);
   const night=light==='night'||!!sun&&!sun.aboveHorizon,golden=light==='golden'||!!sun&&sun.aboveHorizon&&sun.elevation<15;
   const selectedVenue=chapter!==null?film[chapter].venue:shot.destination??(shot.view==='ao'?'all':shot.view==='precinct'?'mca':'1573');
-  const inBowl=chapter===2||(chapter===null&&shot.section!==undefined);
+  const inBowl=!!take?.interior||(chapter===null&&shot.section!==undefined);
   const showPrecinct=context&&!inBowl;
   const atlasRoofs=useMemo(()=>new RoofMotion(),[]),filmRoofs=useMemo(()=>new RoofMotion(),[]);
   const roofs=take?filmRoofs:atlasRoofs;
