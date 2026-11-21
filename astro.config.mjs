@@ -4,7 +4,7 @@ import react from '@astrojs/react';
 
 export default defineConfig({
   site: 'https://stevenchendan.github.io',
-  integrations: [sitemap(), react()],
+  integrations: [sitemap({ filter: (page) => !new URL(page).pathname.startsWith('/australian-open') }), react()],
   output: 'static',
   srcDir: './site'
 });

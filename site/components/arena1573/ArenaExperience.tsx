@@ -422,7 +422,7 @@ export default function ArenaExperience(){
   const loadingTitle=cinema?tr('正在打开影院'):tr('正在打开球场地图');
   return <main ref={container} className={styles.experience} data-loading={loading||undefined} data-interactive={interactive} data-cinema={cinema||undefined} data-roof={roof} lang={language==='zh'?'zh-CN':'en'}>
     <header className={styles.header}>
-      <a href="/australian-open/" className={styles.brand} aria-label={language==='zh'?'Court Atlas · 返回澳网首页':'Court Atlas · Australian Open home'}><Icon name="ball"/><span>Court Atlas</span></a>
+      <a href="/ao/" className={styles.brand} aria-label={language==='zh'?'Court Atlas · 返回澳网首页':'Court Atlas · Australian Open home'}><Icon name="ball"/><span>Court Atlas</span></a>
       <span className={styles.eventName}>{tr('澳大利亚网球公开赛')}</span>
       <nav className={styles.topActions} inert={!interactive} aria-label={tr('场馆工具')}>
         <button aria-haspopup="dialog" onClick={openSeats} aria-label={tr('座区指南')}><Icon name="seat"/><span>{tr('座区指南')}</span></button>

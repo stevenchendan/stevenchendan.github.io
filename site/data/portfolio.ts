@@ -41,7 +41,7 @@ export const work = [
 ];
 
 export const experience = [
-  { years: 'Current', company: 'nbn Australia', role: 'Software engineering', note: 'Building digital products in a large-scale Australian technology environment.' },
+  { years: 'Current', company: 'nbn Australia', role: 'Software engineering', note: 'Building agentic AI applications daily and delivering automation that saves the company A$2 million per year.' },
   { years: '2023–2026', company: 'NGIS', role: 'Software Engineer', note: 'Cloud-native geospatial platforms, Earth observation and multi-cloud solution delivery.' },
   { years: '2021–2023', company: 'Origin Energy', role: 'Senior Application Developer', note: 'Resource administration, GIS and site safety products using React, ArcGIS and Azure.' },
   { years: '2020–2021', company: 'AAM', role: 'Software Engineer', note: 'Geospatial applications with React, .NET, Python, AWS and enterprise GIS tooling.' },
