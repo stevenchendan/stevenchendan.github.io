@@ -150,7 +150,7 @@ function World({data,light,context,crowd,crowdMoving,closedStudyRoof,compareStan
     return ()=>{cancelled=true;cancelAnimationFrame(frame);clearTimeout(timer);};
   },[model,plan,selected,panorama,data,roofs,onReady,onProgress,onFailure,invalidate,preparingFilm]);
   const lampPower=light==='night'||(sun&&!sun.aboveHorizon)?5:light==='golden'?1:.08;
-  useEffect(()=>{
+  useLayoutEffect(()=>{
     for(const [id,group] of model.groups){
       if(id==='landscape'){
         for(const child of group.children)child.visible=!!child.userData.alwaysVisible||context;
@@ -404,7 +404,7 @@ function Scene({matchAudio,movingSun,shadowCourt,onFilmPrepared,onFocus,data,sho
   const atVenue=useMemo(()=>venueCourts(courts,selectedVenue),[courts,selectedVenue]);
   const featured=atVenue.find(c=>c.key===shot.court)??(atVenue.length===1?atVenue[0]:undefined);
   const away=featured&&featured.venue!=='1573'?featured:undefined;
-  const audibleCourts=useMemo(()=>courts.filter(c=>take||venueVisible(c.venue,selectedVenue,showPrecinct)),[courts,take,selectedVenue,showPrecinct]);
+  const audibleCourts=useMemo(()=>courts.filter(c=>venueVisible(c.venue,selectedVenue,showPrecinct)),[courts,selectedVenue,showPrecinct]);
   const time=useRef(-.16),previous=useRef<number|null>(null);
   useEffect(()=>{
     const reset=()=>{previous.current=null;};reset();
@@ -471,7 +471,7 @@ function Scene({matchAudio,movingSun,shadowCourt,onFilmPrepared,onFocus,data,sho
   return <>
     <color key={dusk?'dusk-bg':sun?'solar-bg':'bg'} attach="background" args={[bg]}/><fog key={dusk?'dusk-fog':sun?'solar-fog':'fog'} attach="fog" args={[bg,120,650]}/>
     {ink&&<InkLandscape/>}
-    {ink ? <SceneEffects/> : <Sky key={dusk?'dusk':sun?'solar':'sky'} elevation={sun?.elevation} dusk={dusk} horizon={bg} zenith={night?'#101c38':rain?'#8297ac':golden?'#8daabd':'#70abd7'}/>}
+    {ink ? <SceneEffects/> : <Sky key={dusk?'dusk-sky':sun?'solar-sky':'sky'} elevation={sun?.elevation} dusk={dusk} horizon={bg} zenith={night?'#101c38':rain?'#8297ac':golden?'#8daabd':'#70abd7'}/>}
     <hemisphereLight ref={fill} key={dusk?'dusk-fill':sun?'solar-fill':'fill'} args={[night?'#8299c3':'#e4eff8',night?'#26362e':rain?'#81959b':'#b1a788',night?.85:rain?1.8:sun?1.0:golden?1.35:1.75]}/>
     <directionalLight ref={keyLight} target={lightTarget} key={groundsShadow?'grounds-sun':dusk?'dusk-key':sun?'solar':'mood'} position={sunPosition} color={rain?'#c5dcf2':golden?'#ffd4a0':'#fff0d8'} intensity={rain?.4:sun?(sun.aboveHorizon?Math.max(.3,Math.sin(sun.elevation*Math.PI/180)*3.3):0):night?.1:golden?2.6:2.05} castShadow={!rain} shadow-mapSize={[shadowSize,shadowSize]} shadow-camera-left={-shadowExtent} shadow-camera-right={shadowExtent} shadow-camera-top={shadowExtent} shadow-camera-bottom={-shadowExtent} shadow-camera-far={groundsShadow?2000:700} shadow-normalBias={.04} shadow-bias={-.00005}/>
     {night&&selectedVenue==='1573'&&shot.view==='seat'&&<><pointLight position={[lightTarget.position.x-18,18,lightTarget.position.z]} intensity={shot.destination&&shot.destination!=='1573'?560:1600} distance={85} decay={2} color="#e7f2ff"/><pointLight position={[lightTarget.position.x+18,18,lightTarget.position.z]} intensity={shot.destination&&shot.destination!=='1573'?560:1600} distance={85} decay={2} color="#fff0d6"/><pointLight position={[lightTarget.position.x,17,lightTarget.position.z-22]} intensity={shot.destination&&shot.destination!=='1573'?385:1100} distance={65} decay={2}/><pointLight position={[lightTarget.position.x,17,lightTarget.position.z+22]} intensity={shot.destination&&shot.destination!=='1573'?385:1100} distance={65} decay={2}/></>}
@@ -481,13 +481,13 @@ function Scene({matchAudio,movingSun,shadowCourt,onFilmPrepared,onFocus,data,sho
     <primitive object={lightTarget}/>
     {(take||(ready&&venueVisible('kia',selectedVenue,showPrecinct)))&&<PrecinctAssets visible={venueVisible('kia',selectedVenue,showPrecinct)} onSettled={setKiaSettled}/>}
     {ready&&take&&kiaSettled&&<Suspense fallback={null}><PrepareFilm onPrepared={onFilmPrepared}/></Suspense>}
-    {ready&&<Suspense fallback={null}><CourtStaff courts={courts} venue={take?'all':selectedVenue} surroundings={!!take||showPrecinct}/></Suspense>}
+    {ready&&<Suspense fallback={null}><CourtStaff courts={courts} venue={selectedVenue} surroundings={showPrecinct}/></Suspense>}
     {ready&&showPrecinct&&crowd&&<Visitors data={data} visible/>}
     {rain&&<Rain ink={ink} roofs={roofs} filmTime={track?.seconds}/>}
     {markers&&shot.view==='ao'&&destinations.filter(d=>venueVisible(d.id,selectedVenue,context)).map(d=><Html key={d.id} position={[d.target[0],38,d.target[2]]} center zIndexRange={[10,0]}><button className={styles.venuePin} title={tr(d.name)} aria-label={tr(d.name)} onClick={()=>onSelect(d.id)}>{d.id==='mca'?'MCA':d.id==='rla'?'RLA':d.id==='1573'?'1573':tr(d.name)}</button></Html>)}
-    {ready&&(take||venueVisible('1573',selectedVenue,showPrecinct))&&<Suspense fallback={null}><TennisRally active={rally} time={time} court="1573"/></Suspense>}
+    {ready&&venueVisible('1573',selectedVenue,showPrecinct)&&<Suspense fallback={null}><TennisRally active={rally} time={time} court="1573"/></Suspense>}
     {ready&&!take&&away&&<group position={[away.x,away.y,away.z]} rotation={[0,away.rotation,0]}><Suspense fallback={null}><TennisRally active={rally} time={time} phase={away.phase} court={away.key}/></Suspense></group>}
-    {ready&&(take||!inBowl)&&<Suspense fallback={null}><PrecinctRallies data={data} time={time} surroundings={context} selectedVenue={take?'all':selectedVenue} excludeCourt={take?undefined:away?.id}/></Suspense>}
+    {ready&&(take||!inBowl)&&<Suspense fallback={null}><PrecinctRallies data={data} time={time} surroundings={showPrecinct} selectedVenue={selectedVenue} excludeCourt={take?undefined:away?.id}/></Suspense>}
     {markers&&shot.view!=='ao'&&points.filter(p=>context||selectedVenue==='all'||(p.id==='precinct'?selectedVenue==='mca':selectedVenue==='1573')).map((p,i)=><Html key={p.id} position={p.position} center zIndexRange={[10,0]}><button className={styles.pin} title={tr(p.title)} aria-label={`${tr('探索')}${tr(p.title)}`} onClick={()=>onSelect(p.id)}><span>{String(i+1).padStart(2,'0')}</span><b>{tr(p.title)}</b></button></Html>)}
     {ready&&rally&&matchAudio&&audibleCourts.length>0&&<Suspense fallback={null}>
       <CourtSounds audio={matchAudio} time={time} courts={audibleCourts}
