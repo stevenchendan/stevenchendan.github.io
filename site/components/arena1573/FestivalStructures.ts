@@ -2,7 +2,7 @@ import * as T from 'three';
 import type { Batch } from './architecture';
 import {eventStructures, type EventStructure} from './eventWorlds';
 import {seatedCrowd,type SpectatorSeat} from './seatedCrowd';
-import {pavingMaterial} from './materials';
+import {gardenSquare} from './GardenSquare';
 
 const steel='#56666b', wood='#bb9673', linen='#e9e4d5', dark='#233746', blue='#1575b8', white='#f3f1e4';
 
@@ -223,13 +223,7 @@ export function festivalStructures(venue:(id:string)=>Batch,spectators:(id:strin
   for(const zone of new Set(eventStructures.map(p=>p.zone))){
     if(onlyZone && zone!==onlyZone)continue;
     const b=venue(zone),sheet=signSheet(b),seats:SpectatorSeat[]=[];
-    if(zone==='garden'){
-      // Event-day lawn in the paved bowl of Garden Square. The paths at
-      // +0.015 m are still visible across its edge and carry the original traffic.
-      const garden=new T.Shape();garden.absellipse(0,0,18,12,0,2*Math.PI,false,.30);
-      const turf=new T.ShapeGeometry(garden,40);turf.rotateX(-Math.PI/2);turf.translate(157,-.011,-55);
-      const lawn=new T.Mesh(turf,pavingMaterial('#87976f',turf,'lawn'));lawn.receiveShadow=true;b.group.add(lawn);
-    }
+    if(zone==='garden')gardenSquare(b);
     for(const p of eventStructures.filter(p=>p.zone===zone))build(b,p,sheet,seats);
     if(seats.length)spectators(zone).add(seatedCrowd(seats,.68));
     sheet.finish();

@@ -1,5 +1,6 @@
+import {pavilionEnvelope} from './RodLaverPavilion';
 import {mcaRow,mcaLowerRows} from './mcaProfile';
-import {forkBridgeId,forkBridgeParts} from './forkBridge';
+import {forkBridgeId,forkBridgeParts,currentForkBridgeRing,tennisBridgeId,tennisBridgeParts} from './forkBridge';
 import { bridgeSections } from './bridge';
 import { grandSlamOval } from './GrandSlamOval';
 import { festivalStructures } from './FestivalStructures';
@@ -18,6 +19,9 @@ import { buildingVenue, courtVenue } from './venueVisibility';
 import { arenaEntryFacilities, eventFacilities } from './EventFacilities';
 import { routeFinish } from './eventLayout';
 import { EVENT_CONCOURSE, GROUND, GroundSurfaces } from './ground';
+import {arenaEntries,carveEntries,entrance} from './arenaAccess';
+import {insidePassage,passage} from './bowlAccess';
+import {showCourtEnvelope} from './showCourtEnvelope';
 
 export interface ContextData {
   buildings: { id: string; name?: string; ring: number[][]; height: number; base: number; roof: string; structureType?:string }[];
@@ -191,6 +195,10 @@ function addSeatMounts(group:T.Group,chairs:T.InstancedMesh){
 // A real interior surface and stepped bowl beneath each open roof, so terrain
 // colours and pedestrian paths cannot read as the arena floor.
 function arenaBowl(b:Builder,x:number,z:number,w:number,d:number,onlySeats=false,rows=22,drawCourt=true,spectators?:T.Group){
+  const passages=b.group.userData.venue==='mca'?[
+    {name:'Player entry',x:x+13,z:z-10,yaw:-Math.PI/2,width:3,height:2.8,depth:15},
+    ...[-1,1].flatMap(side=>[-12,12].map(dz=>({name:'Concourse passage',x:x+side*26.06,z:z+dz,yaw:-side*Math.PI/2,width:2.8,height:2.6,base:6.59,depth:7}))),
+  ]:[];
   const seatPositions:{x:number;y:number;z:number;angle:number}[]=[];
   const indoor=['john','mca','rla'].includes(b.group.userData.venue);
   if(!onlySeats){const floor=new T.ShapeGeometry(roundedPath(w,d,12));floor.rotateX(-Math.PI/2);floor.translate(x,.06,z);b.add(floor,'#394f5b');}
@@ -249,9 +257,11 @@ function arenaBowl(b:Builder,x:number,z:number,w:number,d:number,onlySeats=false
     for(let i=0;i<count;i++){
       const f=i/count;if((f*16)%1<.08)continue;
       const p=path.getPointAt(f),v=path.getTangentAt(f);
+      if(passages.some(e=>insidePassage(x+p.x,top+.42,z-p.y,e)))continue;
       seatPositions.push({x:x+p.x,y:onlySeats?1.4+row*.48:top+.42,z:z-p.y,angle:Math.atan2(v.y,v.x)});
     }
   }
+  carveEntries(b,passages);for(const e of passages)passage(b,e);
   const seat=mouldedSeatGeometry(false),mesh=new T.InstancedMesh(seat,new T.MeshStandardMaterial({roughness:.66,side:T.DoubleSide}),seatPositions.length),o=new T.Object3D();
   const shades=(b.group.userData.venue==='john'?['#5e839d','#648aa2','#7194a7']:['#4286b0','#4e90b7','#609bbd']).map(color=>new T.Color(color));
   seatPositions.forEach((p,i)=>{o.position.set(p.x,p.y,p.z);o.rotation.y=p.angle;o.updateMatrix();mesh.setMatrixAt(i,o.matrix);mesh.setColorAt(i,shades[i%17===0?2:i%5===0?1:0]);});
@@ -290,11 +300,6 @@ export function buildArena() {
     const p=perimeter.getPointAt(i/bays),v=perimeter.getTangentAt(i/bays);
     const angle=Math.atan2(v.y,v.x);
     b.box(p.x,3.5,-p.y,.055,6.7,.08,'#94a1a3',angle);
-    if(i%10!==4)continue;
-    const x=p.x+v.y*.12,z=-p.y+v.x*.12;
-    b.box(x,1.47,z,2.7,2.75,.14,'#354851',angle);
-    b.box(x+v.y*.15,2.95,z+v.x*.15,3.05,.14,.64,palette.edge,angle);
-    for(const offset of [-.83,0,.83])b.box(x+offset*v.x+v.y*.08,1.47,z-offset*v.y+v.x*.08,.06,2.7,.08,palette.steel,angle);
   }
   ring(b,10.9,11.02,6.78,.22,'#778b94');
   // Tall court-facing retaining wall visible in the supplied four photographs.
@@ -369,6 +374,9 @@ export function buildArena() {
   addSeatMounts(stand.group,seatMesh);
   const crowd=seatedCrowd(seats);
   crowd.visible=false;stand.group.add(crowd);
+  carveEntries(b,arenaEntries['1573']);
+  carveEntries(stand,arenaEntries['1573'].map(e=>({...e,base:-SEATING_LIFT})));
+  for(const e of arenaEntries['1573'])entrance(b,e);
   stand.finish();stand.group.position.y=SEATING_LIFT;b.group.add(stand.group);
   return {group:b.finish(),lamps,crowd,seats:seats.length};
 }
@@ -508,9 +516,7 @@ export function buildContext(data: ContextData, part?:string) {
       if(data.buildings.some(building=>building.name&&pointInRing([x,z],building.ring)))continue;
       if(f.id==='way/126844350'){
         arenaBowl(b,x,z,22,31,false,12,true,spectatorsFor(b));
-        const canopy=roundedPath(24,33,10);canopy.holes.push(new T.Path(roundedPath(19.5,28.5,8).getPoints(24).reverse()));
-        const g=new T.ExtrudeGeometry(canopy,{depth:.25,bevelEnabled:false});g.rotateX(-Math.PI/2);g.translate(x,8.2,z);b.add(g,'#dce1df');
-        facade(b,roundedPath(23,32,9).getPoints(32).map(p=>[x+p.x,z-p.y]),0,7,'#5d7079');
+        showCourtEnvelope(b,x,z,roundedPath);
         continue;
       }
       const elevation=courtElevation(x,f.layer);
@@ -621,10 +627,11 @@ export function buildContext(data: ContextData, part?:string) {
     // This footprint is the elevated bridge, rebuilt as an open deck above.
     if(building.id==='810459-2-0')return;
     if(building.structureType==='Bridge'){
+      if(building.id===forkBridgeId)building={...building,ring:currentForkBridgeRing(building.ring)};
       // The city data describes the full bridge elevation envelope, not a solid
       // building. Keep open clearance under its deck instead of extruding a wall.
-      const top=building.base+building.height,fork=building.id===forkBridgeId;
-      const parts=fork?forkBridgeParts(building.ring,top):[{ring:building.ring,height:(_x:number,_z:number)=>top}];
+      const top=building.base+building.height,fork=building.id===forkBridgeId,tennis=building.id===tennisBridgeId;
+      const parts=fork?forkBridgeParts(building.ring,top):tennis?tennisBridgeParts(building.ring,top):[{ring:building.ring,height:(_x:number,_z:number)=>top}];
       for(const part of parts){
         const deck=new T.Shape(part.ring.map(p=>new T.Vector2(p[0],-p[1])));
         const geometry=new T.ExtrudeGeometry(deck,{depth:.65,bevelEnabled:false});
@@ -646,10 +653,11 @@ export function buildContext(data: ContextData, part?:string) {
         if(span<.02)return;
         // Leave both street-level mouths open. The original ring closes across each one.
         if(fork&&(i===97||i===241))return;
-        const part=fork&&i>27&&i<=161?parts[0]:fork&&i>162&&i<=294?parts[1]:parts[parts.length-1];
+        if(tennis&&(i===1||i===25))return;
+        const part=tennis?(parts.find(part=>part.ring.some(v=>v[0]===a[0]&&v[1]===a[1])&&part.ring.some(v=>v[0]===p[0]&&v[1]===p[1]))??parts[2]):fork&&i>27&&i<=161?parts[0]:fork&&i>162&&i<=294?parts[1]:parts[parts.length-1];
         const ha=part.height(a[0],a[1]),hp=part.height(p[0],p[1]);
         b.rod([a[0],ha+1.05,a[1]],[p[0],hp+1.05,p[1]],.07,'#667b78');
-        if(fork){
+        if(fork||tennis){
           b.rod([a[0],ha+.55,a[1]],[p[0],hp+.55,p[1]],.055,'#97a6a5');
           b.rod([a[0],ha-.23,a[1]],[p[0],hp-.23,p[1]],.09,'#536b74');
           for(let d=Math.ceil(railDistance/2.2)*2.2;d<railDistance+span;d+=2.2){
@@ -661,6 +669,31 @@ export function buildContext(data: ContextData, part?:string) {
       return;
     }
     if(building.name==='Margaret Court Arena')return;
+    if(building.id==='812707-1-0'){
+      // COX Eastern Pavilion: a single elevated volume, not a generic solid
+      // building covering a second annex. Preserve the surveyed footprint.
+      const shape=new T.Shape(building.ring.map(p=>new T.Vector2(p[0],-p[1])));
+      for(const y of [5.2,10.8]){
+        const slab=new T.ExtrudeGeometry(shape,{depth:.32,bevelEnabled:false});
+        slab.rotateX(-Math.PI/2);slab.translate(0,y-.32,0);b.add(slab,y===17?'#d6d9d4':'#aab7b8');
+      }
+      pavilionEnvelope(b);
+      facade(b,[[216,44.15],[216.12,104.92]],5.2,11.5,'#52707d');
+      for(const z of [46,60,88,102])b.box(241,2.55,z,.65,5.1,.65,'#a6b1b0');
+      // Recessed ticket counter and lobby glazing beneath the upper pavilion.
+      for(const z of [49,99]){
+        b.box(238,2,z,1,4,12,'#31454d');
+        b.box(238.6,1.15,z,.45,.24,10,'#c0c7c0');
+      }
+      for(const y of [5.2,10.8])for(const z of [55,94]){
+        b.box(212.5,y-.15,z,15,.3,6,'#aebbbd');
+        b.box(212.5,y+3.3,z,15,.18,6,'#c6d0cd');
+        for(const side of [-1,1])b.box(212.5,y+1.6,z+side*3,15,3.2,.1,'#55747f');
+      }
+      const sign=label('ROD LAVER ARENA',30,1.5,'#dcebe5','#243f48');
+      sign.rotation.y=Math.PI/2;sign.position.set(245.2,16.1,74.3);b.group.add(sign);
+      return;
+    }
     if(building.name==='John Cain Arena'){
       const ring=building.ring.slice(0,-1);
       const cx=ring.reduce((s,p)=>s+p[0],0)/ring.length,cz=ring.reduce((s,p)=>s+p[1],0)/ring.length;
@@ -728,9 +761,13 @@ export function buildContext(data: ContextData, part?:string) {
         for(let dz=-65;dz<=65;dz+=10)b.rod([x,23.25,72+dz*.91],[x,27.85,72+dz],.15,'#9eaaaa');
       }
       for(const [x,z,w,d] of rodLaverAnnexes){
-        const pod=roundedPath(w,d,6),g=new T.ExtrudeGeometry(pod,{depth:7,bevelEnabled:false});g.rotateX(-Math.PI/2);g.translate(x,.2,z);b.add(g,'#bcc8c9');
-        facade(b,pod.getPoints(24).map(p=>[x+p.x,z-p.y]),.3,5.8);
-        const roof=new T.ShapeGeometry(pod);roof.rotateX(-Math.PI/2);roof.translate(x,7.3,z);b.add(roof,'#e0e3df');
+        const height=7;
+        const pod=roundedPath(w,d,6),shell=roundedPath(w,d,6);
+        shell.holes.push(new T.Path(roundedPath(w-.4,d-.4,5.6).getPoints(24).reverse()));
+        const g=new T.ExtrudeGeometry(shell,{depth:height,bevelEnabled:false});g.rotateX(-Math.PI/2);g.translate(x,.2,z);b.add(g,'#bcc8c9');
+        facade(b,pod.getPoints(24).map(p=>[x+p.x,z-p.y]),.3,height-1.2);
+        const roof=new T.ShapeGeometry(pod);roof.rotateX(-Math.PI/2);roof.translate(x,height+.3,z);b.add(roof,'#e0e3df');
+
       }
       return;
     }
@@ -789,9 +826,13 @@ export function buildContext(data: ContextData, part?:string) {
     const fasciaGeometry=mergeGeometries(fasciaParts);fasciaParts.forEach(g=>g.dispose());
     if(fasciaGeometry){const face=new T.Mesh(fasciaGeometry,new T.MeshStandardMaterial({color:'#aa7657',roughness:.8,side:T.DoubleSide}));face.castShadow=true;face.receiveShadow=true;b.group.add(face);}
     for(const z of [-26,-23,20,23])b.box(25.3,5.3,z,.55,10.6,1.25,'#c8c8b9');
-    const sign=label('MARGARET COURT ARENA',15,.8,'#d5dcda','#263c43');sign.rotation.y=-Math.PI/2;sign.position.set(25.1,3.6,-4);b.group.add(sign);
+
   }
 
+  for(const [id,builder] of venues){
+    const entries=arenaEntries[id];if(!entries)continue;
+    carveEntries(builder,entries);for(const e of entries)entrance(builder,e);
+  }
   if(part && !landscape)return venue(part).finish();
   b=environment;
   arenaEntryFacilities(b);
@@ -810,6 +851,7 @@ export function disposeModel(group: T.Group) {
     for(const material of Array.isArray(obj.material)?obj.material:[obj.material]){
       materials.add(material);
       if('map' in material&&material.map instanceof T.Texture&&!material.map.userData.sharedSpectatorAtlas)textures.add(material.map);
+      if('envMap' in material&&material.envMap instanceof T.Texture)textures.add(material.envMap);
     }
   });
   geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());

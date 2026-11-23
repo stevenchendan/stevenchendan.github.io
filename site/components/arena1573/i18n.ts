@@ -21,7 +21,7 @@ const english: Record<string, string> = {
   '座区指南':'Seating guide','选择座区':'Choose sections','屋顶已打开':'Roof open','屋顶正在关闭':'Roof closing','屋顶正在打开':'Roof opening','屋顶已关闭':'Roof closed',
   '2023 年澳网，罗德·拉沃尔球场暮色中的四分之一决赛':'A quarterfinal at dusk inside Rod Laver Arena, Australian Open 2023',
   '墨尔本公园场馆探索':'Melbourne Park venue explorer','探索球场':'Explore the courts','播放场馆短片':'Watch the film',
-  '铜色屋顶':'The copper roof','罗德·拉沃尔球场':'Rod Laver Arena','约翰·凯因球场':'John Cain Arena','底线回合':'Behind the baseline',
+  '光映玻璃':'Light on glass','铜色屋顶':'The copper roof','罗德·拉沃尔球场':'Rod Laver Arena','约翰·凯因球场':'John Cain Arena','底线回合':'Behind the baseline',
   '暂停短片':'Pause film','播放短片':'Play film','上一镜头':'Previous shot','下一镜头':'Next shot','运动捕捉与球员模型署名 ↗':'Player model & motion capture credits ↗',
   '在三个可伸缩屋顶场馆中，雨天会触发加速模拟的闭合过程。':'Rain starts an accelerated roof closure at all three retractable-roof arenas.',
   '三维球场。方向键旋转，加减键缩放。':'3D court. Use the arrow keys to orbit and the plus and minus keys to zoom.',

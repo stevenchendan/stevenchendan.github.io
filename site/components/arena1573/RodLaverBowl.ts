@@ -1,6 +1,8 @@
 import * as T from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { Batch } from './architecture';
+import {carveEntries,cutEntry,type ArenaEntry} from './arenaAccess';
+import {insidePassage,passage} from './bowlAccess';
 import { seatedCrowd } from './seatedCrowd';
 import { sectionDoors, seatSections } from './seating';
 import { rodLaverBanks, rodLaverRow, rodLaverRowPoint, type RodLaverTier } from './rodLaverProfile';
@@ -236,11 +238,22 @@ function bowlGalleries(b:Batch,outline:Outline,displays:Displays){
   }
 }
 
-export function rodLaverBowl(b:Batch,outline:Outline,seatGeometry:T.BufferGeometry){
+export function rodLaverBowl(b:Batch&{batches:Map<string,T.BufferGeometry[]>},outline:Outline,seatGeometry:T.BufferGeometry){
   const displays=new Displays(),seats:Seat[]=[];
   courtWalls(b,outline,displays);seatFurniture(b,displays);
   seatingBank(b,outline,'lower',seats);seatingBank(b,outline,'upper',seats);
   bowlGalleries(b,outline,displays);
+  const lower=rodLaverRow('lower',rodLaverBanks.lower.rows),upper=rodLaverRow('upper',0);
+  const passages:ArenaEntry[]=[{name:'Player entry',x:-13.1,z:-10.2,yaw:Math.PI/2,width:3,height:3.05,depth:13}];
+  for(const door of sectionDoors.rla){
+    const p=rodLaverRowPoint(upper.w,upper.d,upper.r,door.x,door.z);
+    const dx=p.x-T.MathUtils.clamp(p.x,-upper.w+upper.r,upper.w-upper.r);
+    const dz=p.z-T.MathUtils.clamp(p.z,-upper.d+upper.r,upper.d-upper.r);
+    passages.push({name:'Concourse passage',x:p.x,z:p.z,yaw:Math.atan2(-dx,-dz),width:2.7,height:2.5,base:lower.y,depth:5});
+  }
+  carveEntries(b,passages);
+  for(let i=seats.length-1;i>=0;i--)if(passages.some(e=>insidePassage(seats[i].x,seats[i].y,seats[i].z,e)))seats.splice(i,1);
+  for(const e of passages)passage(b,e);
   const chairs=new T.InstancedMesh(seatGeometry,new T.MeshStandardMaterial({roughness:.65,side:T.DoubleSide}),seats.length);
   const transform=new T.Object3D(),color=new T.Color(),palette=['#578cab','#64a0bb','#6697af','#4e829f','#87afc1'];
   seats.forEach((p,i)=>{
@@ -250,4 +263,7 @@ export function rodLaverBowl(b:Batch,outline:Outline,seatGeometry:T.BufferGeomet
   chairs.name='rod-laver-seats';chairs.receiveShadow=true;b.group.add(chairs);
   const crowd=seatedCrowd(seats,.71);crowd.name='precinct-spectators';crowd.visible=false;
   b.group.add(crowd);displays.finish(b.group);
+  // Advertising planes must not close the newly cut court-wall opening.
+  for(const mesh of b.group.children)if(mesh instanceof T.Mesh&&!(mesh instanceof T.InstancedMesh))
+    mesh.geometry=passages.reduce((g,e)=>cutEntry(g,e),mesh.geometry);
 }

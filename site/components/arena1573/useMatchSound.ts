@@ -36,6 +36,29 @@ export class MatchAudio {
     source.start(start,cue.sample*.25,.25);
   }
   stop(){for(const source of this.voices)source.stop();}
+  thunder(){
+    const ctx=this.context;
+    if(ctx.state!=='running'||document.hidden)return ()=>{};
+    const duration=5,buffer=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*duration),ctx.sampleRate);
+    const samples=buffer.getChannelData(0);
+    let rumble=0;
+    for(let i=0;i<samples.length;i++){
+      rumble=(rumble+.035*(Math.random()*2-1))/1.035;
+      samples[i]=rumble*9;
+    }
+    const source=ctx.createBufferSource(),filter=ctx.createBiquadFilter(),level=ctx.createGain();
+    source.buffer=buffer;filter.type='lowpass';filter.frequency.value=350;
+    const start=ctx.currentTime+1.4;
+    level.gain.setValueAtTime(0,ctx.currentTime);
+    level.gain.setValueAtTime(0,start);
+    level.gain.linearRampToValueAtTime(.65,start+.35);
+    level.gain.exponentialRampToValueAtTime(.001,start+duration);
+    source.connect(filter).connect(level).connect(ctx.destination);
+    this.voices.add(source);
+    source.onended=()=>{this.voices.delete(source);source.disconnect();filter.disconnect();level.disconnect();};
+    source.start(start);source.stop(start+duration);
+    return ()=>{if(this.voices.has(source))source.stop();};
+  }
   dispose(){this.abort.abort();this.stop();void this.context.close().catch(()=>{});}
 }
 

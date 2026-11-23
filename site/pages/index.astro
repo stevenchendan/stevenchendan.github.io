@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { capabilities, experience, profile, work } from '../data/portfolio';
+import { experience, profile } from '../data/portfolio';
 ---
 <BaseLayout>
   <section class="hero wrap">
@@ -8,7 +8,7 @@ import { capabilities, experience, profile, work } from '../data/portfolio';
     <h1>Building dependable products for complex systems.</h1>
     <p class="hero-copy">{profile.intro}</p>
     <div class="actions">
-      <a class="button primary" href="#work">View selected work</a>
+      <a class="button primary" href="#experience">View experience</a>
       <a class="button secondary" href={profile.linkedin} target="_blank" rel="noreferrer">LinkedIn <span aria-hidden="true">↗</span></a>
     </div>
     <dl class="quick-facts" aria-label="Professional summary">
@@ -21,31 +21,6 @@ import { capabilities, experience, profile, work } from '../data/portfolio';
   <section id="experience" class="wrap section">
     <header class="section-header"><p class="overline">Experience</p><h2>Progressive responsibility across product and platform engineering.</h2></header>
     <div class="experience-list">{experience.map(item => <article><time>{item.years}</time><div><h3>{item.company}</h3><p class="role">{item.role}</p><p>{item.note}</p></div></article>)}</div>
-  </section>
-
-  <section id="work" class="wrap section">
-    <header class="section-header">
-      <p class="overline">Selected work</p>
-      <h2>Experience solving complex, real-world problems.</h2>
-      <p>Representative work from enterprise, cloud and geospatial environments. The emphasis is on the problem, my contribution and the outcome.</p>
-    </header>
-    <div class="project-list">
-      {work.map((item, index) => <article class="project">
-        <div class="project-number" aria-hidden="true">0{index + 1}</div>
-        <div class="project-main"><p class="project-context">{item.context}</p><h3>{item.title}</h3><p><strong>Contribution</strong>{item.description}</p></div>
-        <div class="project-detail"><p><strong>Outcome</strong>{item.outcome}</p><ul aria-label="Technologies">{item.tags.map(tag => <li>{tag}</li>)}</ul></div>
-      </article>)}
-    </div>
-  </section>
-
-  <section id="about" class="section muted-section"><div class="wrap two-column">
-    <header class="section-header compact"><p class="overline">What I bring</p><h2>Technical breadth without losing sight of the user.</h2><p>I am most useful where product, engineering and architecture overlap: turning an ambiguous problem into a system people can understand and trust.</p></header>
-    <div class="capability-list">{capabilities.map(item => <article><h3>{item.title}</h3><p>{item.detail}</p></article>)}</div>
-  </div></section>
-
-  <section class="wrap lab-callout">
-    <div><p class="overline">Experiments</p><h2>Small demos, shared while they are useful.</h2><p>I use this site to publish focused prototypes without mixing their deployment lifecycle into the portfolio.</p></div>
-    <a class="button secondary" href="/demos/">Browse demos</a>
   </section>
 
   <section class="contact"><div class="wrap contact-inner">

@@ -1,21 +1,21 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-/** Decode the complete loop before the film clock starts. */
-export function useCinemaSound(playing: boolean, onUnavailable: () => void) {
+/** Warm the soundtrack during exploration, then start it on cinema entry. */
+export function useCinemaSound(playing: boolean, onUnavailable: () => void, preload: boolean) {
   const context = useRef<AudioContext | null>(null);
   const buffer = useRef<AudioBuffer | null>(null);
   const loading = useRef(false);
+  const requested = useRef(false);
   const offset = useRef(0);
   const [ready, setReady] = useState(false);
 
   function unlock() {
-    if (context.current?.state === 'suspended') void context.current.resume().catch(onUnavailable);
+    const ctx=context.current;
+    if(ctx&&ctx.state!=='running'&&ctx.state!=='closed') void ctx.resume().catch(onUnavailable);
   }
-  function prepare() {
-    offset.current = 0;
+  const load = useCallback((reportFailure: boolean) => {
     try {
       const ctx = context.current ??= new AudioContext();
-      unlock();
       if (buffer.current || loading.current) return;
       loading.current = true;
       setReady(false);
@@ -24,10 +24,17 @@ export function useCinemaSound(playing: boolean, onUnavailable: () => void) {
         return response.arrayBuffer();
       }).then(bytes => ctx.decodeAudioData(bytes)).then(decoded => {
         if (context.current === ctx) buffer.current = decoded;
-      }).catch(() => { if (context.current === ctx) onUnavailable(); }).finally(() => {
+      }).catch(() => { if (context.current === ctx && (reportFailure||requested.current)) onUnavailable(); }).finally(() => {
         if (context.current === ctx) { loading.current = false; setReady(true); }
       });
-    } catch { setReady(true); onUnavailable(); }
+    } catch { setReady(true); if(reportFailure) onUnavailable(); }
+  }, [onUnavailable]);
+  useEffect(() => { if(preload) load(false); }, [preload, load]);
+  function prepare() {
+    requested.current = true;
+    offset.current = 0;
+    load(true);
+    unlock();
   }
   useEffect(() => {
     const ctx = context.current, loop = buffer.current;
@@ -52,6 +59,7 @@ export function useCinemaSound(playing: boolean, onUnavailable: () => void) {
   }, [playing, ready]);
   useEffect(() => () => {
     const ctx = context.current; context.current = null;
+    loading.current = false; buffer.current = null;
     if (ctx) void ctx.close().catch(() => {});
   }, []);
   return { ready, prepare, unlock };

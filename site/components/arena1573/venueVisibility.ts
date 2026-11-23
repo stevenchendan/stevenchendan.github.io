@@ -14,6 +14,7 @@ export function courtVenue(id:string,x:number){
 }
 
 export function buildingVenue(building:{name?:string;id:string}){
+  if(building.id==='812707-1-0')return 'rla';
   if(building.name==='Margaret Court Arena')return 'mca';
   if(building.name==='Rod Laver Arena')return 'rla';
   if(building.name==='John Cain Arena')return 'john';

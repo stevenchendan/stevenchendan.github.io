@@ -165,7 +165,7 @@ export default function ArenaExperience(){
   const [filmPrepared,setFilmPrepared]=useState(false);
   const onFilmPrepared=useCallback(()=>setFilmPrepared(true),[]);
   const musicUnavailable=useCallback(()=>setToast('影院音乐暂时无法播放，请退出后重试。'),[]);
-  const music=useCinemaSound(cinema&&playing&&ready&&filmPrepared,musicUnavailable);
+  const music=useCinemaSound(cinema&&playing,musicUnavailable,ready);
   const presentable=ready&&(!cinema||(filmPrepared&&music.ready));
   const compassRef=useRef<HTMLElement>(null);
   const tr=getTranslator(language);
@@ -239,9 +239,8 @@ export default function ArenaExperience(){
       setShot({view:preset??(court||arena==='1573'?'hero':'ao'),preset:!!preset,destination:arena,court,serial:1});
     }
     try{
-      const savedTheme=localStorage.getItem('1573-arena-theme'), savedLanguage=localStorage.getItem('1573-arena-language');
+      const savedTheme=localStorage.getItem('1573-arena-theme');
       if(savedTheme==='ink')setTheme(savedTheme);
-      if(savedLanguage==='zh')setLanguage(savedLanguage);
     }catch{/* Preferences still work for this visit. */}
     const motion=window.matchMedia('(prefers-reduced-motion: reduce)');
     function updateMotion(){
@@ -309,7 +308,8 @@ export default function ArenaExperience(){
     if(view==='precinct'||view==='ao')setContext(true);
     navigate({view,destination,court:court?.key,preset:true});
   },[subjectCourt,subjectVenue,nearestSeatCourt,seatVenue,section,navigate]);
-  const onSelect=useCallback((id:string)=>{
+  const onSelect=useCallback((id:string,court?:string)=>{
+    if(court){navigate({view:'hero',destination:id,court});return;}
     if(destinations.some(venue=>venue.id===id)){
       navigate({view:'hero',destination:id});
       return;
@@ -421,13 +421,13 @@ export default function ArenaExperience(){
   const loadingTitle=cinema?tr('正在打开影院'):tr('正在打开球场地图');
   return <main ref={container} className={styles.experience} data-loading={loading||undefined} data-interactive={interactive} data-cinema={cinema||undefined} data-roof={roof} lang={language==='zh'?'zh-CN':'en'}>
     <header className={styles.header}>
-      <a href="/australian-open/" className={styles.brand} aria-label={language==='zh'?'Court Atlas · 返回澳网首页':'Court Atlas · Australian Open home'}><Icon name="ball"/><span>Court Atlas</span></a>
+      <a href="/ao/" className={styles.brand} aria-label={language==='zh'?'Court Atlas · 返回澳网首页':'Court Atlas · Australian Open home'}><Icon name="ball"/><span>Court Atlas</span></a>
       <span className={styles.eventName}>{tr('澳大利亚网球公开赛')}</span>
       <nav className={styles.topActions} inert={!interactive} aria-label={tr('场馆工具')}>
         <button aria-haspopup="dialog" onClick={openSeats} aria-label={tr('座区指南')}><Icon name="seat"/><span>{tr('座区指南')}</span></button>
         <button disabled={!!failure} aria-haspopup="dialog" onClick={()=>setPanel('venues')} aria-label={tr('场馆列表')}><Icon name="venues"/><span>{tr('场馆列表')}</span></button>
         <button aria-haspopup="dialog" onClick={()=>setPanel('settings')} aria-label={tr('场景设置')}><Icon name="settings"/><span>{tr('场景设置')}</span></button>
-        <button className={styles.language} lang={language==='en'?'zh-CN':'en'} aria-label={language==='en'?'切换到中文':'Switch to English'} onClick={()=>{const next=language==='en'?'zh':'en';setLanguage(next);savePreference('language',next);}}>{language==='en'?'中文':'EN'}</button>
+        <button className={styles.language} lang={language==='en'?'zh-CN':'en'} aria-label={language==='en'?'切换到中文':'Switch to English'} onClick={()=>setLanguage(value=>value==='en'?'zh':'en')}>{language==='en'?'中文':'EN'}</button>
       </nav>
     </header>
     <section className={styles.stage} aria-label={tr('墨尔本公园场馆探索')}
@@ -534,7 +534,7 @@ export default function ArenaExperience(){
         {light==='solar'&&(isRoofed(captionVenueId)?<button className={styles.guideLink} onClick={openSeats}>{tr('选择座区')}<Icon name="seat"/></button>:<SunControls date={solarDate} onChange={date=>{setShade(null);setSolarDate(date);}} language={language} shade={shade} onStand={showStandComparison?viewStand:undefined}/>)}
         <button className={styles.aboutButton} onClick={()=>setPanel('about')}><Icon name="info"/>{tr('关于模型')}<Icon name="next"/></button>
       </>}
-      {panel==='detail'&&detail&&<div className={styles.prose}><p>{tr(detail.description)}</p><button className={styles.textLink} onClick={()=>{navigate({view:'hero'});setMarkers(true);}}>{tr('返回场馆全景 ↗')}</button></div>}
+      {panel==='detail'&&detail&&<div className={styles.prose}><p>{tr(detail.description)}</p><button className={styles.textLink} onClick={()=>navigate({view:'hero'})}>{tr('返回场馆全景 ↗')}</button></div>}
       {panel==='about'&&<div className={styles.prose}><p>{tr('1573 Arena 的标准球场与周边地理位置采用米制建模；圆角看台、座椅、遮阳棚、灯架和屋顶细节依据卫星图与公开场馆资料做视觉近似。不是测绘模型，也不代表最新的现场设施。')}</p><p>{tr('日落与夜场为艺术灯光预设，网球轨迹为演示动画。观众和街道家具是示意布置。')}</p><p>{tr('在三个可伸缩屋顶场馆中，雨天会触发加速模拟的闭合过程。')}</p><div className={styles.sources}>{sources.map(([label,url])=><a key={url} href={url} target="_blank" rel="noreferrer">{tr(label)}</a>)}<a href="/data/1573-context.json" download>{tr('下载衍生地理数据 · ODbL / CC BY 4.0 ↓')}</a></div><small>{tr('快捷键：1–5 切换视角 · R 重置 · H 热点 · 空格环绕')}</small></div>}
     </Drawer>}
     {toast&&<div className={styles.toast} role="status">{tr(toast)}</div>}

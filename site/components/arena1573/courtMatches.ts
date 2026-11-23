@@ -85,10 +85,26 @@ function buildMatch(key:string){
       const next=oriented(points[(i+1)%points.length],-tossTime);
       const u=clamp(since/p.reset),rate=6*u*(1-u)/p.reset;
       f.players.forEach((a,side)=>{
-        const b=next.players[side],w=ease(u);
-        a.vx=(b.x-a.x)*rate;a.vz=(b.z-a.z)*rate;
-        a.x=mix(a.x,b.x,w);a.z=mix(a.z,b.z,w);a.yaw+=turn(a.yaw,b.yaw)*w;
-        a.relativeTime=3;a.split=0;a.turn=0;
+        const b=next.players[side],dx=b.x-a.x,dz=b.z-a.z;
+        let w=ease(u),velocity=rate,yaw=a.yaw+turn(a.yaw,b.yaw)*w;
+        a.turn=0;
+        if(key==='1573'){
+          const distance=Math.hypot(dx,dz),delay=.16+side*.12;
+          const pace=distance>3?2.45:1.65;
+          const duration=Math.min(p.reset-delay-.35,Math.max(.38,distance/pace+.24));
+          const ramp=Math.min(.24,duration/2),area=duration-ramp;
+          const t=Math.max(0,Math.min(duration,since-delay));
+          // Integrate a short acceleration ramp, steady steps and braking.
+          w=t<ramp?t*t/(2*ramp*area):t>duration-ramp?
+            1-(duration-t)**2/(2*ramp*area):(t-ramp/2)/area;
+          velocity=Math.min(t/ramp,1,(duration-t)/ramp)/area;
+          const facing=a.yaw+turn(a.yaw,b.yaw)*ease(t/duration);
+          a.turn=clamp(distance/2)*ease(clamp(t/ramp))*ease(clamp((duration-t)/ramp));
+          yaw=facing+turn(facing,Math.atan2(-dx,-dz))*a.turn;
+        }
+        a.vx=dx*velocity;a.vz=dz*velocity;
+        a.x+=dx*w;a.z+=dz*w;a.yaw=yaw;
+        a.relativeTime=3;a.split=0;
       });
       const drift=Math.min(since,.38);
       f.ball[2]+=Math.sign(f.ball[2])*drift*7;

@@ -81,7 +81,8 @@ interior.updateWorldMatrix(true,true);
 // Trace the four doubles corners from the whole cinema move. Expand each
 // physical chair to include its seated spectator, even when the crowd is off.
 const {film,filmFieldOfView,filmRain,filmRoof,filmDusk,filmLights}=load('film');
-const take=film.find(t=>t.venue==='rla'),camera=new THREE.PerspectiveCamera();
+const take=film.find(t=>t.venue==='rla'&&t.interior),camera=new THREE.PerspectiveCamera();
+assert.ok(take,'Rod Laver interior chapter remains available after exterior shots are added');
 const occupied=[],seatMatrix=new THREE.Matrix4(),seatCentre=new THREE.Vector3();
 for(let i=0;i<chairs.count;i++){
   chairs.getMatrixAt(i,seatMatrix);seatCentre.setFromMatrixPosition(seatMatrix).applyMatrix4(chairs.matrixWorld);
