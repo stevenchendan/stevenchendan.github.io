@@ -1,0 +1,978 @@
+.campaign-tab {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+.campaign-shell {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.campaign-hud {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: clamp(20px, 3.4vw, 62px);
+  padding: 10px 25px;
+  border-bottom: 1px solid #685e43;
+  background: linear-gradient(110deg, #263633, #202f2d);
+  box-shadow: 0 2px 6px #18242030;
+  z-index: 1;
+}
+.turn-counter,
+.game-resource {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.turn-counter {
+  padding-right: clamp(12px, 2.5vw, 40px);
+  border-right: 1px solid #5b6456;
+}
+.turn-sun {
+  font: 36px Georgia;
+  color: #e5c88d;
+}
+.turn-counter small,
+.game-resource small,
+.charter-title small {
+  display: block;
+  font: 600 10px/1.4 var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 1.15px;
+  color: #c4c8b8;
+  white-space: nowrap;
+}
+.turn-counter b {
+  font: 22px/1.2 var(--serif);
+  white-space: nowrap;
+}
+.turn-counter b em {
+  font: 14px var(--serif);
+  color: #b7c1b4;
+}
+.resource-medal {
+  height: 31px;
+  width: 31px;
+  display: grid;
+  place-items: center;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  background: #ffffff09;
+  box-shadow: inset 0 0 0 2px #243332;
+}
+.resource-coins .resource-medal {
+  color: #e5c16d;
+}
+.resource-supplies .resource-medal {
+  color: #d69d7b;
+}
+.resource-prosperity .resource-medal {
+  color: #aacaab;
+}
+.game-resource strong {
+  font: 23px/1.12 var(--serif);
+}
+.game-resource em {
+  font: 11px var(--sans);
+  color: #b5c7aa;
+  margin-left: 5px;
+}
+.game-help,
+.choose-seat,
+.board-key button,
+.text-command,
+.places-inner footer button,
+.campaign-dialog button {
+  border: 1px solid #718373;
+  background: #223b38;
+  border-radius: 3px;
+  padding: 8px 11px;
+  color: #f2e7c9 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px !important;
+}
+.game-help {
+  margin-left: auto;
+}
+.game-help:hover,
+.choose-seat:hover,
+.board-key button:hover,
+.text-command:hover {
+  background: #38514b;
+}
+.campaign-layout {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(305px, 26.5vw, 408px);
+}
+.game-table {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: #224746;
+}
+.theatre-heading {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 23px 12px;
+  background: #223d3c;
+  border-bottom: 1px solid #48615a;
+}
+.campaign-kicker,
+.command-turn {
+  display: block;
+  font: 650 10px/1.4 var(--sans);
+  letter-spacing: 1.65px;
+  text-transform: uppercase;
+  color: #cbb181;
+  margin: 0;
+}
+.theatre-heading h1 {
+  margin: 3px 0 0;
+  font: 400 clamp(25px, 2.5vw, 42px) / 1.06 var(--serif);
+  letter-spacing: -1.5px;
+}
+.theatre-heading h1 em {
+  font-weight: 400;
+  color: #cbd5bb;
+}
+.choose-seat {
+  white-space: nowrap;
+}
+.tactical-field {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  overflow: hidden;
+  background: #244c4b;
+}
+.tactical-field .campaign-board {
+  height: 100%;
+  background: radial-gradient(ellipse at center, #426b64, #173c40);
+}
+.tactical-field .campaign-board__scene {
+  height: 100%;
+  width: 100%;
+}
+.board-key {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 7px 22px;
+  background: #243f3e;
+  color: #d8ddcc;
+  font-size: 11px;
+  border-top: 1px solid #4c6660;
+}
+.board-key > span {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.board-key i {
+  width: 9px;
+  height: 9px;
+  transform: rotate(45deg);
+  border: 1px solid #b5b39a;
+  background: #75867b;
+}
+.board-key i.linked-key {
+  background: #d9b76c;
+  border-color: #f4df96;
+}
+.board-key button {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  padding: 3px 0;
+  font-size: 12px !important;
+}
+.charter-strip {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 15px;
+  padding: 13px 20px;
+  background: linear-gradient(110deg, #263532, #1c302d);
+  border-top: 1px solid #796e52;
+}
+.charter-icon {
+  height: 39px;
+  width: 39px;
+  display: grid;
+  place-items: center;
+  color: #dabd81;
+  border: 1px solid #7a7758;
+  border-radius: 50%;
+}
+.charter-title {
+  min-width: 125px;
+  flex: 1;
+}
+.charter-title small {
+  color: #cbb180;
+}
+.charter-title b {
+  font: 400 18px/1.4 var(--serif);
+}
+.charter-progress {
+  width: 21%;
+  min-width: 95px;
+}
+.charter-progress > span {
+  font-size: 11px;
+  color: #c1c9b9;
+}
+.charter-progress b {
+  font-size: 13px;
+  color: #e6dbc0;
+}
+.charter-progress progress {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  height: 5px;
+  appearance: none;
+  border: 0;
+  background: #52635a;
+  border-radius: 2px;
+  overflow: hidden;
+  accent-color: #d0ae72;
+}
+.charter-progress progress::-webkit-progress-bar {
+  background: #506057;
+}
+.charter-progress progress::-webkit-progress-value {
+  background: #d0ae72;
+}
+.charter-progress progress::-moz-progress-bar {
+  background: #d0ae72;
+}
+.command-post {
+  min-height: 0;
+  min-width: 0;
+  background: #f3eddd;
+  color: #283830;
+  border-left: 1px solid #9f885e;
+  display: flex;
+  flex-direction: column;
+  color-scheme: light;
+}
+.command-heading {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex: none;
+  padding: 13px 18px;
+  background: #253935;
+  border-bottom: 1px solid #91815b;
+  color: #ddc494;
+  font: 650 11px/1.4 var(--sans);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+.command-turn {
+  margin-left: auto;
+  color: #c0b592;
+}
+.command-scroll {
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: thin;
+  padding: 16px clamp(15px, 1.5vw, 24px) 20px;
+}
+.site-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.site-heading img {
+  width: 76px;
+  height: 70px;
+  object-fit: contain;
+}
+.command-post .campaign-kicker,
+.campaign-dialog .campaign-kicker {
+  color: #7f673e;
+}
+.site-heading h2,
+.end-card h2 {
+  margin: 3px 0;
+  font: normal clamp(24px, 2.25vw, 35px) / 1.06 var(--serif);
+  letter-spacing: -1px;
+  overflow-wrap: anywhere;
+}
+.site-demographics {
+  margin: 7px 0 15px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid #cec5ac;
+  color: #626a5d;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.command-post h3 {
+  margin: 5px 0;
+  font: 600 19px var(--serif);
+  color: #273d33;
+}
+.order-hint,
+.end-card p {
+  font-size: 13px;
+  line-height: 1.45;
+  color: #4c584c;
+  margin: 4px 0 12px;
+}
+.build-options {
+  display: grid;
+  gap: 5px;
+}
+.build-choice,
+.link-choice {
+  width: 100%;
+  border: 1px solid #c7bfa7;
+  border-radius: 3px;
+  background: #faf5e7;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 5px 9px;
+}
+.build-choice img {
+  width: 39px;
+  height: 36px;
+  object-fit: contain;
+}
+.build-choice b,
+.link-choice b {
+  font: 600 16px var(--serif);
+  display: block;
+}
+.build-choice small,
+.link-choice small {
+  display: block;
+  margin-top: 2px;
+  color: #4e6755;
+  font-size: 11px;
+}
+.build-choice .cost {
+  margin-left: auto;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  color: #675c43;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.build-choice:hover:enabled,
+.link-choice:hover:enabled {
+  background: #eee6cf;
+}
+.build-choice[aria-pressed='true'],
+.link-choice[aria-pressed='true'],
+.reserve[aria-pressed='true'] {
+  outline: 2px solid #807148;
+  outline-offset: -2px;
+  background: #e6e4c9;
+}
+.build-choice:disabled,
+.link-choice:disabled {
+  opacity: 0.52;
+  cursor: default;
+}
+.link-choice {
+  min-height: 54px;
+}
+.reserve {
+  background: none;
+  border: 1px dashed #b9ae91;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 9px;
+  margin: 8px 0;
+  color: #3e5143;
+  font-size: 12px !important;
+  text-align: left;
+}
+.reserve span {
+  margin-left: auto;
+  color: #64715c;
+  font-size: 11px;
+}
+.commit-panel {
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px solid #c9bea4;
+}
+.commit-panel p {
+  font-size: 12px;
+  margin: 0 0 5px;
+  color: #5d644f;
+}
+.commit-panel small {
+  display: block;
+  font-size: 11px;
+  line-height: 1.45;
+  margin-bottom: 6px;
+  color: #3c5c47;
+}
+.end-turn {
+  background: linear-gradient(#dbc08a, #c8a66c);
+  border: 1px solid #9a7e46;
+  border-radius: 3px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 11px;
+  color: #2b372c !important;
+  font: 650 15px var(--sans) !important;
+}
+.end-turn:hover:enabled {
+  background: #e6c88b;
+}
+.end-turn:disabled {
+  background: #e3dfd0;
+  color: #7c8071 !important;
+  border-color: #c3bca7;
+  cursor: default;
+}
+.forecast {
+  background: #e8e4d1;
+  border-left: 2px solid #9b8d58;
+  margin: 15px 0 4px;
+  padding: 8px 10px;
+}
+.forecast b {
+  font: 600 13px var(--serif);
+}
+.forecast p,
+.turn-record p,
+.turn-record ol {
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 3px 0 0;
+}
+.turn-record {
+  margin-top: 12px;
+}
+.turn-record > button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  padding: 4px 0;
+  background: none;
+  border: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+.turn-record > button span {
+  margin-left: auto;
+}
+.turn-record ol {
+  padding-left: 22px;
+}
+.save-note {
+  font-size: 10px;
+  color: #677160;
+  margin-top: 10px;
+}
+.end-card > img {
+  display: block;
+  width: 105px;
+  margin: 0 auto 15px;
+}
+.end-card .text-command {
+  margin-top: 10px;
+  width: 100%;
+}
+.places-dialog,
+.campaign-dialog {
+  color-scheme: dark;
+  color: #eee8d7;
+  background: #233a37;
+  border: 1px solid #a48f65;
+  border-radius: 6px;
+  padding: 0;
+  width: min(540px, calc(100% - 24px));
+  max-height: 86dvh;
+  box-shadow: 0 20px 70px #101d1ec9;
+}
+.places-dialog::backdrop,
+.campaign-dialog::backdrop {
+  background: #101f20c9;
+}
+.places-inner {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  max-height: 84dvh;
+}
+.places-inner header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.places-inner h2,
+.campaign-dialog h2 {
+  font: normal 29px/1.1 var(--serif);
+  margin: 4px 0 0;
+}
+.places-inner p,
+.campaign-dialog p,
+.campaign-dialog li {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #d2dacc;
+}
+.places-inner p {
+  margin: 10px 0 14px;
+}
+.place-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #152d2e;
+  border: 1px solid #788b78;
+  border-radius: 3px;
+  padding: 9px;
+}
+.place-search input {
+  background: transparent;
+  border: 0;
+  min-width: 0;
+  width: 100%;
+  font-size: 14px;
+}
+.place-search input::placeholder {
+  color: #c1cbbd;
+}
+.place-filters {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0;
+}
+.place-filters select {
+  min-width: 0;
+  flex: 1;
+  font-size: 13px;
+}
+.place-range {
+  font-size: 12px;
+  color: #cabb99;
+  margin: 4px 0;
+}
+.place-results {
+  overflow: auto;
+  min-height: 70px;
+  scrollbar-width: thin;
+}
+.place-results button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  padding: 8px 5px;
+  width: 100%;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid #476057;
+  text-align: left;
+}
+.place-results button:hover {
+  background: #354c42;
+}
+.place-results b,
+.place-results small {
+  display: block;
+}
+.place-results b {
+  font: 600 15px var(--serif);
+}
+.place-results small {
+  font-size: 11px;
+  color: #bccdbf;
+}
+.places-inner footer {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 12px;
+}
+.places-inner footer button:disabled {
+  opacity: 0.4;
+}
+.campaign-dialog {
+  padding: 23px;
+}
+.campaign-dialog button {
+  margin: 6px 6px 0 0;
+}
+.campaign-dialog .campaign-kicker {
+  color: #d1b77c;
+}
+.campaign-dialog ul {
+  padding-left: 19px;
+}
+.campaign-dialog li {
+  margin-bottom: 6px;
+}
+.map-place {
+  position: absolute;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  width: 12px;
+  height: 12px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+.map-place i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #4f4930;
+  border: 1px solid #f9eac1;
+}
+.map-place span {
+  pointer-events: none;
+  position: absolute;
+  left: 10px;
+  white-space: nowrap;
+  max-width: 112px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #f6e9c1;
+  font: 11px var(--serif);
+  text-shadow:
+    0 0 3px #142621,
+    1px 1px 2px #142621,
+    -1px -1px 2px #142621;
+}
+.map-place.chosen,
+.map-place:focus-visible {
+  z-index: 5;
+}
+.map-place.chosen i {
+  width: 10px;
+  height: 10px;
+  background: #c59544;
+  box-shadow: 0 0 0 3px #fff2a6;
+}
+.map-place.chosen span {
+  background: #263e36;
+  color: #fff0bf;
+  padding: 2px 5px;
+  max-width: none;
+}
+@media (min-width: 761px) and (max-height: 680px) {
+  .is-campaign .masthead {
+    min-height: 56px;
+  }
+  .campaign-hud {
+    padding: 5px 18px;
+  }
+  .theatre-heading {
+    padding: 10px 16px;
+  }
+  .charter-strip {
+    padding: 8px 14px;
+  }
+}
+@media (max-width: 1000px) {
+  .campaign-hud {
+    gap: 20px;
+  }
+  .game-resource {
+    gap: 5px;
+  }
+  .game-resource em {
+    font-size: 10px;
+  }
+  .charter-icon {
+    display: none;
+  }
+  .charter-strip {
+    gap: 9px;
+  }
+  .theatre-heading {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .choose-seat {
+    padding: 5px 8px;
+  }
+  .is-campaign .masthead {
+    gap: 15px;
+  }
+}
+@media (max-width: 760px) {
+  .campaign-tab {
+    display: block;
+  }
+  .campaign-layout {
+    display: flex;
+    flex-direction: column;
+  }
+  .campaign-hud {
+    flex-wrap: wrap;
+    gap: 9px 15px;
+    padding: 8px 12px;
+  }
+  .turn-counter {
+    gap: 5px;
+    padding-right: 9px;
+  }
+  .turn-sun {
+    font-size: 23px;
+  }
+  .turn-counter b,
+  .game-resource strong {
+    font-size: 18px;
+  }
+  .turn-counter small,
+  .game-resource small {
+    font-size: 8px;
+    letter-spacing: 0.6px;
+  }
+  .resource-medal {
+    height: 23px;
+    width: 23px;
+  }
+  .resource-medal svg {
+    width: 15px;
+  }
+  .game-resource em {
+    font-size: 9px;
+    margin-left: 2px;
+  }
+  .game-help {
+    padding: 4px 6px;
+    margin: 0 0 0 auto;
+    font-size: 11px !important;
+  }
+  .theatre-heading {
+    padding: 11px 14px;
+  }
+  .theatre-heading h1 {
+    font-size: 27px;
+  }
+  .tactical-field {
+    height: clamp(310px, 53vw, 470px);
+    flex: none;
+    min-height: 0;
+  }
+  .tactical-field .campaign-board__scene {
+    min-width: 530px;
+  }
+  .board-key {
+    padding: 6px 12px;
+    gap: 8px;
+    font-size: 10px;
+  }
+  .charter-strip {
+    padding: 10px 12px;
+  }
+  .charter-title {
+    min-width: 99px;
+  }
+  .charter-title b {
+    font-size: 15px;
+  }
+  .charter-progress {
+    min-width: 84px;
+    width: auto;
+    flex: 1;
+  }
+  .charter-progress > span {
+    font-size: 10px;
+  }
+  .command-post {
+    border: 0;
+  }
+  .command-scroll {
+    padding: 13px 17px;
+    overflow: visible;
+  }
+  .build-choice {
+    min-height: 51px;
+  }
+  .build-choice small,
+  .build-choice .cost,
+  .order-hint {
+    font-size: 13px;
+  }
+  .is-campaign .masthead nav {
+    gap: 0;
+  }
+  .is-campaign .masthead nav button {
+    padding: 9px 7px;
+    font-size: 12px;
+  }
+  .places-inner {
+    padding: 16px;
+  }
+  .places-dialog {
+    max-height: 93dvh;
+  }
+  .places-inner {
+    max-height: 91dvh;
+  }
+  .site-heading img {
+    width: 65px;
+    height: 54px;
+  }
+  .site-demographics {
+    margin-bottom: 11px;
+  }
+  .commit-panel p {
+    font-size: 13px;
+  }
+  .campaign-kicker {
+    font-size: 9px;
+  }
+}
+@media (max-width: 440px) {
+  .campaign-hud {
+    gap: 7px 9px;
+  }
+  .game-help {
+    border: none;
+    padding: 1px 3px;
+  }
+  .game-help svg {
+    display: none;
+  }
+  .game-resource .resource-medal {
+    display: none;
+  }
+  .turn-counter {
+    padding-right: 7px;
+  }
+  .board-key button {
+    font-size: 10px !important;
+  }
+  .choose-seat {
+    font-size: 12px !important;
+  }
+  .charter-icon {
+    display: none;
+  }
+  .theatre-heading {
+    align-items: flex-start;
+  }
+  .is-campaign .grid-id {
+    font-size: 8px;
+  }
+  .is-campaign .masthead nav button svg {
+    width: 14px;
+  }
+}
+.survey-partner {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 6px;
+  margin: 7px 0 0;
+  border: 1px solid #a8b2a0;
+  border-radius: 3px;
+  background: #e3e8d9;
+  color: #314d3b !important;
+  font-size: 13px !important;
+}
+.survey-partner:hover {
+  background: #d6dfca;
+}
+.back-to-board {
+  display: none;
+}
+@media (max-width: 760px) {
+  .back-to-board {
+    margin-left: auto;
+    display: block;
+    border: 1px solid #6d806c;
+    background: none;
+    border-radius: 3px;
+    padding: 4px 7px;
+    font-size: 11px !important;
+  }
+  .command-turn {
+    margin-left: 5px !important;
+  }
+}
+.command-post > .commit-panel {
+  flex: none;
+  margin: 0;
+  padding: 9px clamp(15px, 1.5vw, 24px) 12px;
+  background: #eae4d3;
+  box-shadow: 0 -4px 9px #605c3f0c;
+}
+.tactical-field .campaign-board__scene {
+  overflow: visible;
+}
+@media (min-width: 761px) and (max-height: 800px) {
+  .is-campaign .masthead {
+    min-height: 58px;
+  }
+  .campaign-hud {
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+  }
+  .theatre-heading {
+    padding-top: 10px !important;
+    padding-bottom: 9px !important;
+  }
+  .charter-strip {
+    padding-top: 9px !important;
+    padding-bottom: 9px !important;
+  }
+}
+@media (max-width: 760px) {
+  .is-campaign .masthead nav button {
+    white-space: nowrap;
+  }
+  .command-post > .commit-panel {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+  }
+}
+@media (max-width: 440px) {
+  .is-campaign .masthead nav {
+    justify-content: space-between;
+  }
+  .is-campaign .masthead nav button {
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+    gap: 3px;
+  }
+  .is-campaign .masthead nav button svg {
+    width: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trade-runner {
+    display: none;
+  }
+}

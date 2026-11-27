@@ -13,6 +13,7 @@ import {
   type Selection,
 } from './geography';
 import { Icon, type IconName } from './Icons';
+import { placeType, type Place } from './places';
 
 const districts: Record<string, string> = {
   Mining: 'Mining district',
@@ -72,8 +73,19 @@ type Props = {
   regions: Map<string, Profile>;
   onSelect: (s: Selection, focus?: boolean) => void;
   openGuide: () => void;
+  openPlaces: () => void;
+  onPlay: (p: Place) => void;
 };
-export default function Journal({ selection, data, grid, regions, onSelect, openGuide }: Props) {
+export default function Journal({
+  selection,
+  data,
+  grid,
+  regions,
+  onSelect,
+  openGuide,
+  openPlaces,
+  onPlay,
+}: Props) {
   const [directory, setDirectory] = useState<'city' | 'wonder' | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -158,6 +170,12 @@ export default function Journal({ selection, data, grid, regions, onSelect, open
         </div>
         <Rule>Atlas index</Rule>
         <Action
+          icon="search"
+          title="Find a settlement"
+          note="Cities, towns, suburbs and localities"
+          onClick={openPlaces}
+        />
+        <Action
           icon="city"
           title="Capital cities"
           note={census.cities.length + ' city profiles'}
@@ -173,6 +191,35 @@ export default function Journal({ selection, data, grid, regions, onSelect, open
           <Icon name="guide" size={14} />
           <button onClick={openGuide}>Sources &amp; survey notes</button>
         </div>
+      </>
+    );
+  } else if (selection.kind === 'place') {
+    const p = selection.place;
+    content = (
+      <>
+        <button className="back" onClick={country}>
+          <Icon name="back" size={14} />
+          Country overview
+        </button>
+        <p className="kicker">
+          {p.state} · {placeType(p)}
+        </p>
+        <h2>{p.name}</h2>
+        <p className="body-copy">
+          2021 Census · ABS {p.urban ? 'UCL' : 'SAL'} {p.id.slice(1)}
+        </p>
+        <div className="stats">
+          <Stat icon="population" label="Residents" value={fmt(p.population)} />
+          <Stat icon="pin" label="Jurisdiction" value={p.state} />
+        </div>
+        <Action
+          icon="compass"
+          title="Play a charter here"
+          note="Lead this place and connect its neighbours"
+          onClick={() => onPlay(p)}
+        />
+        <Action icon="search" title="Find another settlement" onClick={openPlaces} />
+        <p className="body-copy">The marker shows a representative point inside the census area.</p>
       </>
     );
   } else if (selection.kind === 'wonder') {

@@ -1,0 +1,69 @@
+.campaign-board {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  overflow: hidden;
+  background: #234b4a;
+}
+.campaign-board__scene {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.campaign-board__model,
+.campaign-board__label {
+  cursor: pointer;
+}
+.campaign-board__label {
+  outline: none;
+}
+.campaign-board__label text {
+  pointer-events: none;
+  font:
+    650 12px Georgia,
+    'Times New Roman',
+    serif;
+  fill: #303e35;
+}
+.campaign-board__plate {
+  fill: #f6edcc;
+  stroke: #675f48;
+  stroke-width: 1.15;
+  filter: drop-shadow(0 1.6px 1px #17252670);
+}
+.campaign-board__label.is-selected .campaign-board__plate {
+  fill: #243e3d;
+  stroke: #ffdf93;
+  stroke-width: 1.7;
+}
+.campaign-board__label.is-selected text {
+  fill: #ffebb3;
+}
+.campaign-board__halo {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 2;
+}
+.campaign-board__label:focus-visible .campaign-board__halo,
+.campaign-board__label:hover .campaign-board__halo {
+  stroke: #fff4c7;
+}
+.campaign-board__north {
+  fill: #eadbb5;
+  font:
+    10px Georgia,
+    serif;
+}
+@media (max-width: 650px) {
+  .tactical-field .campaign-board .campaign-board__scene {
+    overflow: hidden;
+  }
+  .campaign-board {
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #a69e7b #244747;
+  }
+  .campaign-board__scene {
+    min-width: 620px;
+  }
+}

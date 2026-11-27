@@ -19,12 +19,15 @@ import {
 } from './geography';
 import { drawMap, findCell, frame, initialView, makeChart, screen, world, type View } from './cartography';
 import { Icon, Rose } from './Icons';
+import { placeType, type Place } from './places';
 
 type Props = {
   data: Terrain;
   grid: RegionGrid;
   regions: Map<string, Profile>;
   cities: Profile[];
+  places: Place[];
+  openPlaces: () => void;
   wonders: Wonder[];
   selection: Selection;
   onSelect: (s: Selection) => void;
@@ -75,6 +78,8 @@ export default function MapRoom({
   grid,
   regions,
   cities,
+  places,
+  openPlaces,
   wonders,
   selection,
   onSelect,
@@ -140,14 +145,22 @@ export default function MapRoom({
   useEffect(() => {
     if (!focus) return;
     const p = locationOf(focus);
-    setView(p ? { ...p, zoom: focus.kind === 'region' ? 3 : 2.4 } : initialView);
+    setView(
+      p
+        ? {
+            x: p.x,
+            y: p.y,
+            zoom: focus.kind === 'place' ? (focus.place.urban ? 6 : 40) : focus.kind === 'region' ? 3 : 2.4,
+          }
+        : initialView,
+    );
     if (focus.kind === 'city') setCityPins(true);
     if (focus.kind === 'wonder') setWonderPins(true);
   }, [focus]);
   function zoomBy(factor: number, anchor?: Point) {
     setView((v) => {
       const old = frame(size.width, size.height, v),
-        zoom = Math.min(10, Math.max(0.85, v.zoom * factor));
+        zoom = Math.min(220, Math.max(0.85, v.zoom * factor));
       const at = anchor ?? screen(v, old),
         p = world(at, old);
       return { x: p.x + ((v.x - p.x) * v.zoom) / zoom, y: p.y + ((v.y - p.y) * v.zoom) / zoom, zoom };
@@ -170,6 +183,36 @@ export default function MapRoom({
   }, []);
   const drag = useRef<{ id: number; start: Point; view: View; moved: boolean } | null>(null);
   const displayedPins = pins.filter((p) => (p.city ? cityPins : wonderPins));
+  const settlementPins = useMemo(() => {
+    if (!cityPins) return [];
+    const chosen = selection.kind === 'place' ? selection.place : null;
+    const visible: { place: Place; point: Point; label: boolean }[] = [];
+    const occupied = new Set<string>(),
+      labelled = new Set<string>();
+    for (const p of pins.filter((p) => p.city)) {
+      const v = screen(p.point, f);
+      occupied.add(Math.floor(v.x / 28) + ',' + Math.floor(v.y / 22));
+      labelled.add(Math.floor(v.x / 115) + ',' + Math.floor(v.y / 28));
+    }
+    function add(place: Place, priority = false) {
+      if (!priority && !place.urban && view.zoom < 6) return;
+      const point = screen(place, f);
+      if (point.x < 6 || point.x > f.width - 6 || point.y < 6 || point.y > f.height - 6) return;
+      const key = Math.floor(point.x / 28) + ',' + Math.floor(point.y / 22);
+      if (!priority && occupied.has(key)) return;
+      occupied.add(key);
+      const labelKey = Math.floor(point.x / 115) + ',' + Math.floor(point.y / 28);
+      const label = priority || (!labelled.has(labelKey) && (view.zoom > 1.8 || visible.length < 18));
+      if (label) labelled.add(labelKey);
+      visible.push({ place, point, label });
+    }
+    if (chosen) add(chosen, true);
+    for (const p of places) {
+      if (p.id !== chosen?.id) add(p);
+      if (visible.length >= 110) break;
+    }
+    return visible;
+  }, [cityPins, selection, places, view, size, pins]);
   const active = locationOf(selection);
   const activeScreen = active && screen(active, f);
   const scaleKm = [10, 25, 50, 100, 250, 500, 1000].filter((k) => (k / 25) * f.scale < 90).at(-1) ?? 10;
@@ -240,6 +283,9 @@ export default function MapRoom({
           <h1>Continental map</h1>
         </div>
         <div className="map-options">
+          <button className="tool-square" aria-label="Search settlements" onClick={openPlaces}>
+            <Icon name="search" />
+          </button>
           <button
             className="tool-square"
             aria-label="Map overlays"
@@ -253,7 +299,7 @@ export default function MapRoom({
               <legend>Map overlays</legend>
               {(
                 [
-                  ['Capital cities', cityPins, setCityPins],
+                  ['Settlements', cityPins, setCityPins],
                   ['World wonders', wonderPins, setWonderPins],
                   ['Map labels', labels, setLabels],
                 ] as const
@@ -266,6 +312,21 @@ export default function MapRoom({
             </fieldset>
           )}
         </div>
+        {settlementPins.map(({ place, point, label }) => (
+          <button
+            key={place.id}
+            className={
+              'map-place ' + (selection.kind === 'place' && selection.place.id === place.id ? 'chosen' : '')
+            }
+            title={place.name}
+            aria-label={place.name + ', ' + placeType(place) + ', ' + place.state}
+            style={{ left: point.x, top: point.y }}
+            onClick={() => onSelect({ kind: 'place', place })}
+          >
+            <i />
+            {label && labels && <span>{place.name}</span>}
+          </button>
+        ))}
         {displayedPins.map((pin) => {
           const p = screen(pin.point, f);
           if (p.x < 0 || p.x > f.width || p.y < 0 || p.y > f.height) return null;

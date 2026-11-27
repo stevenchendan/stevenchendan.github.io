@@ -1,3 +1,4 @@
+import type { Place } from './places';
 export type Cell = [q: number, r: number, state: number, terrain: number, elevation: number];
 export type Terrain = { cells: Cell[]; states: string[]; terrains: string[] };
 export type RegionGrid = { byRow: Record<string, number[]> };
@@ -27,6 +28,7 @@ export type Wonder = {
 };
 export type Selection =
   | { kind: 'country' }
+  | { kind: 'place'; place: Place }
   | { kind: 'cell'; cell: Cell }
   | { kind: 'region' | 'city'; profile: Profile }
   | { kind: 'wonder'; wonder: Wonder };
@@ -130,6 +132,7 @@ export const capitals: Record<string, [string, number, number]> = {
 export const cityName = (p: Profile) => capitals[p.state]?.[0] || p.name;
 export function locationOf(s: Selection): Point | null {
   if (s.kind === 'country') return null;
+  if (s.kind === 'place') return s.place;
   if (s.kind === 'cell') return centre(s.cell[0], s.cell[1]);
   if (s.kind === 'wonder') return project(s.wonder.lon, s.wonder.lat);
   if (s.kind === 'region' && s.profile.state === 'OT') return null;

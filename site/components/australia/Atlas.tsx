@@ -5,12 +5,16 @@ import { fmt, type Lens, type RegionGrid, type Selection, type Terrain } from '.
 import Explorer from './Explorer';
 import MapRoom from './MapRoom';
 import Journal from './Journal';
+import Campaign from './Campaign';
+import PlacePicker from './PlacePicker';
+import { preparePlaces, type Place, type PlaceRow } from './places';
 import { Icon, Rose, type IconName } from './Icons';
 import './atlas.css';
 
-type Page = 'map' | 'explorer' | 'guide';
+type Page = 'campaign' | 'map' | 'explorer' | 'guide';
 const pages: [Page, string, IconName][] = [
-  ['map', 'Map room', 'atlas'],
+  ['campaign', 'Campaign', 'compass'],
+  ['map', 'World atlas', 'atlas'],
   ['explorer', 'Explorer', 'explore'],
   ['guide', 'Field guide', 'guide'],
 ];
@@ -28,6 +32,24 @@ function Guide() {
         <p>How Australian geography, people and places become a strategy atlas.</p>
       </header>
       <div className="guide-columns">
+        <article>
+          <Icon name="city" size={28} />
+          <h2>Playable places</h2>
+          <p>
+            Choose a council seat from 1,809 urban centre and locality records and 15,334 suburb and
+            locality records. Cross-border urban centres retain the ABS state parts. Two records with the
+            same name can cover different areas.
+          </p>
+          <p>
+            Each campaign brings six populated neighbouring suburbs or localities onto a tactical board. The
+            layout spreads the settlements around the seat for play. Route prices use distances between the
+            actual representative points, and district bonuses use the published 2021 population and the
+            terrain atlas.
+          </p>
+          <a href="/data/australia/places-readme.md">
+            Settlement geography, coordinates and census sources
+          </a>
+        </article>
         <article>
           <Icon name="hex" size={28} />
           <h2>The hex grid</h2>
@@ -110,21 +132,25 @@ async function readAsset<T>(name: string, signal: AbortSignal): Promise<T> {
   return response.json();
 }
 export default function Atlas() {
-  const [page, setPage] = useState<Page>('map'),
+  const [page, setPage] = useState<Page>('campaign'),
     [lens, setLens] = useState<Lens>('terrain');
-  const [assets, setAssets] = useState<{ data: Terrain; grid: RegionGrid } | null>(null),
+  const [assets, setAssets] = useState<{ data: Terrain; grid: RegionGrid; places: Place[] } | null>(null),
     [error, setError] = useState(false),
     [attempt, setAttempt] = useState(0);
   const [selection, setSelection] = useState<Selection>({ kind: 'country' }),
     [focus, setFocus] = useState<Selection | null>(null);
   const regions = useMemo(() => new Map(census.regions.map((p) => [p.code, p])), []);
+  const [picker, setPicker] = useState<'game' | 'atlas' | null>(null),
+    [requested, setRequested] = useState<{ place: Place } | null>(null);
+  const [visitedMap, setVisitedMap] = useState(false);
   useEffect(() => {
     const abort = new AbortController();
     Promise.all([
       readAsset<Terrain>('terrain', abort.signal),
       readAsset<RegionGrid>('regions-grid', abort.signal),
+      readAsset<{ places: PlaceRow[] }>('places', abort.signal),
     ])
-      .then(([data, grid]) => setAssets({ data, grid }))
+      .then(([data, grid, catalogue]) => setAssets({ data, grid, places: preparePlaces(catalogue.places) }))
       .catch(() => {
         if (!abort.signal.aborted) setError(true);
       });
@@ -134,6 +160,7 @@ export default function Atlas() {
     setSelection(s);
     if (move) setFocus(s);
     setPage('map');
+    setVisitedMap(true);
     if (window.matchMedia('(max-width: 760px)').matches && s.kind !== 'country')
       requestAnimationFrame(() => {
         document.querySelector('.journal')?.scrollIntoView({ block: 'start', behavior: 'instant' });
@@ -141,25 +168,19 @@ export default function Atlas() {
   }
   function navigate(p: Page) {
     setPage(p);
+    if (p === 'map') setVisitedMap(true);
     if (window.matchMedia('(max-width: 760px)').matches) window.scrollTo({ top: 0 });
   }
   return (
-    <main className="aus-atlas">
+    <main className={'aus-atlas ' + (page === 'campaign' ? 'is-campaign' : '')}>
       <header className="masthead">
-        <button
-          className="brand"
-          aria-label="Australia atlas home"
-          onClick={() => {
-            select({ kind: 'country' }, true);
-            setLens('terrain');
-          }}
-        >
+        <button className="brand" aria-label="Australia campaign home" onClick={() => navigate('campaign')}>
           <span className="brand-rose">
             <Rose size={49} />
           </span>
           <span>
             <strong>Australia</strong>
-            <small>Civilization Atlas</small>
+            <small>Common Ground</small>
           </span>
         </button>
         <nav aria-label="Atlas navigation">
@@ -175,17 +196,45 @@ export default function Atlas() {
           ))}
         </nav>
         <div className="grid-id">
-          <Icon name="hex" size={17} />
-          25 km hex grid
+          <Icon name="city" size={17} />
+          {assets ? fmt(assets.places.length) + ' places' : 'Settlement strategy'}
         </div>
       </header>
-      <div className="map-layout" hidden={page !== 'map'}>
+      <section className="campaign-tab" hidden={page !== 'campaign'} aria-label="Regional campaign">
         {assets ? (
+          <Campaign
+            places={assets.places}
+            terrain={assets.data}
+            requested={requested}
+            choosePlace={() => setPicker('game')}
+            onAtlas={(p) => select({ kind: 'place', place: p }, true)}
+          />
+        ) : (
+          <div className="map-loading" role="status">
+            <Rose />
+            <p>{error ? 'The campaign data could not be loaded.' : 'Preparing your regional charter…'}</p>
+            {error && (
+              <button
+                onClick={() => {
+                  setError(false);
+                  setAttempt((n) => n + 1);
+                }}
+              >
+                Retry download
+              </button>
+            )}
+          </div>
+        )}
+      </section>
+      <div className="map-layout" hidden={page !== 'map'}>
+        {assets && visitedMap ? (
           <MapRoom
             data={assets.data}
             grid={assets.grid}
             regions={regions}
             cities={census.cities}
+            places={assets.places}
+            openPlaces={() => setPicker('atlas')}
             wonders={heritage.sites}
             selection={selection}
             focus={focus}
@@ -216,6 +265,11 @@ export default function Atlas() {
           regions={regions}
           onSelect={select}
           openGuide={() => navigate('guide')}
+          openPlaces={() => setPicker('atlas')}
+          onPlay={(p) => {
+            setRequested({ place: p });
+            navigate('campaign');
+          }}
         />
       </div>
       <div className="page-container" hidden={page !== 'explorer'}>
@@ -230,7 +284,22 @@ export default function Atlas() {
       <div className="page-container" hidden={page !== 'guide'}>
         <Guide />
       </div>
-      <footer className="atlas-footer">
+      {picker && assets && (
+        <PlacePicker
+          places={assets.places}
+          mode={picker}
+          onClose={() => setPicker(null)}
+          onPick={(place) => {
+            if (picker === 'atlas') select({ kind: 'place', place }, true);
+            else {
+              setRequested({ place });
+              navigate('campaign');
+            }
+            setPicker(null);
+          }}
+        />
+      )}
+      <footer className="atlas-footer" hidden={page === 'campaign'}>
         <span>
           <span className="footer-star">✦</span> Australian Albers <b>·</b> EPSG:3577
         </span>
