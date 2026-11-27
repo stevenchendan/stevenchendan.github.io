@@ -14,6 +14,8 @@ import {
   type RegionGrid,
   type Terrain,
 } from './geography';
+import { drawFeatures, type FeatureLayer } from './tileArtwork';
+import type { TileFeature } from './tileFeatures';
 
 const corners = Array.from({ length: 6 }, (_, i) => {
   const angle = ((i * 60 - 90) * Math.PI) / 180;
@@ -34,17 +36,29 @@ export function hexPath(ctx: CanvasRenderingContext2D | Path2D, x: number, y: nu
   for (let i = 1; i < 6; i++) ctx.lineTo(x + corners[i].x, y + corners[i].y);
   ctx.closePath();
 }
-function shade(hex: string, amount: number) {
+function shade(hex: string, amount: number, cover: string) {
   const v = parseInt(hex.slice(1), 16);
+  const tint = parseInt(cover.slice(1), 16);
   return (
     'rgb(' +
-    [v >> 16, (v >> 8) & 255, v & 255]
-      .map((c) => Math.min(255, Math.max(0, Math.round(c + amount))))
+    [16, 8, 0]
+      .map((shift) =>
+        Math.min(
+          255,
+          Math.max(0, Math.round(((v >> shift) & 255) * 0.42 + ((tint >> shift) & 255) * 0.58 + amount)),
+        ),
+      )
       .join(',') +
     ')'
   );
 }
-export function makeChart(data: Terrain, grid: RegionGrid, profiles: Map<string, Profile>, lens: Lens) {
+export function makeChart(
+  data: Terrain,
+  grid: RegionGrid,
+  profiles: Map<string, Profile>,
+  lens: Lens,
+  features: Map<string, TileFeature>,
+) {
   const sheet = document.createElement('canvas'),
     detail = 14;
   sheet.width = bounds.width * detail;
@@ -88,7 +102,11 @@ export function makeChart(data: Terrain, grid: RegionGrid, profiles: Map<string,
     if (lens === 'terrain') {
       const nw = index.get(q + ',' + (r + 1))?.[4] ?? height;
       const se = index.get(q + ',' + (r - 1))?.[4] ?? height;
-      colour = shade(terrainColours[type], (noise - 0.5) * 12 + Math.max(-22, Math.min(22, (se - nw) * 0.1)));
+      colour = shade(
+        terrainColours[type],
+        (noise - 0.5) * 11 + Math.max(-22, Math.min(22, (se - nw) * 0.1)),
+        features.get(q + ',' + r)!.tint,
+      );
     } else {
       const value = lens === 'elevation' ? height : profiles.get(regionCode(grid, q, r))?.[lens];
       const palette = lens === 'elevation' ? elevationColours : statisticalColours;
@@ -101,15 +119,6 @@ export function makeChart(data: Terrain, grid: RegionGrid, profiles: Map<string,
     ctx.lineWidth = 0.075;
     ctx.strokeStyle = colour;
     ctx.stroke();
-    if (lens === 'terrain' && noise > 0.78 && (type === 4 || type === 5)) {
-      ctx.beginPath();
-      ctx.moveTo(x - 0.32, y + 0.12);
-      ctx.lineTo(x - 0.06, y - 0.22);
-      ctx.lineTo(x + 0.2, y + 0.12);
-      ctx.strokeStyle = 'rgba(56,64,43,.55)';
-      ctx.lineWidth = 0.07;
-      ctx.stroke();
-    }
   }
   ctx.lineWidth = 0.045;
   ctx.strokeStyle = 'rgba(62,61,39,.23)';
@@ -227,6 +236,7 @@ export function drawMap(
   selection: Cell | null,
   area: ReturnType<typeof territory>,
   labels: boolean,
+  features: FeatureLayer,
 ) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const w = Math.round(f.width * dpr),
@@ -243,6 +253,7 @@ export function drawMap(
   ctx.translate(f.cx, f.cy);
   ctx.scale(f.scale, f.scale);
   ctx.drawImage(sheet, bounds.left, bounds.top, bounds.width, bounds.height);
+  drawFeatures(ctx, f, features);
   if (area) {
     const outside = new Path2D(area.interior);
     outside.rect(-f.cx / f.scale, -f.cy / f.scale, f.width / f.scale, f.height / f.scale);
@@ -265,10 +276,13 @@ export function drawMap(
     const p = centre(selection[0], selection[1]);
     ctx.beginPath();
     hexPath(ctx, p.x, p.y);
-    ctx.fillStyle = '#f8db7388';
+    ctx.fillStyle = '#f8db733e';
     ctx.fill();
     ctx.strokeStyle = '#192d32';
-    ctx.lineWidth = Math.max(0.13, 2 / f.scale);
+    ctx.lineWidth = 4 / f.scale;
+    ctx.stroke();
+    ctx.strokeStyle = '#f9d67c';
+    ctx.lineWidth = 1.8 / f.scale;
     ctx.stroke();
   }
   ctx.restore();

@@ -34,11 +34,15 @@ import { areaCells, type Footprints } from './footprints';
 import { capitalTown } from './journey';
 import { Icon, Rose } from './Icons';
 import { placeType, type Place } from './places';
+import landmarks from '../../data/australia/landmarks.json';
+import { buildFeatures, landform, tileName, type LandCover } from './tileFeatures';
+import { makeFeatureLayer, loadArtwork } from './tileArtwork';
 
 type Props = {
   data: Terrain;
   grid: RegionGrid;
   footprints: Footprints;
+  cover: LandCover;
   here: Place | null;
   destination: Place | null;
   openDesk: () => void;
@@ -95,6 +99,7 @@ export default function MapRoom({
   data,
   grid,
   footprints,
+  cover,
   here,
   destination,
   openDesk,
@@ -118,12 +123,31 @@ export default function MapRoom({
     [labels, setLabels] = useState(true);
   const [settings, setSettings] = useState(false);
   const f = frame(size.width, size.height, view);
-  const chart = useMemo(() => makeChart(data, grid, regions, lens), [data, grid, regions, lens]);
+  const features = useMemo(
+    () => buildFeatures(data, cover, places, landmarks.landmarks),
+    [data, cover, places],
+  );
+  const [art, setArt] = useState<Map<string, CanvasImageSource>>(() => new Map());
+  useEffect(() => {
+    let live = true;
+    loadArtwork().then((images) => {
+      if (live) setArt(images);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+  const layer = useMemo(() => makeFeatureLayer(features, art), [features, art]);
+  const chart = useMemo(
+    () => makeChart(data, grid, regions, lens, features),
+    [data, grid, regions, lens, features],
+  );
   const area = useMemo(
     () => territory(areaCells(selection, data, grid, footprints)),
     [selection, data, grid, footprints],
   );
   const [inspected, setInspected] = useState<Cell | null>(null);
+  const feature = inspected && features.get(inspected[0] + ',' + inspected[1]);
   const isArea = ['region', 'place', 'city'].includes(selection.kind);
   const areaName =
     selection.kind === 'place'
@@ -174,17 +198,9 @@ export default function MapRoom({
     return () => ro.disconnect();
   }, []);
   useLayoutEffect(() => {
-    if (canvas.current)
-      drawMap(
-        canvas.current,
-        chart.sheet,
-        f,
-        selection.kind === 'cell' ? selection.cell : inspected,
-        area,
-        labels,
-      );
-  }, [chart, view, size, selection, area, labels, inspected]);
-  useEffect(() => setInspected(null), [selection]);
+    if (canvas.current) drawMap(canvas.current, chart.sheet, f, inspected, area, labels, layer);
+  }, [chart, view, size, selection, area, labels, inspected, layer]);
+  useEffect(() => setInspected(selection.kind === 'cell' ? selection.cell : null), [selection]);
   useEffect(() => {
     if (!focus || focus !== selection || focus.kind === 'cell') return;
     const p = locationOf(focus);
@@ -236,6 +252,10 @@ export default function MapRoom({
         capitalTown[p.selection.profile.state] === selection.place.id
       ),
   );
+  const majorTowns = useMemo(
+    () => places.filter((p) => p.urban && p.population >= 50000 && capitalTown[p.state] !== p.id),
+    [places],
+  );
   const settlementPins = useMemo(() => {
     if (!cityPins) return [];
     const chosen = selection.kind === 'place' ? selection.place : null;
@@ -250,7 +270,6 @@ export default function MapRoom({
       labelled.push({ left: v.x - (west ? width : 8), right: v.x + (west ? 8 : width), y: v.y });
     }
     function add(place: Place, priority = false) {
-      if (!priority && !place.urban && view.zoom < 6) return;
       const point = screen(place, f);
       if (point.x < 6 || point.x > f.width - 6 || point.y < 6 || point.y > f.height - 6) return;
       const key = Math.floor(point.x / 28) + ',' + Math.floor(point.y / 22);
@@ -261,23 +280,20 @@ export default function MapRoom({
       const clear =
         right <= f.width - 4 &&
         !labelled.some((b) => left < b.right + 5 && right + 5 > b.left && Math.abs(point.y - b.y) < 17);
-      const label = priority || (clear && (view.zoom > 1.8 || visible.length < 18));
+      const label = priority || clear;
       if (label) labelled.push({ left, right, y: point.y });
       visible.push({ place, point, label });
     }
     if (chosen) add(chosen, true);
-    if (area) {
-      for (const p of places) {
-        if (p.id !== chosen?.id && inside(p)) add(p);
-        if (visible.length >= 65) break;
+    if (!isArea) {
+      const limit = size.width < 650 ? 4 : 8;
+      for (const p of majorTowns) {
+        add(p);
+        if (visible.filter((p) => p.label).length >= limit) break;
       }
     }
-    for (const p of places) {
-      if (p.id !== chosen?.id) add(p);
-      if (visible.length >= 110) break;
-    }
     return visible;
-  }, [cityPins, selection, places, view, size, pins, area]);
+  }, [cityPins, selection, majorTowns, view, size, pins, isArea]);
   const active = locationOf(selection);
   const activeScreen = active && screen(active, f);
   const person = here && screen(here, f),
@@ -394,7 +410,6 @@ export default function MapRoom({
                 {area
                   ? area.keys.size + (area.keys.size === 1 ? ' 个代表格' : ' 个陆地格')
                   : '代表地点 · 超出陆地网格覆盖'}
-                {inspected && ' · ' + data.terrains[inspected[3]] + ' · ' + inspected[4] + ' m'}
               </p>
             </div>
             <button className="area-profile" onClick={openDesk}>
@@ -501,7 +516,7 @@ export default function MapRoom({
               onClick={() => onSelect(pin.selection)}
             >
               <span className="pin-glyph">{pin.city ? '✦' : '◆'}</span>
-              {pin.city && (
+              {pin.city && labels && (!isArea || selected) && (
                 <span
                   className={
                     'pin-label ' +
@@ -519,7 +534,45 @@ export default function MapRoom({
             <Icon name="pin" size={22} />
           </div>
         )}
-        <div className="map-compass" aria-hidden="true">
+        {feature && (
+          <section className="tile-note" aria-live="polite" aria-label="地块特征">
+            <button className="area-close" aria-label="收起地块特征" onClick={() => setInspected(null)}>
+              <Icon name="close" size={15} />
+            </button>
+            <small>
+              地块特征 · {landform(feature.cell)} · {feature.cell[4]} m
+            </small>
+            <strong>{tileName(feature)}</strong>
+            {feature.coverName && (
+              <span>
+                MODIS {cover.year} · 主要覆盖为{feature.coverName}
+              </span>
+            )}
+            {feature.town && (
+              <a
+                href={
+                  'https://www.abs.gov.au/census/find-census-data/quickstats/2021/UCL' +
+                  feature.town.id.slice(1)
+                }
+                target="_blank"
+                rel="noreferrer"
+              >
+                城镇人口 · {feature.town.name} · {feature.town.population.toLocaleString('en-AU')}（ABS
+                2021）↗
+              </a>
+            )}
+            {feature.landmarks.map(({ site, coastal }) => (
+              <a key={site.id} href={site.source} target="_blank" rel="noreferrer">
+                {coastal ? '邻近陆地格 · ' : ''}
+                {site.name} · 档案 ↗
+              </a>
+            ))}
+            <a href="/data/australia/landcover-readme.md" target="_blank" rel="noreferrer">
+              卫星数据与图案依据 ↗
+            </a>
+          </section>
+        )}
+        <div className="map-compass" aria-hidden="true" hidden={!!feature}>
           <span>N</span>
           <Rose size={48} />
         </div>

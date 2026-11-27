@@ -6,6 +6,7 @@ import MapRoom from './MapRoom';
 import PlacePicker from './PlacePicker';
 import { preparePlaces, type Place, type PlaceRow } from './places';
 import type { Footprints } from './footprints';
+import type { LandCover } from './tileFeatures';
 import { Icon, Rose } from './Icons';
 import { capitalTown, JOURNEY_KEY, readJourney, startJourney, tradingPlaces, type Journey } from './journey';
 import TradingPost from './TradingPost';
@@ -13,7 +14,7 @@ import './atlas.css';
 import './campaign.css';
 import './journey.css';
 
-type Assets = { data: Terrain; grid: RegionGrid; places: Place[]; footprints: Footprints };
+type Assets = { data: Terrain; grid: RegionGrid; places: Place[]; footprints: Footprints; cover: LandCover };
 async function readAsset<T>(name: string, signal: AbortSignal): Promise<T> {
   const response = await fetch('/data/australia/' + name + '.json', { signal });
   if (!response.ok) throw new Error('Map asset unavailable');
@@ -21,7 +22,7 @@ async function readAsset<T>(name: string, signal: AbortSignal): Promise<T> {
 }
 
 function Game({ assets }: { assets: Assets }) {
-  const { data, grid, places, footprints } = assets;
+  const { data, grid, places, footprints, cover } = assets;
   const byId = useMemo(() => new Map(places.map((p) => [p.id, p])), [places]);
   const regions = useMemo(() => new Map(census.regions.map((p) => [p.code, p])), []);
   const [journey, setJourney] = useState<Journey | null>(() => {
@@ -101,6 +102,7 @@ function Game({ assets }: { assets: Assets }) {
           data={data}
           grid={grid}
           footprints={footprints}
+          cover={cover}
           regions={regions}
           cities={census.cities}
           places={places}
@@ -145,6 +147,7 @@ function Game({ assets }: { assets: Assets }) {
             </p>
             <a href="/data/australia/footprints-readme.md">ABS 城市范围与许可</a> ·{' '}
             <a href="/data/australia/terrain-readme.md">地形与署名</a> ·{' '}
+            <a href="/data/australia/landcover-readme.md">土地覆盖与地块图案</a> ·{' '}
             <a href="/data/australia/places-readme.md">聚落与人口</a> ·{' '}
             <a href={heritage.metadata.source}>UNESCO 世界遗产</a> ·{' '}
             <a href={heritage.metadata.licenseUrl}>CC BY-SA 4.0</a>
@@ -180,10 +183,17 @@ export default function Atlas() {
       readAsset<RegionGrid>('regions-grid', abort.signal),
       readAsset<{ places: PlaceRow[] }>('places', abort.signal),
       readAsset<Footprints>('footprints', abort.signal),
+      readAsset<LandCover>('landcover', abort.signal),
     ])
-      .then(([data, grid, catalogue, footprints]) => {
+      .then(([data, grid, catalogue, footprints, cover]) => {
         if (!abort.signal.aborted)
-          setAssets({ data, grid, places: tradingPlaces(preparePlaces(catalogue.places)), footprints });
+          setAssets({
+            data,
+            grid,
+            places: tradingPlaces(preparePlaces(catalogue.places)),
+            footprints,
+            cover,
+          });
       })
       .catch(() => {
         if (!abort.signal.aborted) setError(true);

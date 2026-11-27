@@ -151,6 +151,34 @@ for (let i = 0; i < 3; i++) {
   }
 }
 assert.equal(journey.rank(run), '合作社合伙人');
+const landcover = JSON.parse(read('public/data/australia/landcover.json'));
+const { landmarks } = JSON.parse(read('site/data/australia/landmarks.json'));
+const signatures = load('tileFeatures').buildFeatures(terrain, landcover, towns, landmarks);
+assert.equal(landcover.cover.length, terrain.cells.length);
+assert.equal(signatures.size, 14213);
+assert.ok(landcover.cover.every((i) => typeof landcover.classes[i] === 'string'));
+const sprites = new Set(),
+  catalogued = new Set();
+const geo = load('geography');
+for (const [key, tile] of signatures) {
+  assert.ok(tile.coverName && tile.sprite);
+  sprites.add(tile.sprite);
+  for (const { site, coastal } of tile.landmarks) {
+    catalogued.add(site.id);
+    assert.equal(terrain.states[tile.cell[2]], site.state);
+    const point = geo.project(site.lon, site.lat);
+    if (coastal) assert.ok(Math.hypot(point.x - tile.x, point.y - tile.y) <= 1);
+    else assert.equal(key, geo.axial(point.x, point.y).join(','));
+  }
+  if (tile.town) assert.ok(tile.town.urban && tile.town.population >= 10000);
+}
+assert.equal(catalogued.size, landmarks.length);
+assert.equal(signatures.get(geo.axial(sydney.x, sydney.y).join(',')).sprite, 'opera-house');
+for (const sprite of sprites) {
+  const file = readFileSync(new URL('public/images/australia/tiles/' + sprite + '.webp', root));
+  assert.equal(file.toString('ascii', 8, 12), 'WEBP', sprite);
+}
+console.log(`Verified ${signatures.size} illustrated hexes and ${catalogued.size} geolocated landmarks.`);
 console.log(
   'Verified metro footprints, independent suburb memberships, capital trading posts, delivery deadlines, travel, trust, training, promotion and reload.',
 );

@@ -1,0 +1,121 @@
+{
+  "landmarks": [
+    {
+      "id": "sydney-opera-house",
+      "name": "Sydney Opera House",
+      "state": "NSW",
+      "lon": 151.21522,
+      "lat": -33.85667,
+      "kind": "sails",
+      "source": "https://apps.environment.nsw.gov.au/dpcheritageapp/ViewHeritageItemDetails.aspx?ID=5054880"
+    },
+    {
+      "id": "royal-exhibition-building",
+      "name": "Royal Exhibition Building",
+      "state": "VIC",
+      "lon": 144.97169,
+      "lat": -37.80446,
+      "kind": "dome",
+      "source": "https://whc.unesco.org/en/list/1131/"
+    },
+    {
+      "id": "australian-parliament-house",
+      "name": "Australian Parliament House",
+      "state": "ACT",
+      "lon": 149.12447,
+      "lat": -35.30826,
+      "kind": "parliament",
+      "source": "https://visitcanberra.com.au/attractions/56b23afa266140594567dc94/australian-parliament-house"
+    },
+    {
+      "id": "brisbane-city-hall",
+      "name": "Brisbane City Hall",
+      "state": "QLD",
+      "lon": 153.02384,
+      "lat": -27.46869,
+      "kind": "tower",
+      "source": "https://www.brisbane.qld.gov.au/libraries-venues-and-facilities/venue-and-places/brisbane-city-hall-and-king-george-square"
+    },
+    {
+      "id": "adelaide-parliament-houses",
+      "name": "South Australian Old and New Parliament Houses",
+      "state": "SA",
+      "lon": 138.59859,
+      "lat": -34.92112,
+      "kind": "hall",
+      "source": "https://www.dcceew.gov.au/parks-heritage/heritage/places/national/sa-parliament-houses"
+    },
+    {
+      "id": "fremantle-prison",
+      "name": "Fremantle Prison",
+      "state": "WA",
+      "lon": 115.75334,
+      "lat": -32.05501,
+      "kind": "gaol",
+      "source": "https://www.dcceew.gov.au/parks-heritage/heritage/places/national/fremantle-prison"
+    },
+    {
+      "id": "cascades-female-factory",
+      "name": "Cascades Female Factory",
+      "state": "TAS",
+      "lon": 147.29904,
+      "lat": -42.89385,
+      "kind": "gaol",
+      "source": "https://www.dcceew.gov.au/parks-heritage/heritage/places/national/cascade-female-factory"
+    },
+    {
+      "id": "darwin-military-museum",
+      "name": "Darwin Military Museum",
+      "state": "NT",
+      "lon": 130.81962,
+      "lat": -12.40769,
+      "kind": "fort",
+      "source": "https://www.ntlis.nt.gov.au/placenames/view.jsp?id=23638"
+    },
+    {
+      "id": "uluru",
+      "name": "Uluṟu",
+      "state": "NT",
+      "lon": 131.0354,
+      "lat": -25.3415,
+      "kind": "monolith",
+      "source": "https://www.ntlis.nt.gov.au/placenames/view.jsp?id=10532"
+    },
+    {
+      "id": "eureka-stockade-gardens",
+      "name": "Eureka Stockade Gardens",
+      "state": "VIC",
+      "lon": 143.88459,
+      "lat": -37.56462,
+      "kind": "memorial",
+      "source": "https://www.dcceew.gov.au/parks-heritage/heritage/places/national/eureka-stockade"
+    },
+    {
+      "id": "richmond-bridge",
+      "name": "Richmond Bridge",
+      "state": "TAS",
+      "lon": 147.43961,
+      "lat": -42.73376,
+      "kind": "bridge",
+      "source": "https://www.dcceew.gov.au/parks-heritage/heritage/places/national/richmond"
+    },
+    {
+      "id": "qantas-hangar-longreach",
+      "name": "Qantas Hangar, Longreach",
+      "state": "QLD",
+      "lon": 144.27126,
+      "lat": -23.43934,
+      "kind": "hangar",
+      "source": "https://www.dcceew.gov.au/parks-heritage/heritage/places/national/qantas-hangar"
+    },
+    {
+      "id": "murtoa-grain-store",
+      "name": "Murtoa No. 1 Grain Store",
+      "state": "VIC",
+      "lon": 142.47879,
+      "lat": -36.62295,
+      "kind": "shed",
+      "source": "https://www.dcceew.gov.au/parks-heritage/heritage/places/national/murtoa-grain-shed"
+    }
+  ]
+}

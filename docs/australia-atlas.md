@@ -36,11 +36,17 @@ The miniature buildings and trees are game artwork. The six [board sprites](../p
 
 The city interaction was informed by playing [USACiv](https://karpathy.ai/usaciv/). The progression from meeting a local employer to learning a profession draws on [Koei Tecmo’s merchant career manual](https://www.gamecity.ne.jp/manual/TaikeWqS/jp/4500.html). The Australian setting, trading-post illustration, characters and rules are original to this game. The preceding milestones describe earlier releases.
 
+## Milestone 4 · Illustrated land hexes
+
+Every land hex has a miniature. A registered landmark takes priority, followed by a town of at least 10,000 residents whose mapped point falls in the hex, then high mountain terrain, then the dominant 2021 MODIS cover group. If several towns qualify, the most populous supplies the town symbol. Select a tile to see its underlying cover, elevation and the record behind a landmark or town. Two coastal landmarks use the nearest same-state land hex within 25 km. Both inspectors identify the approximate placement.
+
+The national view labels the capitals and a small number of major regional centres. Opening a city reveals its territory and tile illustrations. Players can find individual suburbs through place search or the city's local directory. [Land-cover methodology](../public/data/australia/landcover-readme.md) · [Landmark coordinates and source records](../site/data/australia/landmarks.json)
+
 ## Upcoming milestones
 
 | Milestone | Work | Acceptance check |
 | --- | --- | --- |
-| 4 · Regional trades | Use published Australian industry data to specialise freight and customers by place. | Two regional shopkeepers offer distinct livelihoods with traceable local inputs. |
+| 5 · Regional trades | Use published Australian industry data to specialise freight and customers by place. | Two regional shopkeepers offer distinct livelihoods with traceable local inputs. |
 
 ## Reproduce this edition
 
@@ -51,6 +57,7 @@ python scripts/australia/terrain.py
 python scripts/australia/regions.py
 python scripts/australia/places.py
 python scripts/australia/footprints.py
+python scripts/australia/landcover.py
 node scripts/australia/check.mjs
 node scripts/australia/check-campaign.mjs
 npm run build
