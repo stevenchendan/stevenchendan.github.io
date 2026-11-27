@@ -1,0 +1,194 @@
+{
+  "metadata": {
+    "attribution": "Adapted from UNESCO, World Heritage List (whc001).",
+    "source": "https://data.unesco.org/explore/dataset/whc001/",
+    "countryList": "https://whc.unesco.org/en/statesparties/au/",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "verified": "2026-11-28",
+    "selection": "Inscribed Australian properties on the mainland, Tasmania or their adjacent coasts and reefs. Of Australia's 21 listed properties, this selection includes 18. Remote Lord Howe Island Group, Macquarie Island and Heard and McDonald Islands fall outside this regional selection.",
+    "method": "One marker per inscribed property. Coordinates are the first published point in the UNESCO DataHub MultiPoint geometry, in decimal degrees. A marker represents one location within a property, including for serial properties that span multiple states or territories. Year is the year of first inscription. Short labels are editorial."
+  },
+  "sites": [
+    {
+      "id": 1306,
+      "name": "Australian Convict Sites",
+      "shortLabel": "Fremantle Prison",
+      "year": 2010,
+      "category": "Cultural",
+      "lat": -32.055,
+      "lon": 115.7536111111,
+      "url": "https://whc.unesco.org/en/list/1306/"
+    },
+    {
+      "id": 698,
+      "name": "Australian Fossil Mammal Sites (Riversleigh / Naracoorte)",
+      "shortLabel": "Riversleigh",
+      "year": 1994,
+      "category": "Natural",
+      "lat": -19.0333333333,
+      "lon": 138.633333333,
+      "url": "https://whc.unesco.org/en/list/698/"
+    },
+    {
+      "id": 1577,
+      "name": "Budj Bim Cultural Landscape",
+      "shortLabel": "Budj Bim",
+      "year": 2019,
+      "category": "Cultural",
+      "lat": -38.0811083334,
+      "lon": 141.885275,
+      "url": "https://whc.unesco.org/en/list/1577/"
+    },
+    {
+      "id": 368,
+      "name": "Gondwana Rainforests of Australia",
+      "shortLabel": "Gondwana Rainforests",
+      "year": 1986,
+      "category": "Natural",
+      "lat": -28.21915,
+      "lon": 152.47413,
+      "url": "https://whc.unesco.org/en/list/368/"
+    },
+    {
+      "id": 154,
+      "name": "Great Barrier Reef",
+      "shortLabel": "Great Barrier Reef",
+      "year": 1981,
+      "category": "Natural",
+      "lat": -18.28611111,
+      "lon": 147.7,
+      "url": "https://whc.unesco.org/en/list/154/"
+    },
+    {
+      "id": 917,
+      "name": "Greater Blue Mountains Area",
+      "shortLabel": "Blue Mountains",
+      "year": 2000,
+      "category": "Natural",
+      "lat": -33.7,
+      "lon": 150,
+      "url": "https://whc.unesco.org/en/list/917/"
+    },
+    {
+      "id": 630,
+      "name": "K’gari",
+      "shortLabel": "K’gari",
+      "year": 1992,
+      "category": "Natural",
+      "lat": -25.21666667,
+      "lon": 153.1333333,
+      "url": "https://whc.unesco.org/en/list/630/"
+    },
+    {
+      "id": 147,
+      "name": "Kakadu National Park",
+      "shortLabel": "Kakadu",
+      "year": 1981,
+      "category": "Mixed",
+      "lat": -12.1052777778,
+      "lon": 132.3838888889,
+      "url": "https://whc.unesco.org/en/list/147/"
+    },
+    {
+      "id": 1709,
+      "name": "Murujuga Cultural Landscape",
+      "shortLabel": "Murujuga",
+      "year": 2025,
+      "category": "Cultural",
+      "lat": -20.5650277778,
+      "lon": 116.6685277778,
+      "url": "https://whc.unesco.org/en/list/1709/"
+    },
+    {
+      "id": 1369,
+      "name": "Ningaloo Coast",
+      "shortLabel": "Ningaloo Coast",
+      "year": 2011,
+      "category": "Natural",
+      "lat": -22.451,
+      "lon": 113.81,
+      "url": "https://whc.unesco.org/en/list/1369/"
+    },
+    {
+      "id": 1094,
+      "name": "Purnululu National Park",
+      "shortLabel": "Purnululu",
+      "year": 2003,
+      "category": "Natural",
+      "lat": -17.5,
+      "lon": 128.5,
+      "url": "https://whc.unesco.org/en/list/1094/"
+    },
+    {
+      "id": 1131,
+      "name": "Royal Exhibition Building and Carlton Gardens",
+      "shortLabel": "Royal Exhibition Building",
+      "year": 2004,
+      "category": "Cultural",
+      "lat": -37.8044601952,
+      "lon": 144.971693113,
+      "url": "https://whc.unesco.org/en/list/1131/"
+    },
+    {
+      "id": 578,
+      "name": "Shark Bay, Western Australia",
+      "shortLabel": "Shark Bay",
+      "year": 1991,
+      "category": "Natural",
+      "lat": -25.48611111,
+      "lon": 113.4361111,
+      "url": "https://whc.unesco.org/en/list/578/"
+    },
+    {
+      "id": 166,
+      "name": "Sydney Opera House",
+      "shortLabel": "Sydney Opera House",
+      "year": 2007,
+      "category": "Cultural",
+      "lat": -33.8566666667,
+      "lon": 151.2152777777,
+      "url": "https://whc.unesco.org/en/list/166/"
+    },
+    {
+      "id": 181,
+      "name": "Tasmanian Wilderness",
+      "shortLabel": "Tasmanian Wilderness",
+      "year": 1982,
+      "category": "Mixed",
+      "lat": -43.1184722222,
+      "lon": 146.2305555556,
+      "url": "https://whc.unesco.org/en/list/181/"
+    },
+    {
+      "id": 447,
+      "name": "Uluru-Kata Tjuta National Park",
+      "shortLabel": "Uluṟu–Kata Tjuṯa",
+      "year": 1987,
+      "category": "Mixed",
+      "lat": -25.33333333,
+      "lon": 131,
+      "url": "https://whc.unesco.org/en/list/447/"
+    },
+    {
+      "id": 486,
+      "name": "Wet Tropics of Queensland",
+      "shortLabel": "Wet Tropics",
+      "year": 1988,
+      "category": "Natural",
+      "lat": -17.2238888889,
+      "lon": 145.7780555556,
+      "url": "https://whc.unesco.org/en/list/486/"
+    },
+    {
+      "id": 167,
+      "name": "Willandra Lakes Region",
+      "shortLabel": "Willandra Lakes",
+      "year": 1981,
+      "category": "Mixed",
+      "lat": -33.673,
+      "lon": 143.035,
+      "url": "https://whc.unesco.org/en/list/167/"
+    }
+  ]
+}
