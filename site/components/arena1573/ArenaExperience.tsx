@@ -428,6 +428,7 @@ export default function ArenaExperience(){
         <button disabled={!!failure} aria-haspopup="dialog" onClick={()=>setPanel('venues')} aria-label={tr('场馆列表')}><Icon name="venues"/><span>{tr('场馆列表')}</span></button>
         <button aria-haspopup="dialog" onClick={()=>setPanel('settings')} aria-label={tr('场景设置')}><Icon name="settings"/><span>{tr('场景设置')}</span></button>
         <button className={styles.language} lang={language==='en'?'zh-CN':'en'} aria-label={language==='en'?'切换到中文':'Switch to English'} onClick={()=>setLanguage(value=>value==='en'?'zh':'en')}>{language==='en'?'中文':'EN'}</button>
+        <a className={styles.socialLink} href="https://x.com/StevenChenDev" target="_blank" rel="noopener noreferrer" aria-label={language==='zh'?'在 X 上关注 Steven Chen（新标签页）':'Follow Steven Chen on X (opens in a new tab)'} title="@StevenChenDev on X"><span aria-hidden="true">𝕏</span><span className={styles.socialLabel}>@StevenChenDev</span></a>
       </nav>
     </header>
     <section className={styles.stage} aria-label={tr('墨尔本公园场馆探索')}
