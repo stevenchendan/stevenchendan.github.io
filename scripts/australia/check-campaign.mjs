@@ -99,3 +99,58 @@ console.log(
     outcomes.join(', ') +
     '.',
 );
+
+const journey = load('journey');
+const towns = journey.tradingPlaces(places);
+const byId = new Map(towns.map((p) => [p.id, p]));
+const footprints = JSON.parse(read('public/data/australia/footprints.json'));
+const terrain = JSON.parse(read('public/data/australia/terrain.json'));
+const census = JSON.parse(read('site/data/australia/regions.json'));
+const states = new Map([
+  ...towns.map((p) => [p.id, p.state]),
+  ...census.cities.map((p) => [p.code, p.state]),
+]);
+for (const [id, cells] of Object.entries(footprints.cells)) {
+  assert.ok(cells.length && cells.length === new Set(cells).size);
+  for (const i of cells) assert.equal(terrain.states[terrain.cells[i][2]], states.get(id));
+}
+assert.equal(footprints.cells['1GSYD'].length, 24);
+assert.equal(footprints.cells['2GMEL'].length, 20);
+assert.deepEqual(footprints.membership.S13167, ['U101001', '1GSYD']);
+const sydney = byId.get(journey.capitalTown.NSW);
+assert.equal(sydney.lon, 151.2093);
+let run = journey.startJourney(sydney);
+assert.equal(journey.readJourney('{', byId), null);
+assert.equal(journey.train(run), run);
+for (let i = 0; i < 3; i++) {
+  const here = byId.get(run.here);
+  const local = journey.localDestinations(here, towns, footprints);
+  const [regular, urgent] = journey.jobs(run, here, local);
+  assert.ok(urgent.fee > regular.fee && regular.to !== urgent.to);
+  const job = i === 1 ? regular : urgent,
+    to = byId.get(job.to);
+  const signed = { ...run, job };
+  const fare = journey.passage(here, to, run.trained);
+  assert.equal(journey.deliver(signed), signed);
+  const broke = { ...signed, cash: 0 };
+  assert.equal(journey.travel(broke, here, to, true), broke);
+  const late = journey.deliver({ ...signed, here: to.id, day: job.due + 1 });
+  assert.equal(late.cash, run.cash + Math.floor(job.fee / 2));
+  assert.equal(late.trust[to.id], run.trust[to.id]);
+  const arrived = journey.travel(signed, here, to, i !== 1);
+  assert.equal(arrived.cash, run.cash - (i !== 1 ? fare.fare : 0));
+  run = journey.deliver(arrived);
+  assert.ok(run.trust[here.id] && run.trust[to.id]);
+  assert.equal(run.cash, arrived.cash + job.fee);
+  assert.equal(journey.deliver(run), run);
+  assert.equal(journey.readJourney(JSON.stringify(run), byId).deliveries, i + 1);
+  if (i === 0) {
+    run = journey.train(run);
+    assert.ok(run.trained);
+    assert.equal(journey.passage(here, to, true).fare, fare.fare - 3);
+  }
+}
+assert.equal(journey.rank(run), '合作社合伙人');
+console.log(
+  'Verified metro footprints, independent suburb memberships, capital trading posts, delivery deadlines, travel, trust, training, promotion and reload.',
+);

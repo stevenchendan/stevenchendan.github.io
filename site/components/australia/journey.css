@@ -1,0 +1,395 @@
+.travel-head {
+  min-height: 64px;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 21px;
+}
+.travel-head .brand strong {
+  font-size: 29px;
+}
+.player-hud {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  font-size: 13px;
+  color: #e5d5af;
+}
+.player-hud button,
+.post-link,
+.area-profile,
+.place-districts button,
+.waybill button,
+.book-contact {
+  background: none;
+  border: 0;
+  color: inherit;
+}
+.player-hud button,
+.post-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.player-hud button {
+  max-width: 36vw;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.player-hud b {
+  font-variant-numeric: tabular-nums;
+}
+.trader-world .map-layout {
+  grid-template-columns: minmax(0, 1fr) clamp(285px, 26vw, 380px);
+}
+.journey-route {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.area-banner {
+  position: absolute;
+  top: 14px;
+  left: 15px;
+  max-width: calc(100% - 88px);
+  z-index: 5;
+  padding: 9px 40px 9px 13px;
+  border: 1px solid #81bca2;
+  border-left: 3px solid #a1efc2;
+  border-radius: 3px;
+  background: #172f30f2;
+  color: #f5edda;
+  box-shadow: 0 4px 15px #10242245;
+}
+.area-banner small,
+.post-overline,
+.waybill small,
+.offer-list small {
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.area-banner small {
+  color: #a8d8bf;
+}
+.area-banner h1 {
+  font: normal clamp(20px, 2.5vw, 30px)/1.1 var(--serif);
+  margin: 3px 0;
+}
+.area-banner p {
+  font-size: 12px;
+  margin: 0;
+  color: #c9d9cd;
+}
+.area-close {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+}
+.area-profile {
+  display: none;
+}
+.outside-area {
+  opacity: 0.42;
+}
+.outside-area:hover,
+.outside-area:focus-visible {
+  opacity: 1;
+}
+.map-options select {
+  max-width: 115px;
+  background: #263e3e;
+  color: #fff;
+  border: 1px solid #70847b;
+}
+.trading-post {
+  overflow-y: auto;
+  background: #f4eddd;
+  color: #29372b;
+  min-height: 0;
+  border-left: 1px solid #ab9264;
+  scrollbar-width: thin;
+  scrollbar-color: #c6b68e #eee5d1;
+}
+.post-art {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 3px solid #b28c54;
+}
+.post-art img {
+  display: block;
+  width: 100%;
+  height: clamp(112px, 19vh, 200px);
+  object-fit: cover;
+  object-position: center 47%;
+}
+.post-body {
+  padding: 20px clamp(17px, 2vw, 25px) 10px;
+}
+.post-overline {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #687158;
+}
+.post-seal {
+  color: #976530;
+  font-size: 17px;
+}
+.post-overline span:not(.post-seal) {
+  color: #b09367;
+}
+.post-body h2 {
+  font: normal clamp(30px, 3.2vw, 45px)/1.1 var(--serif);
+  margin: 5px 0 9px;
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+}
+.place-facts,
+.post-body .place-facts {
+  font-size: 12px;
+  color: #626e57;
+  margin: 0 0 13px;
+}
+.keeper-line {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+.keeper-line b {
+  font: italic 600 21px/1.3 var(--serif);
+}
+.keeper-line span,
+.post-body p,
+.post-body blockquote {
+  font-size: 13px;
+  line-height: 1.65;
+}
+.keeper-line span {
+  color: #636b55;
+}
+.post-body blockquote {
+  margin: 8px 0 14px;
+  color: #485640;
+}
+.post-primary {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  background: #224e40;
+  color: #fff5db !important;
+  font-weight: 650 !important;
+  border: 1px solid #1e4338;
+  border-radius: 3px;
+}
+.post-primary:hover {
+  background: #31634e;
+}
+.post-link {
+  margin: 7px 0 1px;
+  padding: 6px 0;
+  color: #455d48 !important;
+  font-size: 12px !important;
+}
+.post-choice,
+.offer-list button {
+  display: flex;
+  width: 100%;
+  background: #fffbef;
+  border: 1px solid #c2b797;
+  border-radius: 3px;
+  padding: 10px;
+  gap: 7px;
+  justify-content: space-between;
+  text-align: left;
+  align-items: center;
+  margin: 6px 0;
+}
+.post-choice:hover,
+.offer-list button:hover {
+  border-color: #59745e;
+  background: #fcf4d9;
+}
+.post-choice:disabled {
+  opacity: 0.55;
+}
+.post-choice b,
+.offer-list b {
+  font-size: 14px;
+}
+.post-choice span,
+.offer-list em {
+  font-size: 12px;
+  color: #57634f;
+  font-style: normal;
+}
+.offer-list h3 {
+  font-size: 14px;
+  margin: 16px 0 5px;
+}
+.offer-list button span,
+.waybill {
+  display: grid;
+  gap: 4px;
+}
+.offer-list small,
+.waybill small {
+  color: #80602e;
+}
+.offer-list strong {
+  font: 600 21px var(--serif);
+  color: #456144;
+}
+.waybill {
+  background: #ece2c6;
+  border-left: 3px solid #b08b53;
+  padding: 10px 11px;
+  margin: 12px 0;
+}
+.waybill span,
+.waybill button {
+  font-size: 12px;
+  text-align: left;
+  padding: 0;
+}
+.waybill button {
+  text-decoration: underline;
+}
+.post-note {
+  color: #465a45;
+}
+.career-book,
+.place-districts,
+.source-notes {
+  border-top: 1px solid #ccbea1;
+  margin-top: 12px;
+  padding-top: 10px;
+  font-size: 12px;
+}
+.career-book summary,
+.place-districts summary,
+.source-notes summary {
+  cursor: pointer;
+  padding: 3px 0;
+  font-weight: 600;
+}
+.book-contact {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  text-align: left;
+  padding: 5px 0;
+}
+.place-districts:empty {
+  display: none;
+}
+.place-districts input {
+  width: 100%;
+  margin: 7px 0 2px;
+  border: 1px solid #bbae91;
+  border-radius: 3px;
+  padding: 7px;
+  background: #fffaf0;
+  color-scheme: light;
+}
+.place-districts button {
+  padding: 5px 6px 4px 0;
+  margin-right: 5px;
+  color: #405c49;
+  text-decoration: underline;
+}
+.source-notes {
+  margin: 4px clamp(17px, 2vw, 25px) 22px;
+  color: #6b705f;
+  font-size: 11px;
+}
+.source-notes a,
+.place-observation a {
+  color: #405c49;
+}
+.place-observation {
+  padding: 0 0 8px;
+  margin-bottom: 9px;
+  border-bottom: 1px solid #c8bb9f;
+  font: 600 16px var(--serif);
+}
+.place-observation svg {
+  vertical-align: middle;
+}
+.place-observation small {
+  display: block;
+  margin: 3px 0 0;
+  font: 12px var(--sans);
+}
+.journey-loading {
+  height: 100dvh;
+}
+@media (max-width: 760px) {
+  .travel-head {
+    min-height: 56px;
+    padding: 8px 12px;
+    gap: 4px;
+  }
+  .travel-head .brand strong {
+    font-size: 25px;
+  }
+  .player-hud {
+    gap: 8px;
+    font-size: 12px;
+  }
+  .trader-world .map-viewport {
+    height: clamp(350px, 58svh, 650px);
+    min-height: 350px;
+  }
+  .trader-world .map-layout {
+    display: flex;
+  }
+  .trading-post {
+    overflow: visible;
+    border-left: 0;
+    position: relative;
+    border-top: 2px solid #b28c54;
+  }
+  .post-body {
+    padding: 16px 18px 9px;
+  }
+  .post-art {
+    float: right;
+    width: 38%;
+    height: 115px;
+    margin: 0 0 7px 10px;
+    border: 0;
+    clip-path: polygon(8% 0, 100% 0, 100% 100%, 0 100%);
+  }
+  .post-art img {
+    height: 100%;
+    object-position: 65% 45%;
+  }
+  .post-body blockquote,
+  .post-body .post-note,
+  .post-body .waybill {
+    clear: both;
+  }
+  .area-banner {
+    top: 10px;
+    left: 10px;
+    padding: 6px 31px 6px 9px;
+  }
+  .area-profile {
+    display: block;
+    padding: 4px 0 0;
+    color: #ebd29a !important;
+    font-size: 11px !important;
+  }
+}

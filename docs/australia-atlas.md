@@ -1,6 +1,6 @@
 # Australia · Common Ground
 
-[`/australia/`](https://stevenchendan.github.io/australia/) opens a single-player economic strategy campaign. The World atlas, Explorer and Field guide are available alongside the game. Astro ships the application and its data through the portfolio’s GitHub Pages deployment. Publish each verified milestone to `master`.
+[`/australia/`](https://stevenchendan.github.io/australia/) opens the national hex map. Players start a personal trading career directly in a real Australian town or suburb. Astro ships the game and bundled data through GitHub Pages from `master`.
 
 ## Milestone 1 · Continental atlas
 
@@ -27,12 +27,20 @@ The catalogue includes 686 geographic records with a published population of zer
 
 The miniature buildings and trees are game artwork. The six [board sprites](../public/images/australia/game/) were created with the built-in image generator as sunlit isometric Australian town hall, houses, market, workshop, campus and eucalyptus illustrations.
 
+## Milestone 3 · A player on the national map
+
+- [x] Open directly onto the national map. Place selection, travel, contracts and character progression share this screen.
+- [x] Fit the camera to the selected ABS area, light its outer edge, and keep interior tiles inspectable as the player switches lenses. Greater Sydney spans 24 tiles and Greater Melbourne spans 20. Capital regions, urban centres and suburbs retain their separate definitions. Smaller areas can share a representative tile. [Footprint rules](../public/data/australia/footprints-readme.md)
+- [x] Let the player choose a starting place, meet its fictional cooperative keeper and sign a local delivery or an express commission. The player marker and delivery destination appear on the same map. Travel consumes days and express fares consume cash. A late shipment earns half pay.
+- [x] Track each contact’s trust. A trusted shopkeeper can teach cheaper express travel. Three deliveries and trust in three places unlock partnership and higher-paying freight. The browser saves the player's location, cash, contacts, skills and outstanding waybill.
+
+The city interaction was informed by playing [USACiv](https://karpathy.ai/usaciv/). The progression from meeting a local employer to learning a profession draws on [Koei Tecmo’s merchant career manual](https://www.gamecity.ne.jp/manual/TaikeWqS/jp/4500.html). The Australian setting, trading-post illustration, characters and rules are original to this game. The preceding milestones describe earlier releases.
+
 ## Upcoming milestones
 
 | Milestone | Work | Acceptance check |
 | --- | --- | --- |
-| 3 · Resources and yields | Incorporate power stations, mines, ports and airports into regional trade decisions. | A player can compare two routes using their facility, source year, unit and in-game effect. |
-| 4 · Regional scenarios | Add region-specific objectives and advisors informed by education, climate and industry. | The opening decision and viable strategies differ between a coastal port, an inland town and a metropolitan suburb. |
+| 4 · Regional trades | Use published Australian industry data to specialise freight and customers by place. | Two regional shopkeepers offer distinct livelihoods with traceable local inputs. |
 
 ## Reproduce this edition
 
@@ -42,6 +50,7 @@ The checked-in JSON is ready for the site build. To refresh the geographic and c
 python scripts/australia/terrain.py
 python scripts/australia/regions.py
 python scripts/australia/places.py
+python scripts/australia/footprints.py
 node scripts/australia/check.mjs
 node scripts/australia/check-campaign.mjs
 npm run build

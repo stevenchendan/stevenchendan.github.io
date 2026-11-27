@@ -29,7 +29,7 @@ const neighbours = [
 ];
 export const mapMid = { x: 5.25, y: 117 };
 const bounds = { left: -79, top: 38, width: 169, height: 159 };
-export function hexPath(ctx: CanvasRenderingContext2D, x: number, y: number) {
+export function hexPath(ctx: CanvasRenderingContext2D | Path2D, x: number, y: number) {
   ctx.moveTo(x + corners[0].x, y + corners[0].y);
   for (let i = 1; i < 6; i++) ctx.lineTo(x + corners[i].x, y + corners[i].y);
   ctx.closePath();
@@ -88,10 +88,7 @@ export function makeChart(data: Terrain, grid: RegionGrid, profiles: Map<string,
     if (lens === 'terrain') {
       const nw = index.get(q + ',' + (r + 1))?.[4] ?? height;
       const se = index.get(q + ',' + (r - 1))?.[4] ?? height;
-      colour = shade(
-        terrainColours[type],
-        (noise - 0.5) * 12 + Math.max(-22, Math.min(22, (se - nw) * 0.1)),
-      );
+      colour = shade(terrainColours[type], (noise - 0.5) * 12 + Math.max(-22, Math.min(22, (se - nw) * 0.1)));
     } else {
       const value = lens === 'elevation' ? height : profiles.get(regionCode(grid, q, r))?.[lens];
       const palette = lens === 'elevation' ? elevationColours : statisticalColours;
@@ -137,6 +134,52 @@ export function frame(width: number, height: number, view: View): Frame {
 }
 export const screen = (p: Point, f: Frame) => ({ x: f.cx + p.x * f.scale, y: f.cy + p.y * f.scale });
 export const world = (p: Point, f: Frame) => ({ x: (p.x - f.cx) / f.scale, y: (p.y - f.cy) / f.scale });
+export function territory(cells: Cell[]) {
+  if (!cells.length) return null;
+  const keys = new Set(cells.map(([q, r]) => q + ',' + r));
+  const interior = new Path2D(),
+    rim = new Path2D();
+  let left = Infinity,
+    right = -Infinity,
+    top = Infinity,
+    bottom = -Infinity;
+  for (const [q, r] of cells) {
+    const { x, y } = centre(q, r);
+    left = Math.min(left, x - 0.5);
+    right = Math.max(right, x + 0.5);
+    top = Math.min(top, y - 1 / Math.sqrt(3));
+    bottom = Math.max(bottom, y + 1 / Math.sqrt(3));
+    hexPath(interior, x, y);
+    neighbours.forEach(([dq, dr], i) => {
+      if (keys.has(q + dq + ',' + (r + dr))) return;
+      const a = corners[(i + 1) % 6],
+        b = corners[(i + 2) % 6];
+      rim.moveTo(x + a.x, y + a.y);
+      rim.lineTo(x + b.x, y + b.y);
+    });
+  }
+  return { keys, interior, rim, left, right, top, bottom };
+}
+export function fitTerritory(
+  area: NonNullable<ReturnType<typeof territory>>,
+  pin: Point | null,
+  w: number,
+  h: number,
+): View {
+  const left = Math.min(area.left, pin?.x ?? Infinity),
+    right = Math.max(area.right, pin?.x ?? -Infinity);
+  const top = Math.min(area.top, pin?.y ?? Infinity),
+    bottom = Math.max(area.bottom, pin?.y ?? -Infinity);
+  const scale = Math.min(
+    (w * 0.73) / Math.max(3, right - left),
+    Math.max(90, h - 155) / Math.max(3, bottom - top),
+  );
+  return {
+    x: (left + right) / 2,
+    y: (top + bottom) / 2,
+    zoom: Math.max(0.85, Math.min(100, scale / frame(w, h, initialView).scale)),
+  };
+}
 export function findCell(index: Map<string, Cell>, p: Point) {
   const [q, r] = axial(p.x, p.y);
   return index.get(q + ',' + r);
@@ -182,7 +225,7 @@ export function drawMap(
   sheet: HTMLCanvasElement,
   f: Frame,
   selection: Cell | null,
-  regionCells: Cell[],
+  area: ReturnType<typeof territory>,
   labels: boolean,
 ) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -200,17 +243,23 @@ export function drawMap(
   ctx.translate(f.cx, f.cy);
   ctx.scale(f.scale, f.scale);
   ctx.drawImage(sheet, bounds.left, bounds.top, bounds.width, bounds.height);
-  if (regionCells.length) {
-    ctx.beginPath();
-    for (const [q, r] of regionCells) {
-      const p = centre(q, r);
-      hexPath(ctx, p.x, p.y);
-    }
-    ctx.fillStyle = 'rgba(234,175,58,.27)';
-    ctx.fill();
-    ctx.lineWidth = 0.11;
-    ctx.strokeStyle = '#ecd181';
-    ctx.stroke();
+  if (area) {
+    const outside = new Path2D(area.interior);
+    outside.rect(-f.cx / f.scale, -f.cy / f.scale, f.width / f.scale, f.height / f.scale);
+    ctx.fillStyle = 'rgba(8,24,29,.62)';
+    ctx.fill(outside, 'evenodd');
+    ctx.fillStyle = 'rgba(129,240,184,.12)';
+    ctx.fill(area.interior);
+    ctx.strokeStyle = 'rgba(247,255,222,.52)';
+    ctx.lineWidth = 0.9 / f.scale;
+    ctx.stroke(area.interior);
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 6 / f.scale;
+    ctx.strokeStyle = '#194b44';
+    ctx.stroke(area.rim);
+    ctx.lineWidth = 2.6 / f.scale;
+    ctx.strokeStyle = '#9ef5c2';
+    ctx.stroke(area.rim);
   }
   if (selection) {
     const p = centre(selection[0], selection[1]);
@@ -223,7 +272,7 @@ export function drawMap(
     ctx.stroke();
   }
   ctx.restore();
-  if (!labels) return;
+  if (!labels || area) return;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   const size = Math.max(8, Math.min(14, f.scale * 2.65));

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { fmt, states } from './geography';
+import { cityName, fmt, states, type Profile } from './geography';
+import census from '../../data/australia/regions.json';
 import { placeType, searchPlaces, type Place } from './places';
 import { Icon } from './Icons';
 
@@ -8,8 +9,9 @@ type Props = {
   mode: 'game' | 'atlas' | 'route';
   onClose: () => void;
   onPick: (p: Place) => void;
+  onCapital?: (p: Profile) => void;
 };
-export default function PlacePicker({ places, mode, onClose, onPick }: Props) {
+export default function PlacePicker({ places, mode, onClose, onPick, onCapital }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const [query, setQuery] = useState(''),
     [state, setState] = useState(''),
@@ -22,6 +24,13 @@ export default function PlacePicker({ places, mode, onClose, onPick }: Props) {
   }, []);
   const rows = useMemo(() => searchPlaces(places, query, state, kind), [places, query, state, kind]);
   const pageSize = 20;
+  const capitals =
+    onCapital && page === 0 && !kind && query.trim()
+      ? census.cities.filter(
+          (p) =>
+            (!state || state === p.state) && cityName(p).toLowerCase().includes(query.trim().toLowerCase()),
+        )
+      : [];
   return (
     <dialog
       ref={ref}
@@ -41,7 +50,7 @@ export default function PlacePicker({ places, mode, onClose, onPick }: Props) {
                 ? 'Choose your council seat'
                 : mode === 'route'
                   ? 'Find a trade partner'
-                  : 'Find a settlement'}
+                  : '寻找城镇或郊区'}
             </h2>
           </div>
           <button className="tool-square" aria-label="Close place search" onClick={onClose}>
@@ -53,8 +62,8 @@ export default function PlacePicker({ places, mode, onClose, onPick }: Props) {
             ? 'Play a local charter from a city, town or suburb.'
             : mode === 'route'
               ? 'Survey a destination for your current charter. You can review the route cost before committing a turn.'
-              : 'Locate a city, town or suburb on the continental map.'}{' '}
-          Search {fmt(places.length)} places from the 2021 Census.
+              : '按英文地名搜索。'}{' '}
+          {fmt(places.length)} places · ABS 2021
         </p>
         <label className="place-search">
           <Icon name="search" />
@@ -109,6 +118,17 @@ export default function PlacePicker({ places, mode, onClose, onPick }: Props) {
             : 'No matching places. Try a shorter name or another state.'}
         </div>
         <div className="place-results" key={page}>
+          {capitals.map((p) => (
+            <button key={p.code} onClick={() => onCapital?.(p)}>
+              <span>
+                <b>{cityName(p)} · 都市圈</b>
+                <small>
+                  {p.name} · {fmt(p.population)} residents
+                </small>
+              </span>
+              <Icon name="chevron" />
+            </button>
+          ))}
           {rows.slice(page * pageSize, (page + 1) * pageSize).map((p) => (
             <button key={p.id} onClick={() => onPick(p)}>
               <span>
